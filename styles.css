@@ -1,0 +1,302 @@
+/* ── Iron & chalk ───────────────────────────────────────────
+   Loads are colour-coded the way calibrated plates are, so the
+   bar diagram on every set is readable at a glance mid-session. */
+
+:root {
+  --iron:    #131519;
+  --steel:   #1B1F26;
+  --steel-2: #232833;
+  --edge:    #2E3440;
+  --chalk:   #ECECE6;
+  --dust:    #868D9A;
+  --dust-2:  #5C6470;
+
+  --p25:  #C8202D;
+  --p20:  #1B4FA0;
+  --p15:  #E8B305;
+  --p10:  #1E7A46;
+  --p5:   #E4E4DE;
+
+  --go:    #3B82F6;
+  --good:  #2BA25F;
+  --warn:  #E8B305;
+  --stall: #C8202D;
+
+  --r: 10px;
+  --pad: 16px;
+  --tap: 46px;
+
+  --display: 'Barlow Condensed', 'Roboto Condensed', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0;
+  background: var(--iron);
+  color: var(--chalk);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.45;
+  overscroll-behavior-y: contain;
+}
+
+body {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  padding-top: env(safe-area-inset-top);
+}
+
+h1, h2, h3, .display {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ── Top bar ─────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 40;
+  background: linear-gradient(var(--iron) 72%, transparent);
+  padding: 14px var(--pad) 12px;
+  display: flex; align-items: baseline; gap: 10px;
+}
+header h1 { font-size: 26px; text-transform: uppercase; letter-spacing: 0.04em; }
+header .cycle {
+  font-family: var(--mono); font-size: 11px; color: var(--dust);
+  margin-left: auto; text-align: right; line-height: 1.3;
+}
+header .cycle b { display: block; color: var(--chalk); font-weight: 500; font-size: 12px; }
+
+/* ── Layout ──────────────────────────────────────────────── */
+main { padding: 0 var(--pad) 24px; max-width: 620px; margin: 0 auto; }
+.view { display: none; animation: rise .18s ease-out; }
+.view.on { display: block; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .view { animation: none; } }
+
+.eyebrow {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--dust-2); margin: 22px 0 8px;
+}
+
+/* ── Cards ───────────────────────────────────────────────── */
+.card {
+  background: var(--steel);
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.card.done { border-color: rgba(43,162,95,.45); }
+.card.stalled { border-color: rgba(200,32,45,.5); }
+
+.card > .head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px; cursor: pointer; min-height: var(--tap);
+}
+.card > .head .idx {
+  font-family: var(--mono); font-size: 10px; color: var(--dust-2);
+  min-width: 16px;
+}
+.card > .head .nm { flex: 1; min-width: 0; }
+.card > .head .nm .t {
+  font-family: var(--display); font-size: 18px; font-weight: 600;
+  line-height: 1.15; letter-spacing: .01em;
+}
+.card > .head .nm .s {
+  font-family: var(--mono); font-size: 11px; color: var(--dust); margin-top: 2px;
+}
+.card > .head .tick {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--edge); flex: 0 0 auto;
+  display: grid; place-items: center; font-size: 12px; color: transparent;
+}
+.card.done .tick { background: var(--good); border-color: var(--good); color: #06120A; }
+.card > .body { display: none; padding: 0 14px 14px; }
+.card.open > .body { display: block; }
+
+/* ── The bar diagram: the one flourish ───────────────────── */
+.bar {
+  display: flex; align-items: center; justify-content: center;
+  gap: 1px; height: 46px; margin: 4px 0 12px;
+  background: var(--steel-2); border-radius: 6px; padding: 0 8px;
+}
+.bar .sleeve { flex: 1; height: 4px; background: #6C7480; border-radius: 2px; max-width: 26px; }
+.bar .pl { width: 9px; border-radius: 1.5px; flex: 0 0 auto; }
+.bar .lbl {
+  font-family: var(--mono); font-size: 10px; color: var(--dust);
+  padding: 0 8px; white-space: nowrap;
+}
+
+/* ── Set rows ────────────────────────────────────────────── */
+.set {
+  display: grid; grid-template-columns: 26px 1fr auto auto;
+  align-items: center; gap: 8px;
+  padding: 7px 0; border-top: 1px solid var(--edge);
+}
+.set:first-of-type { border-top: none; }
+.set .n { font-family: var(--mono); font-size: 11px; color: var(--dust-2); }
+.set .presc { font-family: var(--mono); font-size: 13px; color: var(--chalk); }
+.set .presc em { color: var(--dust); font-style: normal; }
+.set .presc .open { color: var(--warn); }
+
+.step { display: flex; align-items: center; gap: 2px; }
+.step button {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: var(--steel-2); border: 1px solid var(--edge);
+  color: var(--chalk); font-size: 17px; line-height: 1;
+  font-family: var(--body); cursor: pointer;
+}
+.step button:active { background: var(--edge); }
+.step input {
+  width: 46px; height: 32px; text-align: center;
+  background: var(--iron); border: 1px solid var(--edge); border-radius: 6px;
+  color: var(--chalk); font-family: var(--mono); font-size: 14px;
+}
+.set.hit .presc { color: var(--good); }
+.set.miss .presc { color: var(--stall); }
+
+/* ── Buttons ─────────────────────────────────────────────── */
+button, .btn {
+  font-family: var(--body); font-size: 14px;
+  border-radius: 8px; border: 1px solid var(--edge);
+  background: var(--steel-2); color: var(--chalk);
+  padding: 11px 14px; min-height: var(--tap);
+  cursor: pointer;
+}
+button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--go); outline-offset: 2px;
+}
+.btn-go { background: var(--go); border-color: var(--go); color: #fff; font-weight: 500; }
+.btn-row { display: flex; gap: 8px; margin-top: 12px; }
+.btn-row > * { flex: 1; }
+.btn-sm { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+.btn-quiet { background: transparent; }
+
+/* ── Plateau card ────────────────────────────────────────── */
+.plateau {
+  border-left: 3px solid var(--stall);
+  background: rgba(200,32,45,.07);
+  border-radius: 6px; padding: 12px; margin: 10px 0 4px;
+  font-size: 13.5px;
+}
+.plateau .why { color: var(--dust); font-family: var(--mono); font-size: 11px; margin-bottom: 8px; }
+.plateau .opts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.plateau .opts button { text-align: left; min-height: 40px; padding: 9px 11px; font-size: 13px; }
+
+/* ── Chart ───────────────────────────────────────────────── */
+.chart { width: 100%; height: 190px; display: block; margin: 4px 0 6px; }
+.chart .grid { stroke: var(--edge); stroke-width: 1; }
+.chart .proj { stroke-dasharray: 3 4; opacity: .65; }
+.chart text { font-family: var(--mono); font-size: 9px; fill: var(--dust-2); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--mono); font-size: 11px; color: var(--dust); }
+.legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+
+/* ── Stats ───────────────────────────────────────────────── */
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.stat { background: var(--steel); border: 1px solid var(--edge); border-radius: var(--r); padding: 12px 13px; }
+.stat .k { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--dust-2); }
+.stat .v { font-family: var(--display); font-size: 27px; font-weight: 600; line-height: 1.1; margin-top: 3px; }
+.stat .v small { font-size: 14px; color: var(--dust); font-weight: 400; }
+.stat .d { font-family: var(--mono); font-size: 11px; margin-top: 2px; }
+.up { color: var(--good); } .down { color: var(--stall); } .flat { color: var(--dust); }
+
+/* ── Forms ───────────────────────────────────────────────── */
+label.f { display: block; margin: 12px 0 5px; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dust-2); }
+select, input[type=number], input[type=text] {
+  width: 100%; background: var(--iron); border: 1px solid var(--edge);
+  border-radius: 8px; color: var(--chalk); padding: 11px 12px;
+  font-family: var(--mono); font-size: 15px; min-height: var(--tap);
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { min-height: 38px; padding: 8px 13px; font-size: 13px; border-radius: 999px; }
+.chips button[aria-pressed=true] { background: var(--go); border-color: var(--go); color: #fff; }
+
+/* ── Sync line ───────────────────────────────────────────── */
+.sync {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--steel); border: 1px solid var(--edge);
+  border-radius: var(--r); padding: 12px 13px; margin-bottom: 10px;
+}
+.sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dust-2); flex: 0 0 auto; }
+.sync .dot.ok { background: var(--good); } .sync .dot.err { background: var(--stall); }
+.sync .txt { flex: 1; font-family: var(--mono); font-size: 11.5px; color: var(--dust); line-height: 1.35; }
+.sync .txt b { display: block; color: var(--chalk); font-weight: 500; font-size: 13px; margin-bottom: 1px; }
+
+/* ── Tab bar ─────────────────────────────────────────────── */
+nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: rgba(19,21,25,.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--edge);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav button {
+  background: none; border: none; border-radius: 0;
+  padding: 10px 4px 11px; min-height: 60px;
+  color: var(--dust-2); font-family: var(--mono);
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+nav button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+nav button[aria-current=page] { color: var(--chalk); }
+nav button[aria-current=page] svg { stroke: var(--go); }
+
+/* ── Misc ────────────────────────────────────────────────── */
+.empty { color: var(--dust); font-size: 14px; padding: 26px 4px; text-align: center; line-height: 1.6; }
+.hint { color: var(--dust); font-size: 12.5px; line-height: 1.5; margin: 8px 0 0; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  background: var(--steel-2); border: 1px solid var(--edge);
+  color: var(--chalk); padding: 11px 17px; border-radius: 999px;
+  font-size: 13px; z-index: 90; opacity: 0; pointer-events: none;
+  transition: opacity .2s;
+}
+.toast.on { opacity: 1; }
+hr.rule { border: none; border-top: 1px solid var(--edge); margin: 20px 0 0; }
+
+/* ── Rest timer bar ──────────────────────────────────────── */
+#timerbar {
+  position: fixed; left: 0; right: 0;
+  bottom: calc(61px + env(safe-area-inset-bottom));
+  display: none; align-items: center; gap: 12px;
+  background: var(--steel-2); border-top: 1px solid var(--go);
+  padding: 10px 16px; z-index: 60;
+}
+#timerbar.on { display: flex; }
+#timerbar .mono { font-size: 22px; font-family: var(--display); font-weight: 600; color: var(--go); }
+#timerbar .lb { flex: 1; font-size: 12.5px; color: var(--dust); }
+#timerbar .skip { min-height: 34px; padding: 6px 14px; font-size: 12px; }
+
+.restrow { display: flex; justify-content: flex-end; padding: 0 0 6px; }
+button.rest {
+  font-family: var(--mono); font-size: 11.5px; color: var(--dust);
+  background: transparent; border-color: var(--edge);
+  min-height: 30px; padding: 4px 10px; border-radius: 999px;
+}
+button.rest::before { content: '⏱ '; }
+
+/* ── RPE chips ───────────────────────────────────────────── */
+.rpe { display: flex; align-items: center; gap: 4px; padding: 0 0 8px 34px; }
+.rpe button {
+  min-height: 28px; width: 30px; padding: 0; font-size: 12px;
+  border-radius: 6px; font-family: var(--mono);
+  background: transparent; color: var(--dust);
+}
+.rpe button[aria-pressed=true] { background: var(--go); border-color: var(--go); color: #fff; }
+.rpe span { font-family: var(--mono); font-size: 10px; color: var(--dust-2); letter-spacing: .1em; margin-left: 4px; }
+
+/* ── Flags ───────────────────────────────────────────────── */
+.flag {
+  border-left: 3px solid var(--warn);
+  background: rgba(232,179,5,.07);
+  border-radius: 6px; padding: 11px 12px; margin-bottom: 10px; font-size: 13.5px;
+}
+.flag .why { color: var(--warn); font-family: var(--mono); font-size: 11px; margin-bottom: 5px; }
