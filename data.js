@@ -146,30 +146,32 @@ export const MOBILITY = [
 export const DAYS = {
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
-    main: 'squat', backoff: { pct: 0.65, sets: 3, reps: 8 },
-    work: ['bulgarian', 'legpress', 'legcurl', 'calf'], core: 2, mobility: 5
+    main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
+    work: ['bulgarian', 'legpress', 'legcurl', 'calf'], core: 2, mobility: 4
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
-    main: null, work: ['bbcurl', 'seatedhammer', 'reardb', 'proney', 'dbohext'],
+    main: null, work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext'],
     core: 3, mobility: 0,
     note: 'Trail run tonight. Nothing here should touch your legs.'
   },
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
-    main: 'bench', backoff: { pct: 0.65, sets: 3, reps: 8 },
-    work: ['bbrow', 'pullup', 'inclinecurl', 'facepull', 'dip'], core: 0, mobility: 0
+    main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
+    work: ['bbrow', 'pullup', 'dblat', 'facepull', 'inclinecurl', 'dip'],
+    core: 0, mobility: 0, prep: 4
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: ['frontsq', 'rdl', 'sl-legcurl', 'seatedcalf'], core: 2, mobility: 5,
+    work: ['frontsq', 'rdl', 'sl-legcurl', 'seatedcalf'], core: 2, mobility: 4,
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
   },
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
-    main: 'ohp', backoff: { pct: 0.65, sets: 3, reps: 8 },
-    work: ['inclinebb', 'fixedlat', 'leancable', 'ezpreacher', 'ropepush'], core: 0, mobility: 0
+    main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
+    work: ['machinepress', 'inclinebb', 'fixedlat', 'leancable', 'revpec', 'ezpreacher'],
+    core: 0, mobility: 0, prep: 4
   }
 };
 
@@ -204,3 +206,113 @@ export const REST = {
 
 export const RECOVERY_WINDOW_H = 40;
 export const CLUBS = ['Wembley Square', 'Foreshore', 'Other'];
+
+/* ── Upper-day preparation ─────────────────────────────────
+   Light lateral raises always lead, because that is how you like to open,
+   and warm cuffs make the heavy pressing later feel considerably better.
+   The rest rotate. */
+export const UPPER_PREP_OPENER = {
+  id: 'p-lat', name: 'Light lateral raise', secs: 90, sets: '2 × 15 very light',
+  note: 'Warms the delts and the cuff. This should feel like nothing.'
+};
+
+export const UPPER_PREP = [
+  { id: 'p-pullapart', name: 'Band pull-apart',        secs: 60, sets: '20 reps' },
+  { id: 'p-scap',      name: 'Scapular push-up',       secs: 60, sets: '12 reps', note: 'Arms locked. Only the shoulder blades move.' },
+  { id: 'p-dislocate', name: 'Shoulder pass-through',  secs: 60, sets: '10 slow', note: 'Band or a broomstick. Widen your grip if it pinches.' },
+  { id: 'p-extrot',    name: 'Cable external rotation',secs: 75, sets: '15 a side', note: 'Elbow pinned to your ribs.' },
+  { id: 'p-wallslide', name: 'Wall slide',             secs: 60, sets: '10 reps' },
+  { id: 'p-tspine',    name: 'Thoracic opener',        secs: 75 },
+  { id: 'p-hang',      name: 'Dead hang',              secs: 45, note: 'Let the shoulders come up around your ears.' },
+  { id: 'p-catcow',    name: 'Cat-cow',                secs: 60 }
+];
+
+/* ── What the words mean ───────────────────────────────────
+   Shown against the set type it describes, not buried in a help screen. */
+export const GLOSSARY = {
+  warm: {
+    title: 'Warm-up set',
+    body: 'A lighter set to prepare the movement. Stop well short of struggling — the point is to reach the working sets ready, not tired. These are never logged against progression.'
+  },
+  work: {
+    title: 'Working set',
+    body: 'The prescribed weight for the prescribed reps. Hit the number with form you would be happy to show someone.'
+  },
+  open: {
+    title: 'Open set',
+    body: 'The number shown is the minimum. Do as many clean reps as you can beyond it, then stop — a rep that turns ugly does not count and is where people get hurt. This is the set the app reads to decide whether your training max goes up.'
+  },
+  backoff: {
+    title: 'Back-off set',
+    body: 'Same exercise, lighter weight, more reps, done after the heavy sets. Nothing changes about how you perform it. The purpose is extra volume for size without piling on more heavy fatigue — heavy sets build the strength, these build the tissue.'
+  },
+  rpe: {
+    title: 'RPE',
+    body: 'How hard the set was. 10 means nothing left, 9 means one more was possible, 8 means two. The app uses this to break ties: the same reps at RPE 7 and RPE 10 mean very different things about what to do next cycle.'
+  }
+};
+
+/* ── Cues ──────────────────────────────────────────────────
+   One or two lines each. Enough to fix the common error, not a manual. */
+export const CUES = {
+  squat:      'Brace before you unrack. Knees track over the toes, hips and chest rise together out of the hole.',
+  dead:       'Bar over mid-foot, lats tight, take the slack out before you pull. Push the floor away rather than yanking.',
+  bench:      'Shoulder blades pinned down and back, feet driving. Bar to the lower chest, elbows around 45°.',
+  ohp:        'Squeeze the glutes so you do not press from a leaning back. Head moves through as the bar passes your forehead.',
+  bulgarian:  'Front shin close to vertical. Most of the work belongs to the front leg.',
+  legpress:   'Do not let the lower back round off the pad at the bottom. Stop short of locking the knees.',
+  legcurl:    'Slow on the way back. The lengthening half is where the hamstring grows.',
+  calf:       'Full stretch at the bottom, pause there. Bouncing turns this into nothing.',
+  frontsq:    'Elbows high. The moment they drop, the bar follows.',
+  rdl:        'Push the hips back, bar stays against the legs. Stop where the stretch is, not where the floor is.',
+  seatedgm:   'Hinge from the hips with a flat back. Small range to start — this one is easy to overreach.',
+  bbrow:      'Torso around 45°, pull to the belly button. No heaving with the lower back.',
+  pullup:     'Start from a full hang. Chest to the bar, slow on the way down.',
+  fixedlat:   'Pull the elbows down and back, not the hands. Let the shoulders rise fully at the top.',
+  inclinebb:  'Bench around 30°. Higher than that and it becomes a shoulder press.',
+  machinepress: 'Do not let the lower back arch off the pad. Stop just short of lockout to keep tension.',
+  dblat:      'Lead with the elbows, thumbs slightly down, stop at shoulder height. If you swing, halve the weight.',
+  leancable:  'Lean away from the stack, arm across the body at the bottom for a longer range.',
+  facepull:   'Pull to the eyebrows and rotate the knuckles up at the end. High reps, light load.',
+  revpec:     'Chest stays on the pad. Squeeze the shoulder blades, do not shrug.',
+  reardb:     'Chest supported if you can. Thumbs down, small controlled arc, no momentum.',
+  proney:     'Face down, arms in a Y. Tiny weight, hold a beat at the top.',
+  inclinecurl:'Bench back so the arms hang behind you. That stretch is the whole reason for this exercise.',
+  ezpreacher: 'Do not let the elbows drift back. Stop just short of straight at the bottom to keep tension.',
+  bbcurl:     'Back against a wall if you start swinging. Elbows stay at your sides.',
+  seatedhammer:'Neutral grip. Slow negatives — this one builds the thickness under the biceps.',
+  dbohext:    'Elbows point forward, not out. Full stretch behind the head.',
+  dip:        'Slight forward lean for chest, upright for triceps. Stop when the upper arms reach parallel.',
+  ropepush:   'Elbows pinned. Spread the rope at the bottom.',
+  rollout:    'Ribs down, do not let the lower back sag. Go only as far as you can come back from.',
+  copenhagen: 'Top leg on the bench, hips up. Start with the knee on the bench if the ankle version is too much.',
+  hollow:     'Lower back stays flat on the floor. Lower the legs until it lifts, then raise them slightly.',
+  suitcase:   'One dumbbell, one side. Stand tall — the job is refusing to lean.'
+};
+
+/* Constructed search rather than a hardcoded link, so it never rots. */
+export const howToUrl = name =>
+  'https://www.youtube.com/results?search_query=' + encodeURIComponent('how to ' + name + ' proper form');
+
+/* ── Noise ─────────────────────────────────────────────────
+   Fires on a completed set. `clean` shows regardless; `salty` only when
+   language is set to gym in Data. */
+export const PHRASES = {
+  clean: [
+    'Light weight, baby', 'Yeah buddy', 'Nothing but a peanut', 'Rep banked',
+    'Clean', 'That is the one', 'Money', 'Locked in', 'Easy work',
+    'Bar speed looked good', 'Filed', 'Sharp', 'Next', 'Textbook',
+    'Own it', 'Chalk it up', 'Solid', 'Dialled'
+  ],
+  salty: [
+    'Fucking send it', 'Get in', 'Absolute unit', 'Piss off, that was easy',
+    'Hell yes', 'Bloody good', 'Damn right', 'Bosh'
+  ]
+};
+
+/* Shown when a set falls short. Never scolding — the miss is information. */
+export const MISS_PHRASES = [
+  'Logged. That is data, not failure.', 'Noted. Next set.',
+  'Short of target — the app will handle it.', 'Fine. Rest properly.',
+  'Recorded. Keep the form honest.'
+];

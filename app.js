@@ -1,6 +1,7 @@
 import {
   BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES, CORE, MOBILITY,
-  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS
+  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
+  UPPER_PREP, UPPER_PREP_OPENER, GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -26,15 +27,20 @@ const save = () => put('state', S);
 /* ═══ helpers ═══════════════════════════════════════════════ */
 
 const $ = (s, r = document) => r.querySelector(s);
-const iso = d => d.toISOString().slice(0, 10);
+/* Dates are handled entirely in local time. toISOString() converts to UTC,
+   which in SAST (UTC+2) rolls midnight back to the previous day and quietly
+   shifts the whole cycle by a week. */
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const parseDay = ds => new Date(ds + 'T12:00');
 const today = () => iso(new Date());
 const round = (w, step = 2.5) => Math.max(step, Math.round(w / step) * step);
 const e1rm = (w, r) => w * (1 + Math.min(r, 12) / 30);
 const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 function mondayOf(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; }
-function weekIndex(ds) { const w = Math.round((mondayOf(new Date(ds)) - mondayOf(new Date(S.cycleStart))) / 6048e5); return ((w % 4) + 4) % 4; }
-function cycleNo(ds) { return Math.floor(Math.round((mondayOf(new Date(ds)) - mondayOf(new Date(S.cycleStart))) / 6048e5) / 4) + 1; }
+const weeksApart = ds => Math.round((mondayOf(parseDay(ds)) - mondayOf(parseDay(S.cycleStart))) / 6048e5);
+function weekIndex(ds) { const w = weeksApart(ds); return ((w % 4) + 4) % 4; }
+function cycleNo(ds) { return Math.floor(weeksApart(ds) / 4) + 1; }
 
 function toast(m) {
   const t = $('#toast'); t.textContent = m; t.classList.add('on');
@@ -72,13 +78,13 @@ function seed() {
 const runLoad = r => Math.round(r.mins * (RUN_TYPES[r.type]?.factor || 1));
 
 function loadWindow(days, endStr = today()) {
-  const end = new Date(endStr + 'T23:59'), start = new Date(end - days * 864e5);
-  return S.runs.filter(r => { const d = new Date(r.date + 'T12:00'); return d > start && d <= end; })
+  const end = parseDay(endStr), start = new Date(end - days * 864e5);
+  return S.runs.filter(r => { const d = parseDay(r.date); return d > start && d <= end; })
     .reduce((t, r) => t + runLoad(r), 0);
 }
 
 function runBaseline() {
-  const first = S.runs.length ? new Date(S.runs[0].date) : null;
+  const first = S.runs.length ? parseDay(S.runs[0].date) : null;
   if (!first || (Date.now() - first) < 14 * 864e5) return RUN_BASELINE;
   return Math.max(60, Math.round(loadWindow(28) / 4));
 }
@@ -87,7 +93,7 @@ function runBaseline() {
 function hardRunRecently(h = 18) {
   const cut = Date.now() - h * 36e5;
   return S.runs.some(r => (r.type === 'hard' || r.type === 'long') &&
-    new Date(r.date + 'T18:00').getTime() > cut);
+    parseDay(r.date).getTime() > cut);
 }
 
 function runVerdict() {
@@ -123,7 +129,7 @@ function restFor(item, set) {
 function estimateMinutes(sess) {
   let s = 0;
   for (const it of sess.items) {
-    if (it.kind === 'mobility') { s += it.list.reduce((t, m) => t + m.secs, 0); continue; }
+    if (it.kind === 'mobility' || it.kind === 'prep') { s += it.list.reduce((t, m) => t + m.secs, 0); continue; }
     for (const set of it.sets) {
       s += it.unit === 'secs' ? set.target : Math.max(25, set.target * 4);
       s += restFor(it, set);
@@ -179,8 +185,10 @@ function pickRotating(pool, seen, n, filter) {
   return src.slice(0, n);
 }
 
+/* Two ramp sets, not three. The prep block already did the general warming;
+   these are only about grooving the pattern under load. */
 const warmupRamp = top => top < 60 ? []
-  : [0.4, 0.6, 0.8].map(p => ({ w: round(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
+  : [0.5, 0.75].map(p => ({ w: round(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
 
 function buildPlanned(dateStr, dayKey) {
   const D = DAYS[dayKey], wk = weekIndex(dateStr), wave = WAVE[wk];
@@ -189,6 +197,13 @@ function buildPlanned(dateStr, dayKey) {
   const verdict = isLower && S.settings.runAdjust ? runVerdict() : { trim: 0 };
   const items = [];
 
+  if (D.prep) {
+    const rest = pickRotating(UPPER_PREP, S.mobSeen, D.prep - 1);
+    const list = [UPPER_PREP_OPENER, ...rest];
+    items.push({ kind: 'prep', ref: 'prep',
+      name: `Warm-up · ${Math.round(list.reduce((s, m) => s + m.secs, 0) / 60)} min`,
+      list: list.map(m => ({ id: m.id, name: m.name, secs: m.secs, sets: m.sets, note: m.note })), sets: [] });
+  }
   if (D.mobility) {
     const mob = pickRotating(MOBILITY, S.mobSeen, D.mobility);
     items.push({ kind: 'mobility', ref: 'mob', name: `Mobility · ${Math.round(mob.reduce((s, m) => s + m.secs, 0) / 60)} min`,
@@ -228,7 +243,7 @@ function buildPlanned(dateStr, dayKey) {
 function recentPatterns(h = RECOVERY_WINDOW_H) {
   const cut = Date.now() - h * 36e5, hot = new Set();
   for (const s of S.sessions) {
-    if (!s.done || new Date(s.completedAt || s.date + 'T18:00') < cut) continue;
+    if (!s.done || (s.completedAt ? new Date(s.completedAt) : parseDay(s.date)) < cut) continue;
     for (const it of s.items) {
       if (it.kind === 'main') hot.add(MAINS[it.ref].pattern);
       if (it.kind === 'acc') hot.add(ACCESSORIES[it.ref]?.pattern);
@@ -328,7 +343,7 @@ function applyProgression(sess) {
       } else st.misses++;
     }
     if (it.kind === 'core') S.coreSeen = [it.ref, ...S.coreSeen.filter(x => x !== it.ref)].slice(0, 12);
-    if (it.kind === 'mobility') for (const m of it.list) S.mobSeen = [m.id, ...S.mobSeen.filter(x => x !== m.id)].slice(0, 6);
+    if (it.kind === 'mobility' || it.kind === 'prep') for (const m of it.list) S.mobSeen = [m.id, ...S.mobSeen.filter(x => x !== m.id)].slice(0, 8);
   }
   return notes;
 }
@@ -372,7 +387,7 @@ let VIEW = 'today', draft = null;
 function sessionFor(ds) {
   const found = S.sessions.find(s => s.date === ds && !s.adhoc);
   if (found) return found;
-  const key = Object.values(DAYS).find(d => d.weekday === new Date(ds + 'T12:00').getDay())?.key;
+  const key = Object.values(DAYS).find(d => d.weekday === parseDay(ds).getDay())?.key;
   return key ? buildPlanned(ds, key) : null;
 }
 
@@ -385,48 +400,160 @@ function barDiagram(w) {
     <span class="sleeve"></span>${sp.side.map(pl).join('')}</div>`;
 }
 
+/* ═══ set completion ════════════════════════════════════════ */
+
+let setClock = null;   // one running set at a time
+
+function startSetClock(itemIdx, setIdx, label) {
+  stopSetClock();
+  setClock = { itemIdx, setIdx, t0: Date.now(), label };
+  setClock.h = setInterval(() => {
+    const el = $(`[data-item="${itemIdx}"] [data-set="${setIdx}"] .live`);
+    if (!el) return stopSetClock();
+    el.textContent = mmss(Math.round((Date.now() - setClock.t0) / 1000));
+  }, 500);
+}
+function stopSetClock() {
+  if (setClock?.h) clearInterval(setClock.h);
+  const el = setClock;
+  setClock = null;
+  return el ? Math.round((Date.now() - el.t0) / 1000) : null;
+}
+
+function pop(text, miss) {
+  const el = $('#pop');
+  el.textContent = text;
+  el.className = 'pop' + (miss ? ' miss' : '');
+  void el.offsetWidth;               // restart the animation
+  el.classList.add('go');
+  if (!miss && navigator.vibrate) navigator.vibrate(35);
+  clearTimeout(pop._t);
+  pop._t = setTimeout(() => el.classList.remove('go'), 1300);
+}
+
+function phraseFor(hit) {
+  if (!hit) return MISS_PHRASES[Math.floor(Math.random() * MISS_PHRASES.length)];
+  const pool = S.settings.language === 'clean'
+    ? PHRASES.clean : [...PHRASES.clean, ...PHRASES.salty];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+async function completeSet(sess, itemIdx, setIdx, reps) {
+  const it = sess.items[itemIdx], s = it.sets[setIdx];
+  const dur = (setClock && setClock.itemIdx === itemIdx && setClock.setIdx === setIdx)
+    ? stopSetClock() : null;
+  s.reps = reps;
+  if (dur) s.dur = dur;
+  const hit = reps >= s.target;
+  if (!s.warm) pop(phraseFor(hit), !hit);
+  if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+  await save();
+  redrawItem(sess, itemIdx);
+  startRest(restFor(it, s), `${it.name} · set ${setIdx + 1} done`);
+}
+
+function redrawItem(sess, idx) {
+  const card = $(`[data-item="${idx}"]`);
+  if (!card) return;
+  const open = card.classList.contains('open');
+  card.outerHTML = itemCard(sess.items[idx], idx);
+  if (open) $(`[data-item="${idx}"]`).classList.add('open');
+}
+
+/* ═══ set rendering ═════════════════════════════════════════ */
+
+function setKind(s) {
+  return s.warm ? 'warm' : s.open ? 'open' : s.backoff ? 'backoff' : 'work';
+}
+
 function setRow(it, s, i) {
-  const cls = s.reps == null ? '' : s.reps >= s.target ? 'hit' : 'miss';
+  const kind = setKind(s);
   const u = it.unit === 'secs' ? 's' : '';
-  const tgt = s.open ? `<span class="open">${s.target}+</span>` : `${s.target}${u}`;
-  const tag = s.warm ? '<em> warm-up</em>' : s.backoff ? '<em> back-off</em>' : '';
-  const rpe = it.kind === 'main' && !s.warm && s.reps != null
+  const done = s.reps != null;
+  const hit = done && s.reps >= s.target;
+  const running = setClock?.itemIdx === it._idx && setClock?.setIdx === i;
+
+  const label = {
+    warm: 'Warm-up', open: 'Open set — minimum shown',
+    backoff: 'Back-off — lighter, more reps', work: null
+  }[kind];
+
+  const prescription = `<span class="w mono">${s.w ? s.w + 'kg' : 'bodyweight'}</span>
+    <span class="x">×</span>
+    <span class="r mono">${s.open ? s.target + '+' : s.target + u}</span>
+    <button class="what" data-what="${kind === 'work' ? 'work' : kind}" aria-label="What this means">?</button>`;
+
+  const result = done
+    ? `<button class="result ${hit ? 'hit' : 'miss'}" data-undo="${i}">
+         <b>${s.reps}${u}</b>${s.dur ? `<span class="mono"> · ${mmss(s.dur)}</span>` : ''}
+         <span class="undo">undo</span></button>`
+    : `<div class="acts">
+         <button class="go ${running ? 'live-on' : ''}" data-do="start" data-set="${i}">
+           ${running ? '<span class="live mono">0:00</span>' : 'Start'}</button>
+         <button class="ok" data-do="done" data-set="${i}">Done</button>
+         <button class="alt" data-do="edit" data-set="${i}" aria-label="Different number">±</button>
+       </div>`;
+
+  const editor = `<div class="editor" data-editor="${i}" hidden>
+      <button data-adj="-1">−</button>
+      <input type="number" inputmode="numeric" value="${s.target}" aria-label="Reps completed">
+      <button data-adj="1">+</button>
+      <button class="btn-go btn-sm" data-save="${i}">Log it</button>
+    </div>`;
+
+  const rpe = it.kind === 'main' && !s.warm && done
     ? `<div class="rpe" data-set="${i}">${[6, 7, 8, 9, 10].map(v =>
-        `<button data-rpe="${v}" aria-pressed="${s.rpe === v}">${v}</button>`).join('')}<span>RPE</span></div>` : '';
-  const rest = s.reps != null ? `<button class="rest btn-sm" data-set="${i}">${mmss(restFor(it, s))}</button>` : '';
-  return `<div class="set ${cls}" data-set="${i}">
+        `<button data-rpe="${v}" aria-pressed="${s.rpe === v}">${v}</button>`).join('')}
+       <span>RPE<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span></div>` : '';
+
+  return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
       <span class="n mono">${s.warm ? '·' : i + 1}</span>
-      <span class="presc mono">${s.w ? s.w + 'kg × ' : ''}${tgt}${tag}</span>
-      <span class="step">
-        <button data-act="dec" aria-label="One fewer">−</button>
-        <input type="number" inputmode="numeric" value="${s.reps ?? ''}" placeholder="—" aria-label="Reps done">
-        <button data-act="inc" aria-label="One more">+</button>
-      </span></div>${rpe}${rest ? `<div class="restrow">${rest}</div>` : ''}`;
+      <div class="mid">
+        <div class="presc">${prescription}</div>
+        ${label ? `<div class="kindlabel mono">${label}</div>` : ''}
+      </div>
+      ${result}
+    </div>${editor}${rpe}`;
 }
 
 function itemCard(it, idx) {
-  if (it.kind === 'mobility') return `<div class="card" data-item="${idx}">
-    <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
-      <span class="nm"><span class="t">${it.name}</span><span class="s mono">rotates every session</span></span>
-      <span class="tick">✓</span></div>
-    <div class="body">${it.list.map(m => `<div class="set"><span class="n mono">·</span>
-      <span class="presc mono">${m.name} <em>${m.secs}s</em></span></div>
-      ${m.note ? `<p class="hint">${m.note}</p>` : ''}`).join('')}</div></div>`;
+  it._idx = idx;
+
+  if (it.kind === 'mobility' || it.kind === 'prep') {
+    return `<div class="card ${it.kind === 'prep' ? 'prep' : ''}" data-item="${idx}">
+      <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
+        <span class="nm"><span class="t">${it.name}</span>
+        <span class="s mono">${it.kind === 'prep' ? 'before you touch anything heavy' : 'rotates every session'}</span></span>
+        <span class="tick">✓</span></div>
+      <div class="body">${it.list.map(m => `
+        <div class="prepline">
+          <span class="presc mono">${m.name}</span>
+          <span class="mono dur">${m.sets || m.secs + 's'}</span>
+        </div>${m.note ? `<p class="hint">${m.note}</p>` : ''}`).join('')}</div></div>`;
+  }
 
   const done = it.sets.length && it.sets.every(s => s.reps != null);
+  const logged = it.sets.filter(s => s.reps != null).length;
   const pl = it.kind === 'acc' ? plateauFor(it.ref) : null;
+  const cue = CUES[it.ref];
   const sub = it.kind === 'main' ? `${it.wave} · TM ${S.mains[it.ref].tm}kg`
     : it.kind === 'core' ? `3 × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''}${it.sets[0].w ? ' · ' + it.sets[0].w + 'kg' : ''}`
     : `${it.sets.length} × ${it.sets[0].target} · ${it.sets[0].w}kg${it.dbl ? ' each hand' : ''}`;
 
   return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
     <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
-      <span class="nm"><span class="t">${it.name}</span><span class="s mono">${sub}</span></span>
+      <span class="nm"><span class="t">${it.name}</span>
+        <span class="s mono">${sub}${logged && !done ? ` · ${logged}/${it.sets.length}` : ''}</span></span>
       <span class="tick">✓</span></div>
     <div class="body">
       ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.at(-1)).w) : ''}
-      ${it.note ? `<p class="hint" style="margin-bottom:8px">${it.note}</p>` : ''}
+      <div class="howto">
+        <p class="cue">${cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
+        <a class="watch" href="${howToUrl(it.name)}" target="_blank" rel="noopener">Watch how it is done →</a>
+      </div>
+      ${it.note && cue ? `<p class="hint">${it.note}</p>` : ''}
       ${it.sets.map((s, i) => setRow(it, s, i)).join('')}
+      ${it.added ? `<div class="btn-row"><button class="btn-sm btn-quiet" data-remove="${idx}">Remove this exercise</button></div>` : ''}
       ${pl ? `<div class="plateau" data-plateau="${it.ref}">
         <div class="why mono">Stalled ${pl.misses} sessions at this load</div>
         Two sessions short of target. Holding here rarely fixes it — change one variable.
@@ -435,10 +562,42 @@ function itemCard(it, idx) {
     </div></div>`;
 }
 
+/* ═══ adding to a session in progress ═══════════════════════ */
+
+function suggestionsFor(sess) {
+  const D = DAYS[sess.dayKey];
+  const already = new Set(sess.items.map(i => i.ref));
+  const atHome = sess.venue === 'home';
+  let pats;
+  if (D) pats = D.key.startsWith('lower') ? ['squat', 'hinge', 'calf']
+    : D.key === 'home' ? ['biceps', 'rear', 'lat', 'triceps']
+    : D.key === 'upperA' ? ['hpush', 'hpull', 'vpull', 'biceps', 'triceps', 'rear', 'lat']
+    : ['vpush', 'lat', 'rear', 'hpush', 'vpull', 'biceps', 'triceps'];
+  else pats = Object.keys(ADHOC_FOCUS).flatMap(k => ADHOC_FOCUS[k].patterns);
+
+  return Object.entries(ACCESSORIES)
+    .filter(([id, a]) => pats.includes(a.pattern) && !already.has(id))
+    .filter(([, a]) => !atHome || a.home)
+    .sort((a, b) => (S.acc[a[0]].lastDone || '').localeCompare(S.acc[b[0]].lastDone || ''))
+    .slice(0, 8);
+}
+
+function addPanel(sess) {
+  const sug = suggestionsFor(sess);
+  if (!sug.length) return '';
+  return `<details class="addex"><summary>Add an exercise</summary>
+    <p class="hint" style="margin:8px 0 10px">Suggested for a ${sess.label.toLowerCase()} session, least recently trained first. Anything you add progresses like the rest.</p>
+    ${sug.map(([id, a]) => `<button class="addrow" data-add="${id}">
+        <span class="an">${a.name}</span>
+        <span class="aw mono">${S.acc[id].w}kg × ${S.acc[id].reps} · ${S.acc[id].sets} sets</span>
+      </button>`).join('')}
+  </details>`;
+}
+
 function renderToday() {
   const d = today(), el = $('#v-today');
   const sess = draft || sessionFor(d);
-  const dayName = new Date(d + 'T12:00').toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
+  const dayName = parseDay(d).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
 
   if (!sess) {
     el.innerHTML = `<p class="eyebrow">${dayName}</p>
@@ -464,6 +623,7 @@ function renderToday() {
     </div>
 
     ${sess.items.map(itemCard).join('')}
+    ${sess.done ? '' : addPanel(sess)}
 
     <div class="btn-row">
       <button class="btn-go" id="finish">${sess.done ? 'Saved' : 'Finish session'}</button>
@@ -476,7 +636,7 @@ function renderToday() {
 
 function runCard() {
   const v = runVerdict();
-  const week = S.runs.filter(r => new Date(r.date) >= mondayOf(new Date()));
+  const week = S.runs.filter(r => parseDay(r.date) >= mondayOf(new Date()));
   return `<p class="eyebrow">Running</p>
     <div class="card" style="padding:14px">
       <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:8px">
@@ -610,6 +770,14 @@ function renderData() {
       <p class="hint">Machine and cable weights are stored per club — a 150kg pulldown at one is not 150kg at another. Free weights carry across.</p>
     </div>
 
+    <p class="eyebrow">Language</p>
+    <div class="card" style="padding:14px">
+      <div class="chips">
+        <button id="lang-gym" aria-pressed="${S.settings.language !== 'clean'}">Gym</button>
+        <button id="lang-clean" aria-pressed="${S.settings.language === 'clean'}">Keep it clean</button></div>
+      <p class="hint">What pops up when you finish a set.</p>
+    </div>
+
     <p class="eyebrow">Running</p>
     <div class="card" style="padding:14px">
       <div class="chips">
@@ -698,11 +866,76 @@ function wire() {
       inp.dispatchEvent(new Event('change', { bubbles: true })); return;
     }
 
-    const rest = t.closest('button.rest');
-    if (rest) {
-      const card = rest.closest('[data-item]'), sess = $('#v-today')._sess;
-      const it = sess.items[+card.dataset.item], s = it.sets[+rest.dataset.set];
-      startRest(restFor(it, s), it.name); return;
+    /* What does this word mean */
+    const what = t.closest('button.what');
+    if (what) {
+      const g = GLOSSARY[what.dataset.what];
+      if (!g) return;
+      const box = $('#sheet');
+      box.innerHTML = `<h3>${g.title}</h3><p>${g.body}</p><button class="btn-go" id="sheetclose">Got it</button>`;
+      box.classList.add('on'); return;
+    }
+    if (t.id === 'sheetclose' || t.id === 'sheet') { $('#sheet').classList.remove('on'); return; }
+
+    /* Set actions */
+    const act = t.closest('[data-do]');
+    if (act) {
+      const sess = $('#v-today')._sess; if (!sess) return;
+      const idx = +act.closest('[data-item]').dataset.item, si = +act.dataset.set;
+      const it = sess.items[idx], s = it.sets[si];
+      if (act.dataset.do === 'start') {
+        if (setClock?.itemIdx === idx && setClock?.setIdx === si) { stopSetClock(); redrawItem(sess, idx); }
+        else { startSetClock(idx, si, it.name); redrawItem(sess, idx); }
+        return;
+      }
+      if (act.dataset.do === 'done') return completeSet(sess, idx, si, s.target);
+      if (act.dataset.do === 'edit') {
+        const ed = act.closest('.card').querySelector(`[data-editor="${si}"]`);
+        ed.hidden = !ed.hidden;
+        if (!ed.hidden) ed.querySelector('input').focus();
+        return;
+      }
+    }
+
+    const adj = t.closest('[data-adj]');
+    if (adj) {
+      const inp = adj.parentElement.querySelector('input');
+      inp.value = Math.max(0, (parseInt(inp.value) || 0) + (+adj.dataset.adj));
+      return;
+    }
+    const sv = t.closest('[data-save]');
+    if (sv) {
+      const sess = $('#v-today')._sess;
+      const idx = +sv.closest('[data-item]').dataset.item, si = +sv.dataset.save;
+      const val = parseInt(sv.parentElement.querySelector('input').value);
+      if (isNaN(val)) return toast('How many reps?');
+      return completeSet(sess, idx, si, Math.max(0, val));
+    }
+    const undo = t.closest('[data-undo]');
+    if (undo) {
+      const sess = $('#v-today')._sess;
+      const idx = +undo.closest('[data-item]').dataset.item, si = +undo.dataset.undo;
+      const s = sess.items[idx].sets[si];
+      s.reps = null; delete s.dur; delete s.rpe;
+      await save(); redrawItem(sess, idx); stopRest(); return;
+    }
+
+    /* Add or remove an exercise mid-session */
+    const add = t.closest('[data-add]');
+    if (add) {
+      const sess = $('#v-today')._sess, id = add.dataset.add;
+      const a = ACCESSORIES[id], st = S.acc[id];
+      sess.items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
+        added: true, sets: Array.from({ length: st.sets }, () => ({ w: st.w, target: st.reps, reps: null })) });
+      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+      if (sess.adhoc) draft = sess;
+      await save(); render(); toast(`${a.name} added`); return;
+    }
+    const rm = t.closest('[data-remove]');
+    if (rm) {
+      const sess = $('#v-today')._sess;
+      sess.items.splice(+rm.dataset.remove, 1);
+      await save(); render(); return;
     }
 
     const rpe = t.closest('button[data-rpe]');
@@ -756,11 +989,15 @@ function wire() {
       sess.done = true; sess.completedAt = new Date().toISOString();
       const notes = applyProgression(sess);
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
-      draft = null; stopRest();
+      draft = null; stopRest(); stopSetClock();
       await save(); await syncNow(true); render();
       toast(notes[0] || 'Session saved'); return;
     }
 
+    if (t.id === 'lang-gym' || t.id === 'lang-clean') {
+      S.settings.language = t.id === 'lang-clean' ? 'clean' : 'gym'; await save(); render();
+      pop(phraseFor(true)); return;
+    }
     if (t.id === 'ra-on' || t.id === 'ra-off') { S.settings.runAdjust = t.id === 'ra-on'; await save(); render(); return; }
     if (t.id === 'sync') return syncNow(false);
     if (t.id === 'export') return exportCopy();
@@ -775,22 +1012,8 @@ function wire() {
   document.addEventListener('change', async e => {
     if (e.target.matches('[data-tmv]')) {
       S.mains[e.target.dataset.tmv].tm = round(parseFloat(e.target.value) || 0);
-      await save(); return;
+      await save();
     }
-    if (!e.target.matches('.set input')) return;
-    const sess = $('#v-today')._sess; if (!sess) return;
-    const card = e.target.closest('[data-item]'), row = e.target.closest('.set');
-    const it = sess.items[+card.dataset.item], s = it.sets[+row.dataset.set];
-    s.reps = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value) || 0);
-    row.classList.toggle('hit', s.reps != null && s.reps >= s.target);
-    row.classList.toggle('miss', s.reps != null && s.reps < s.target);
-    card.classList.toggle('done', it.sets.every(x => x.reps != null));
-    if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
-    await save();
-    /* Re-render only this card so the rest button and RPE chips appear. */
-    const idx = +card.dataset.item, open = card.classList.contains('open');
-    card.outerHTML = itemCard(it, idx);
-    if (open) $(`[data-item="${idx}"]`).classList.add('open');
   });
 
   document.addEventListener('visibilitychange', () => {
@@ -807,6 +1030,12 @@ function wire() {
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {};
+  /* Repair a cycle start written before dates were handled in local time.
+     Safe while nothing has been logged; after that, use Restart in Data. */
+  const anchor = iso(mondayOf(parseDay(S.cycleStart)));
+  if (anchor !== S.cycleStart) {
+    S.cycleStart = S.sessions.some(s => s.done) ? anchor : iso(mondayOf(new Date()));
+  }
   rehydrateSwaps();
   await save(); wire(); render();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});

@@ -7,11 +7,11 @@ that you run 30–50km on top of all of it.
 
 | Day | Session | Notes |
 |---|---|---|
-| Mon | Lower · heavy | Squat wave, ~74 min |
-| Tue | Home · weak points | Biceps, rear delts, core. Trail run in the evening. ~52 min |
-| Wed | Upper · horizontal | Bench wave, rows, pull-ups. ~63 min |
+| Mon | Lower · heavy | Squat wave. ~74 min |
+| Tue | Home · weak points | Biceps, laterals, rear delts, core. Trail run in the evening. ~50 min |
+| Wed | Upper · horizontal | Bench wave, rows, pull-ups, laterals. ~73 min |
 | Thu | Lower · moderate | Deadlift wave, trimmed accessories. Easy run. ~74 min |
-| Fri | Upper · vertical | Press wave, incline, laterals. ~62 min |
+| Fri | Upper · vertical | Press wave, machine press, incline, laterals. ~75 min |
 | Sat | Long run | — |
 | Sun | Loose | Log a run, or build something |
 
@@ -24,8 +24,13 @@ weak-point day precisely because you have no rack: a barbell, dumbbells and an a
 wheel are exactly what biceps, rear delts and abs need, and none of it touches
 your legs before an evening trail run.
 
-Weak points get three exposures a week each. Biceps in four places, rear delts in
-three, core in three sessions.
+Weak points get three exposures a week each: biceps in four places, lateral
+raises in three, rear delts in three, core in three sessions. Shoulders now
+carry two pressing movements on top of that — the overhead press wave plus a
+machine press — which is what the size you are after actually needs.
+
+Both upper days open with a warm-up block, and light lateral raises always lead
+it. The rest rotates.
 
 ## Getting it onto your phone
 
@@ -81,6 +86,41 @@ Sets removed this way are not counted as missed sets — a trimmed session canno
 trigger a false plateau.
 
 Turn the whole thing off in *Data* if it ever annoys you.
+
+## Logging a set
+
+Each set has three buttons. **Done** logs the prescribed reps, fires the
+animation and starts your rest timer in one tap. **±** opens a stepper if you
+got a different number. **Start** runs a clock for the duration of the set
+itself — useful for timed holds, and it records time under tension on
+everything else.
+
+Tap a logged result to undo it. Sets can be completed in any order.
+
+The word that pops up is cosmetic. Switch between gym language and clean in
+*Data → Language*.
+
+## What the words mean
+
+Every set type has a **?** next to it that explains itself:
+
+- **Warm-up** — lighter preparation, never counted against progression
+- **Working set** — the prescribed weight for the prescribed reps
+- **Open set** — the number shown is a minimum, do as many clean reps as you
+  can beyond it. This is the set that decides your training max.
+- **Back-off** — same exercise, lighter, more reps, done after the heavy work.
+  Nothing changes about how you perform it. Heavy sets build strength, these
+  build tissue.
+- **RPE** — 10 is nothing left, 9 is one more, 8 is two
+
+Each exercise also carries a form cue and a link to video of the movement.
+
+## Adding to a session
+
+*Add an exercise* sits at the bottom of every session before you finish it.
+Suggestions are filtered by what kind of day it is — horizontal upper gets
+presses and rows, lower gets squats and hinges — and sorted by what you have
+trained least recently. Anything you add progresses like everything else.
 
 ## Rest timers
 

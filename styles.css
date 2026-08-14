@@ -300,3 +300,117 @@ button.rest::before { content: '⏱ '; }
   border-radius: 6px; padding: 11px 12px; margin-bottom: 10px; font-size: 13.5px;
 }
 .flag .why { color: var(--warn); font-family: var(--mono); font-size: 11px; margin-bottom: 5px; }
+
+/* ── Set rows, rebuilt ───────────────────────────────────── */
+.set {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-top: 1px solid var(--edge);
+}
+.set:first-of-type { border-top: none; }
+.set .n { flex: 0 0 16px; font-size: 11px; color: var(--dust-2); }
+.set .mid { flex: 1; min-width: 0; }
+.set .presc { display: flex; align-items: baseline; gap: 6px; }
+.set .presc .w { font-size: 15px; font-family: var(--mono); }
+.set .presc .x { color: var(--dust-2); font-size: 12px; }
+.set .presc .r { font-size: 15px; font-family: var(--display); font-weight: 600; }
+.set .kindlabel { font-size: 10px; color: var(--dust-2); margin-top: 1px; letter-spacing: .04em; }
+.set.k-open .presc .r { color: var(--warn); }
+.set.k-warm { opacity: .72; }
+
+button.what {
+  width: 17px; height: 17px; min-height: 0; padding: 0; margin-left: 2px;
+  border-radius: 50%; font-size: 10px; line-height: 1;
+  background: transparent; border-color: var(--dust-2); color: var(--dust);
+}
+
+.set .acts { display: flex; gap: 5px; flex: 0 0 auto; }
+.set .acts button { min-height: 38px; padding: 8px 10px; font-size: 13px; }
+.set .acts .go { min-width: 56px; font-family: var(--mono); font-size: 12px; }
+.set .acts .go.live-on { border-color: var(--warn); color: var(--warn); }
+.set .acts .ok { background: var(--go); border-color: var(--go); color: #fff; font-weight: 500; padding: 8px 15px; }
+.set .acts .alt { width: 38px; padding: 0; color: var(--dust); }
+
+.set .result {
+  display: flex; align-items: baseline; gap: 4px;
+  min-height: 38px; padding: 6px 11px; font-size: 13px;
+  background: transparent; flex: 0 0 auto;
+}
+.set .result b { font-family: var(--display); font-size: 17px; font-weight: 600; }
+.set .result .undo { font-size: 10px; color: var(--dust-2); margin-left: 5px; }
+.set.hit .result { border-color: rgba(43,162,95,.5); color: var(--good); }
+.set.miss .result { border-color: rgba(200,32,45,.5); color: var(--stall); }
+
+.editor { display: flex; gap: 6px; padding: 0 0 10px 26px; }
+.editor button { min-height: 38px; width: 38px; padding: 0; }
+.editor input { width: 62px; text-align: center; min-height: 38px; }
+.editor [data-save] { width: auto; padding: 0 14px; }
+
+/* ── Cues and links ──────────────────────────────────────── */
+.howto {
+  background: var(--iron); border-radius: 8px;
+  padding: 10px 12px; margin: 2px 0 12px;
+}
+.howto .cue { margin: 0; font-size: 13px; line-height: 1.5; color: var(--chalk); }
+.howto .watch {
+  display: inline-block; margin-top: 7px; font-size: 12px;
+  color: var(--go); text-decoration: none; font-family: var(--mono);
+}
+
+/* ── Warm-up block ───────────────────────────────────────── */
+.card.prep { border-color: rgba(59,130,246,.35); }
+.prepline {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 0; border-top: 1px solid var(--edge); font-size: 14px;
+}
+.prepline:first-child { border-top: none; }
+.prepline .dur { margin-left: auto; font-size: 11.5px; color: var(--dust); }
+
+/* ── Add exercise ────────────────────────────────────────── */
+details.addex {
+  background: var(--steel); border: 1px solid var(--edge);
+  border-radius: var(--r); padding: 13px 14px; margin: 14px 0 4px;
+}
+details.addex summary {
+  font-family: var(--display); font-size: 17px; cursor: pointer; list-style: none;
+}
+details.addex summary::-webkit-details-marker { display: none; }
+details.addex summary::after { content: ' +'; color: var(--go); }
+.addrow {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  width: 100%; text-align: left; margin-bottom: 6px; min-height: 44px;
+}
+.addrow .an { font-size: 14px; }
+.addrow .aw { font-size: 11px; color: var(--dust); }
+
+/* ── The pop ─────────────────────────────────────────────── */
+.pop {
+  position: fixed; inset: 0; z-index: 80;
+  display: grid; place-items: center; pointer-events: none;
+  font-family: var(--display); font-weight: 700; font-size: 40px;
+  text-transform: uppercase; letter-spacing: .01em; text-align: center;
+  color: var(--good); opacity: 0; padding: 0 30px;
+}
+.pop.miss { color: var(--dust); font-size: 22px; text-transform: none; font-weight: 500; }
+.pop.go { animation: popin 1.3s cubic-bezier(.16,1,.3,1) forwards; }
+@keyframes popin {
+  0%   { opacity: 0; transform: scale(.75) rotate(-3deg); }
+  14%  { opacity: 1; transform: scale(1.12) rotate(1.5deg); }
+  28%  { transform: scale(1) rotate(0); }
+  72%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.04) translateY(-16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop.go { animation: popfade 1s linear forwards; }
+  @keyframes popfade { 0%,80% { opacity: 1; } 100% { opacity: 0; } }
+}
+
+/* ── Explanation sheet ───────────────────────────────────── */
+#sheet {
+  position: fixed; inset: 0; z-index: 85; display: none;
+  background: rgba(10,11,14,.72); padding: 24px;
+  align-items: center; justify-content: center;
+}
+#sheet.on { display: flex; flex-direction: column; }
+#sheet h3 { font-family: var(--display); font-size: 24px; margin-bottom: 8px; max-width: 420px; }
+#sheet p { font-size: 14.5px; line-height: 1.6; color: var(--chalk); max-width: 420px; margin: 0 0 18px; }
+#sheet button { max-width: 420px; width: 100%; }
