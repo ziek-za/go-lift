@@ -2,7 +2,7 @@ import {
   BAR, PLATES, PLATE_COLOUR, MAINS, WAVE, ACCESSORIES, PREP,
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
-  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES,
+  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS
 } from './data.js';
 
@@ -760,9 +760,12 @@ function setRow(it, s, i) {
 
   const rpe = it.kind === 'main' && !s.warm && done
     ? `<div class="rpe" data-set="${i}">
-         <span class="q">How hard?<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span>
-         <span class="nums">${[6, 7, 8, 9, 10].map(v =>
-           `<button data-rpe="${v}" aria-pressed="${s.rpe === v}">${v}</button>`).join('')}</span>
+         <span class="q">How hard was that?<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span>
+         <span class="nums">${Object.entries(RPE_SCALE).map(([v, r]) =>
+           `<button data-rpe="${v}" aria-pressed="${s.rpe === +v}" style="--rc:${r.colour}">${v}</button>`).join('')}</span>
+         ${s.rpe ? `<span class="rdesc" style="--rc:${RPE_SCALE[s.rpe].colour}">
+             <b>${RPE_SCALE[s.rpe].label}</b> · ${RPE_SCALE[s.rpe].rir}
+             <span>${RPE_SCALE[s.rpe].body}</span></span>` : ''}
        </div>` : '';
 
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
@@ -785,21 +788,29 @@ function itemCard(it, idx) {
   it._idx = idx;
 
   if (it.kind === 'mobility' || it.kind === 'prep') {
-    return `<div class="card ${it.kind === 'prep' ? 'prep' : ''}" data-item="${idx}">
+    const ticked = it.doneIds || [];
+    const allDone = ticked.length >= it.list.length;
+    return `<div class="card ${it.kind === 'prep' ? 'prep' : ''} ${allDone ? 'done' : ''}" data-item="${idx}">
       <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
         <span class="nm"><span class="t">${it.name}</span>
-        <span class="s mono">${it.kind === 'prep' ? 'before you touch anything heavy' : 'rotates every session'}</span></span>
+        <span class="s mono">${allDone ? 'done' : ticked.length + '/' + it.list.length + ' · before you touch anything heavy'}</span></span>
         <span class="tick">✓</span></div>
-      <div class="body">${it.list.map(m => `
-        <div class="movement">
+      <div class="body">${it.list.map(m => {
+        const on = ticked.includes(m.id);
+        return `<div class="movement ${on ? 'ticked' : ''}">
           <div class="prepline">
             <span class="presc mono">${m.name}</span>
-            <span class="mono dur">${m.sets || m.secs + 's'}</span>
+            <span class="mono dur">${m.detail || m.sets || m.secs + 's'}</span>
           </div>
           ${m.cue ? `<p class="mcue">${m.cue}</p>` : ''}
-          ${m.note ? `<p class="hint">${m.note}</p>` : ''}
-          <a class="watch" href="${howToUrl(m.name)}" target="_blank" rel="noopener">Watch it →</a>
-        </div>`).join('')}</div></div>`;
+          <div class="mrow">
+            <a class="watch" href="${howToUrl(m.name)}" target="_blank" rel="noopener">Watch it →</a>
+            <button class="mtick ${on ? 'on' : ''}" data-tick="${idx}|${m.id}">${on ? '✓ done' : 'Done'}</button>
+          </div>
+        </div>`;
+      }).join('')}
+      <div class="btn-row"><button class="btn-sm" data-tickall="${idx}">${allDone ? 'Clear all' : 'Mark the whole block done'}</button></div>
+      </div></div>`;
   }
 
   const done = it.sets.length && it.sets.every(s => s.reps != null);
@@ -1316,6 +1327,28 @@ function wire() {
       S.coreLevel[id] = Math.max(0, Math.min(tr.levels.length - 1, coreLevel(id) + (+clv.dataset.clv)));
       S.coreClean[id] = 0;
       await save(); render(); return;
+    }
+
+    /* Warm-up and mobility have no reps to log, so they tick instead */
+    const tk = t.closest('[data-tick]');
+    if (tk) {
+      const sess = $('#v-today')._sess;
+      const [idx, mid] = tk.dataset.tick.split('|');
+      const it = sess.items[+idx];
+      it.doneIds = it.doneIds || [];
+      it.doneIds = it.doneIds.includes(mid) ? it.doneIds.filter(x => x !== mid) : [...it.doneIds, mid];
+      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+      if (sess.adhoc) draft = sess;
+      await save(); redrawItem(sess, +idx); return;
+    }
+    const tka = t.closest('[data-tickall]');
+    if (tka) {
+      const sess = $('#v-today')._sess, idx = +tka.dataset.tickall;
+      const it = sess.items[idx];
+      it.doneIds = (it.doneIds || []).length >= it.list.length ? [] : it.list.map(m => m.id);
+      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+      if (sess.adhoc) draft = sess;
+      await save(); redrawItem(sess, idx); return;
     }
 
     /* Working weight */

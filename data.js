@@ -380,92 +380,92 @@ export const CLUBS = ['Wembley Square', 'Foreshore', 'Other'];
 export const PREP = {
   squat: {
     label: 'Squat prep',
-    opener: { id: 'sp-open', name: 'Bodyweight squat, slow', secs: 60, sets: '10 reps',
+    opener: { id: 'sp-open', name: 'Bodyweight squat, slow', secs: 60, detail: '10 slow reps', sets: '10 reps',
       cue: 'Full depth, three seconds down. Feel where you are tight before you load it.' },
     pool: [
-      { id: 'sp-ankle', name: 'Ankle dorsiflexion rock', secs: 90,
+      { id: 'sp-ankle', name: 'Ankle dorsiflexion rock', secs: 90, detail: '45s each side',
         cue: 'Half-kneeling, front foot flat, drive the knee past the toes with the heel down. The single biggest limiter on squat depth.' },
-      { id: 'sp-adduct', name: 'Adductor rock back', secs: 90,
+      { id: 'sp-adduct', name: 'Adductor rock back', secs: 90, detail: '45s each side',
         cue: 'On all fours, one leg straight out to the side, foot flat. Rock the hips back until the inner thigh loads.' },
-      { id: 'sp-9090', name: '90/90 hip switch', secs: 120,
+      { id: 'sp-9090', name: '90/90 hip switch', secs: 120, detail: '60s, switching continuously',
         cue: 'Both knees at 90°, chest tall, rotate both legs to the other side without your hands. Opens the hips in both directions.' },
-      { id: 'sp-couch', name: 'Couch stretch', secs: 120,
+      { id: 'sp-couch', name: 'Couch stretch', secs: 120, detail: '60s each side',
         cue: 'Back shin against a bench, squeeze the back glute and stand the torso up. 60s a side. Undoes the desk.' },
-      { id: 'sp-glute', name: 'Glute bridge, slow', secs: 90,
+      { id: 'sp-glute', name: 'Glute bridge, slow', secs: 90, detail: '12 slow reps',
         cue: 'Drive through the heels, squeeze hard at the top, ribs down. Wakes up what should be doing the work.' },
-      { id: 'sp-goblet', name: 'Goblet squat hold', secs: 75,
+      { id: 'sp-goblet', name: 'Goblet squat hold', secs: 75, detail: '75s, one hold',
         cue: 'Light dumbbell at the chest, sit into the bottom and stay there, elbows pushing the knees out.' }
     ]
   },
   dead: {
     label: 'Deadlift prep',
-    opener: { id: 'dp-open', name: 'Hip hinge, dowel on the back', secs: 60, sets: '10 reps',
+    opener: { id: 'dp-open', name: 'Hip hinge, dowel on the back', secs: 60, detail: '10 slow reps', sets: '10 reps',
       cue: 'Bar or broomstick touching head, upper back and tailbone. Push the hips back keeping all three points in contact.' },
     pool: [
-      { id: 'dp-ham', name: 'Hamstring floss, gentle', secs: 90,
+      { id: 'dp-ham', name: 'Hamstring floss, gentle', secs: 90, detail: '45s each leg',
         cue: 'On your back, one leg up, straighten and bend the knee slowly. Nothing sharp — back off the moment it grabs.' },
-      { id: 'dp-hang', name: 'Dead hang', secs: 60,
+      { id: 'dp-hang', name: 'Dead hang', secs: 60, detail: '60s, one hang',
         cue: 'Full grip, let the shoulders rise. Decompresses the spine and wakes the grip before you pull.' },
-      { id: 'dp-catcow', name: 'Cat-cow', secs: 60,
+      { id: 'dp-catcow', name: 'Cat-cow', secs: 60, detail: '60s, moving continuously',
         cue: 'One vertebra at a time. Finding the ends of the range makes it easier to hold neutral under load.' },
-      { id: 'dp-glute', name: 'Glute bridge, slow', secs: 90,
+      { id: 'dp-glute', name: 'Glute bridge, slow', secs: 90, detail: '12 slow reps',
         cue: 'Squeeze hard at the top. If the hamstrings cramp, your glutes are not joining in.' },
-      { id: 'dp-tspine', name: 'Thoracic opener over a bench', secs: 90,
+      { id: 'dp-tspine', name: 'Thoracic opener over a bench', secs: 90, detail: '90s, one hold',
         cue: 'Elbows on a bench, hands behind the head, let the chest sink. A stiff upper back rounds under a heavy bar.' },
-      { id: 'dp-birddog', name: 'Bird dog', secs: 75,
+      { id: 'dp-birddog', name: 'Bird dog', secs: 75, detail: '8 reps each side',
         cue: 'Extend opposite arm and leg without the hips rotating. Cheap bracing rehearsal for the pull.' }
     ]
   },
   bench: {
     label: 'Bench prep',
-    opener: { id: 'bp-open', name: 'Light lateral raise', secs: 90, sets: '2 × 15 very light',
+    opener: { id: 'bp-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells, 4 to 6kg. Lead with the elbows to shoulder height, lower slowly. Should feel like almost nothing.' },
     pool: [
-      { id: 'bp-pullapart', name: 'Band pull-apart', secs: 60, sets: '20 reps',
+      { id: 'bp-pullapart', name: 'Band pull-apart', secs: 60, detail: '20 reps', sets: '20 reps',
         cue: 'Straight arms, pull the band to your chest squeezing the shoulder blades. No shrugging.' },
-      { id: 'bp-scap', name: 'Scapular push-up', secs: 60, sets: '12 reps',
+      { id: 'bp-scap', name: 'Scapular push-up', secs: 60, detail: '12 reps', sets: '12 reps',
         cue: 'Push-up position, arms locked. Only the shoulder blades move. Teaches the set position you want under the bar.' },
-      { id: 'bp-extrot', name: 'Cable external rotation', secs: 75, sets: '15 a side',
+      { id: 'bp-extrot', name: 'Cable external rotation', secs: 75, detail: '15 reps each side', sets: '15 a side',
         cue: 'Elbow pinned to the ribs, rotate the forearm outwards against a light cable. Cuff insurance.' },
-      { id: 'bp-pec', name: 'Doorway pec stretch', secs: 75,
+      { id: 'bp-pec', name: 'Doorway pec stretch', secs: 75, detail: '40s each side',
         cue: 'Forearm on the frame at shoulder height, step through gently. 30s a side, no forcing.' },
-      { id: 'bp-tspine', name: 'Thoracic opener', secs: 75,
+      { id: 'bp-tspine', name: 'Thoracic opener', secs: 75, detail: '75s, one hold',
         cue: 'Elbows on a bench, chest sinks. A stiff upper back costs you the arch and the shoulder position.' },
-      { id: 'bp-pushup', name: 'Push-up, slow', secs: 60, sets: '8 reps',
+      { id: 'bp-pushup', name: 'Push-up, slow', secs: 60, detail: '8 slow reps', sets: '8 reps',
         cue: 'Three seconds down, elbows at 45°. Grooves the pattern before you load it.' }
     ]
   },
   ohp: {
     label: 'Press prep',
-    opener: { id: 'op-open', name: 'Light lateral raise', secs: 90, sets: '2 × 15 very light',
+    opener: { id: 'op-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells. Elbows lead, slow down. Warms the delts and the cuff for everything that follows.' },
     pool: [
-      { id: 'op-dislocate', name: 'Band pass-through', secs: 60, sets: '10 slow',
+      { id: 'op-dislocate', name: 'Band pass-through', secs: 60, detail: '10 slow reps', sets: '10 slow',
         cue: 'Wide grip, straight arms, overhead and behind. Widen the grip if it pinches. This is the range the press needs.' },
-      { id: 'op-wallslide', name: 'Wall slide', secs: 60, sets: '10 reps',
+      { id: 'op-wallslide', name: 'Wall slide', secs: 60, detail: '10 reps', sets: '10 reps',
         cue: 'Forearms on the wall, elbows at shoulder height, slide up keeping contact and the ribs down.' },
-      { id: 'op-extrot', name: 'Cable external rotation', secs: 75, sets: '15 a side',
+      { id: 'op-extrot', name: 'Cable external rotation', secs: 75, detail: '15 reps each side', sets: '15 a side',
         cue: 'Elbow at the ribs, rotate out. Light. The cuff has to work overhead whether you prepare it or not.' },
-      { id: 'op-tspine', name: 'Thoracic extension', secs: 75,
+      { id: 'op-tspine', name: 'Thoracic extension', secs: 75, detail: '75s, one hold',
         cue: 'Over a bench or a foam roller. Without upper back extension you press from a lean instead of overhead.' },
-      { id: 'op-hang', name: 'Dead hang', secs: 45,
+      { id: 'op-hang', name: 'Dead hang', secs: 45, detail: '45s, one hang',
         cue: 'Let the shoulders come up around your ears. Opens the overhead position.' },
-      { id: 'op-scap', name: 'Scapular push-up', secs: 60, sets: '12 reps',
+      { id: 'op-scap', name: 'Scapular push-up', secs: 60, detail: '12 reps', sets: '12 reps',
         cue: 'Arms locked, only the blades move. Serratus does a lot of the work overhead.' }
     ]
   },
   home: {
     label: 'Quick prep',
-    opener: { id: 'hp-open', name: 'Light lateral raise', secs: 75, sets: '2 × 15 very light',
+    opener: { id: 'hp-open', name: 'Light lateral raise', secs: 75, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Smallest dumbbells you own. Elbows lead. Wakes the shoulders before the curls and raises.' },
     pool: [
-      { id: 'hp-catcow', name: 'Cat-cow', secs: 60,
+      { id: 'hp-catcow', name: 'Cat-cow', secs: 60, detail: '60s, moving continuously',
         cue: 'One vertebra at a time, slowly.' },
-      { id: 'hp-pullapart', name: 'Rear delt raise, no weight', secs: 45, sets: '15 reps',
+      { id: 'hp-pullapart', name: 'Rear delt raise, no weight', secs: 45, detail: '15 reps', sets: '15 reps',
         cue: 'Bent over, empty hands, thumbs down. Primes the pattern before you add dumbbells.' },
-      { id: 'hp-wrist', name: 'Wrist circles and extension', secs: 45,
+      { id: 'hp-wrist', name: 'Wrist circles and extension', secs: 45, detail: '45s total',
         cue: 'Curls and skull crushers both load the wrists. Thirty seconds now saves an ache later.' },
-      { id: 'hp-tspine', name: 'Thoracic rotation on the floor', secs: 75,
+      { id: 'hp-tspine', name: 'Thoracic rotation on the floor', secs: 75, detail: '40s each side',
         cue: 'Side lying, knees stacked, open the top arm to the floor behind you.' }
     ]
   }
@@ -560,3 +560,20 @@ export const MISS_PHRASES = [
   'Short of target — the app will handle it.', 'Fine. Rest properly.',
   'Recorded. Keep the form honest.'
 ];
+
+/* ── RPE ───────────────────────────────────────────────────
+   The number on its own means nothing until you have calibrated it, so the
+   app says what each one feels like and colours the scale from easy to
+   maximal. Reps in reserve is the useful translation. */
+export const RPE_SCALE = {
+  6:  { label: 'Comfortable', rir: '4+ left', colour: '#1E7A46',
+        body: 'Bar speed never slowed. You could have done four more. On a working set this usually means the weight is too light.' },
+  7:  { label: 'Moderate', rir: '3 left', colour: '#5D9E3A',
+        body: 'Smooth throughout. Three more were there. A good place for back-off sets.' },
+  8:  { label: 'Hard', rir: '2 left', colour: '#E8B305',
+        body: 'The last rep slowed a little. Two more were possible. Most productive working sets live here.' },
+  9:  { label: 'Very hard', rir: '1 left', colour: '#E07B1F',
+        body: 'Real grind on the last rep, one more was in you. Right for an open set on the 5/3/1 week.' },
+  10: { label: 'Maximal', rir: 'nothing left', colour: '#C8202D',
+        body: 'Nothing remaining, and the last rep may have broken form. Fine occasionally, expensive if it happens every session.' }
+};

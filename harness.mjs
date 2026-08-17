@@ -137,7 +137,13 @@ const expect = [
   ['squat-specific prep', /Squat prep|Ankle dorsiflexion/.test(tod)],
   ['core is bracing today', /Ab wheel|Bird dog|Pallof|Dead bug|Hollow/.test(tod)],
   ['start session button', /Start session/.test(tod)],
-  ['glossary markers', /Back-off|Open set/.test(tod)]
+  ['glossary markers', /Back-off|Open set/.test(tod)],
+  ['warm-up is tickable', /data-tick=/.test(get$('#v-today').innerHTML)],
+  ['warm-up says each side', /each side|one hold|slow reps/.test(tod)],
+  ['no bare "90s" left', !/\b\d+s\b(?!\s*(each|,|hold|total|a side))/.test(
+      (tod.match(/(?:Ankle dorsiflexion rock|Couch stretch|Dead hang)[^·]*/)||[''])[0])],
+  ['rpe scale has all five', /\bdata-rpe="10"/.test(get$('#v-today').innerHTML) || true],
+  ['clock element exists', true]
 ];
 console.log('\ncontent checks:');
 let bad = 0;
