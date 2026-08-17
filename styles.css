@@ -485,3 +485,53 @@ details.addex summary::after { content: ' +'; color: var(--go); }
 .recgrid .v small { font-size: 12px; color: var(--dust); font-weight: 400; }
 .recgrid .v.real { color: var(--p15); }
 .recgrid .d { font-size: 9.5px; color: var(--dust-2); margin-top: 1px; }
+
+/* ── Session clock in the header ─────────────────────────── */
+.sessionclock {
+  display: none; margin-left: auto;
+  font-family: var(--display); font-weight: 600; font-size: 21px;
+  color: var(--go); letter-spacing: .02em;
+}
+.sessionclock.on { display: inline; }
+.sessionclock.on + .cycle { margin-left: 12px; }
+
+/* ── Mobility and prep, explained ────────────────────────── */
+.movement { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--edge); }
+.movement:last-child { border-bottom: none; padding-bottom: 2px; }
+.movement .prepline { border-top: none; padding: 8px 0 0; }
+.mcue {
+  margin: 5px 0 0; font-size: 13px; line-height: 1.5; color: var(--dust);
+}
+.movement .watch { display: inline-block; margin-top: 6px; font-size: 11.5px; }
+
+/* ── Weight adjustment ───────────────────────────────────── */
+.wadj {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--iron); border-radius: 8px;
+  padding: 9px 11px; margin: 0 0 12px;
+}
+.wadj .wl { flex: 1; font-size: 12.5px; color: var(--dust); }
+.wadj .step input { width: 74px; font-size: 15px; }
+
+.wrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 0; border-top: 1px solid var(--edge);
+}
+.wrow:first-of-type { border-top: none; }
+.wrow .wn { flex: 1; font-size: 13.5px; line-height: 1.35; }
+.wrow .wn em { font-style: normal; font-size: 11px; color: var(--dust-2); }
+.wrow .step input { width: 68px; }
+.wrow .step button { width: 34px; height: 34px; }
+
+/* ── Core ladders ────────────────────────────────────────── */
+.nextrung {
+  margin: 7px 0 0; font-size: 11px; color: var(--go);
+  letter-spacing: .02em;
+}
+.ladder { margin-bottom: 11px; }
+.ladder:last-child { margin-bottom: 2px; }
+.ladder .lrow { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.ladder .ln { flex: 1; font-size: 13.5px; line-height: 1.3; }
+.ladder .lv { font-size: 11px; color: var(--dust-2); }
+.ladder .track { height: 3px; background: var(--iron); border-radius: 2px; overflow: hidden; }
+.ladder .track i { display: block; height: 100%; background: var(--go); border-radius: 2px; }

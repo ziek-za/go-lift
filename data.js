@@ -49,7 +49,7 @@ export const ACCESSORIES = {
   legcurl:        { name: 'Seated leg curl', pattern: 'hinge', w: 45, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['sl-legcurl'] },
   'sl-legcurl':   { name: 'Single-leg lying curl', pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
 
-  calf:           { name: 'Standing calf raise', pattern: 'calf', w: 80, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Stack + 80kg. Long pause at the bottom.' },
+  calf:           { name: 'Standing calf raise', pattern: 'calf', w: 140, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Your log said stack + 80kg, so this is a guess at the total. Set it properly on the first session.' },
   seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
 
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 2.5, bar: true, variants: ['machinerow', 'dbrow'] },
@@ -105,41 +105,186 @@ export const ACCESSORIES = {
   floorskull:     { name: 'Floor skull crusher', pattern: 'triceps', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, bar: true, home: true }
 };
 
-/* Core pool — eighteen movements across five qualities, rotated so nothing
-   repeats until the pool has turned over. `home` marks what works on a floor. */
-export const CORE = [
-  { id: 'hang-bar',    name: 'Hanging leg raise to bar',          unit: 'reps', target: 8,  w: 0,    tag: 'flexion' },
-  { id: 'hang-top',    name: 'Hanging leg raise to top',          unit: 'reps', target: 8,  w: 0,    tag: 'flexion' },
-  { id: 'hang-half',   name: 'Hanging raise to half, controlled', unit: 'reps', target: 8,  w: 0,    tag: 'flexion', note: 'Pause at the top.' },
-  { id: 'rollout',     name: 'Ab wheel rollout',                  unit: 'reps', target: 10, w: 0,    tag: 'antiext', home: true },
-  { id: 'rollout-st',  name: 'Ab wheel, standing to knees',       unit: 'reps', target: 6,  w: 0,    tag: 'antiext', home: true, note: 'Only once the kneeling version is easy.' },
-  { id: 'cablecrunch', name: 'Cable crunch',                      unit: 'reps', target: 18, w: 42.5, tag: 'flexion' },
-  { id: 'vertraise',   name: 'Vertical leg raise, weighted',      unit: 'reps', target: 8,  w: 9,    tag: 'flexion' },
-  { id: 'inclraise',   name: 'Incline bench leg raise',           unit: 'reps', target: 11, w: 0,    tag: 'flexion' },
-  { id: 'sideplank',   name: 'Side plank, top leg raised',        unit: 'secs', target: 40, w: 0,    tag: 'lateral', home: true },
-  { id: 'copenhagen',  name: 'Copenhagen plank',                  unit: 'secs', target: 25, w: 0,    tag: 'lateral', home: true, note: 'Adductors. Worth its weight for trail running.' },
-  { id: 'pallof',      name: 'Pallof press',                      unit: 'reps', target: 12, w: 20,   tag: 'antirot' },
-  { id: 'suitcase',    name: 'Suitcase carry',                    unit: 'secs', target: 40, w: 32,   tag: 'antilat', home: true, note: 'One side. Do not lean.' },
-  { id: 'twist',       name: 'Seated twist, weight in hands',     unit: 'secs', target: 35, w: 10,   tag: 'antirot', home: true },
-  { id: 'hollow',      name: 'Hollow body hold',                  unit: 'secs', target: 35, w: 0,    tag: 'antiext', home: true },
-  { id: 'deadbug',     name: 'Dead bug, slow',                    unit: 'reps', target: 10, w: 0,    tag: 'antiext', home: true },
-  { id: 'birddog',     name: 'Bird dog',                          unit: 'reps', target: 10, w: 0,    tag: 'antirot', home: true },
-  { id: 'dbswing',     name: 'Dumbbell swing',                    unit: 'reps', target: 25, w: 20,   tag: 'hinge',   home: true },
-  { id: 'plankpause',  name: 'Plank, 5s pauses',                  unit: 'secs', target: 50, w: 0,    tag: 'antiext', home: true }
+/* ── Core ──────────────────────────────────────────────────
+   Four qualities, trained every week, each as a ladder you climb rather than
+   a fixed exercise. You start at level one whatever your training age — the
+   entry rungs are meant to feel easy, because the point is to earn the harder
+   ones with clean reps rather than to survive them on day one.
+
+   Anti-extension  · refusing to let the lower back arch
+   Anti-lateral    · refusing to bend sideways under a one-sided load
+   Anti-rotation   · refusing to twist
+   Flexion         · the one that actually loads the rectus, and the one most
+                     programmes skip because holds feel more virtuous
+
+   Every session takes one track from three different qualities, so nothing
+   gets trained twice while something else goes untouched for a month. */
+
+export const CORE_TRACKS = [
+  {
+    id: 'ext-wheel', quality: 'Anti-extension', home: true,
+    levels: [
+      { name: 'Dead bug, legs only', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'On your back, knees over hips, lower back pressed flat into the floor. Lower one heel to touch and return. If the back lifts, you have gone too far.' },
+      { name: 'Dead bug, full', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Same, but the opposite arm reaches overhead as the leg extends. Slow. The floor should stay in contact with your lower back the whole time.' },
+      { name: 'Ab wheel, kneeling to half', unit: 'reps', target: 8, sets: 3, w: 0,
+        cue: 'Knees down, roll out only as far as you can return from without the hips sagging. Ribs pulled down, glutes squeezed.' },
+      { name: 'Ab wheel, kneeling full', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Full extension until you are almost flat, then pull back with the abs rather than the hips. Never let the lower back arch.' },
+      { name: 'Ab wheel, standing to knees', unit: 'reps', target: 6, sets: 3, w: 0,
+        cue: 'From standing, roll out, drop to the knees at the bottom and return. A serious exercise — only once the kneeling version is genuinely easy.' }
+    ]
+  },
+  {
+    id: 'ext-hollow', quality: 'Anti-extension', home: true,
+    levels: [
+      { name: 'Hollow hold, tucked', unit: 'secs', target: 30, sets: 3, w: 0,
+        cue: 'On your back, knees tucked, shoulders and head just off the floor. Lower back stays flat. That contact is the whole exercise.' },
+      { name: 'Hollow hold, one leg out', unit: 'secs', target: 30, sets: 3, w: 0,
+        cue: 'One leg extends, the other stays tucked. Swap halfway. The moment the lower back lifts, tuck back in.' },
+      { name: 'Hollow hold, full', unit: 'secs', target: 35, sets: 3, w: 0,
+        cue: 'Both legs straight, arms overhead. Long and low. Lower the legs only as far as you can keep the back flat.' },
+      { name: 'Hollow rock', unit: 'secs', target: 40, sets: 3, w: 0,
+        cue: 'Hold the full position and rock from the upper back to the hips. The shape never changes — you are rocking, not crunching.' }
+    ]
+  },
+  {
+    id: 'lat-plank', quality: 'Anti-lateral', home: true,
+    levels: [
+      { name: 'Side plank, from knees', unit: 'secs', target: 30, sets: 3, w: 0,
+        cue: 'Elbow under the shoulder, knees bent, hips pushed up in a straight line from knee to head. Each side.' },
+      { name: 'Side plank, full', unit: 'secs', target: 40, sets: 3, w: 0,
+        cue: 'Legs straight, stacked feet. Hips high — the sag is what makes this useless. Each side.' },
+      { name: 'Side plank, top leg raised', unit: 'secs', target: 40, sets: 3, w: 0,
+        cue: 'Full side plank, then lift the top leg and hold it there. Now the glute medius is working too.' },
+      { name: 'Side plank, weighted', unit: 'secs', target: 40, sets: 3, w: 10,
+        cue: 'Full side plank with a plate resting on the top hip. Add weight rather than adding minutes.' }
+    ]
+  },
+  {
+    id: 'lat-carry', quality: 'Anti-lateral', home: true,
+    levels: [
+      { name: 'Suitcase carry', unit: 'secs', target: 40, sets: 3, w: 20,
+        cue: 'One dumbbell, one side, walk tall. The job is refusing to lean towards it. Swap sides each set.' },
+      { name: 'Suitcase carry, heavy', unit: 'secs', target: 40, sets: 3, w: 32,
+        cue: 'Same, more load. Shoulders level, ribs down. If you tilt, the weight is too heavy.' },
+      { name: 'Suitcase carry, very heavy', unit: 'secs', target: 45, sets: 3, w: 40,
+        cue: 'Grip becomes the limiter here, which is fine — it is a real one for deadlifting too.' },
+      { name: 'Single-arm overhead carry', unit: 'secs', target: 30, sets: 3, w: 16,
+        cue: 'One dumbbell locked out overhead, elbow straight, walk. Harder than it looks and brutal on the shoulder stabilisers.' }
+    ]
+  },
+  {
+    id: 'lat-copen', quality: 'Anti-lateral', home: true,
+    levels: [
+      { name: 'Copenhagen, knee on bench', unit: 'secs', target: 20, sets: 3, w: 0,
+        cue: 'Side plank position, top leg bent with the knee resting on a bench. Lift the hips. Short lever, gentle entry.' },
+      { name: 'Copenhagen, mid shin', unit: 'secs', target: 25, sets: 3, w: 0,
+        cue: 'Support moves down towards mid-shin. Longer lever, more adductor.' },
+      { name: 'Copenhagen, full', unit: 'secs', target: 25, sets: 3, w: 0,
+        cue: 'Ankle on the bench, bottom leg free. The best adductor insurance a trail runner can buy.' },
+      { name: 'Copenhagen, full with raise', unit: 'secs', target: 25, sets: 3, w: 0,
+        cue: 'Full position and lift the bottom leg to meet the top one, repeatedly, while holding the plank.' }
+    ]
+  },
+  {
+    id: 'rot-birddog', quality: 'Anti-rotation', home: true,
+    levels: [
+      { name: 'Bird dog', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'All fours. Extend the opposite arm and leg without letting the hips rotate. A cup of water on your lower back should not spill.' },
+      { name: 'Bird dog, with pause', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Same, holding the extended position for five seconds each rep.' },
+      { name: 'Bird dog to elbow-knee', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Extend, then draw elbow and knee together underneath you without the hips shifting, then extend again.' },
+      { name: 'Plank shoulder tap', unit: 'reps', target: 16, sets: 3, w: 0,
+        cue: 'High plank, feet wide, tap the opposite shoulder. The hips must not rock. Narrow the feet to make it harder.' }
+    ]
+  },
+  {
+    id: 'rot-pallof', quality: 'Anti-rotation',
+    levels: [
+      { name: 'Pallof press, half kneeling', unit: 'reps', target: 12, sets: 3, w: 15,
+        cue: 'Side-on to a cable, hands at the sternum, press straight out and resist the pull towards the stack. Each side.' },
+      { name: 'Pallof press, standing', unit: 'reps', target: 12, sets: 3, w: 20,
+        cue: 'Standing, feet hip width. More load, less base. Do not let the shoulders rotate.' },
+      { name: 'Pallof press-out to overhead', unit: 'reps', target: 12, sets: 3, w: 20,
+        cue: 'Press out, then continue overhead and back down without letting the ribs flare or the torso twist.' },
+      { name: 'Half-kneeling cable chop', unit: 'reps', target: 12, sets: 3, w: 20,
+        cue: 'Controlled rotation now rather than resisting it. Move from the ribcage, not the lower back.' }
+    ]
+  },
+  {
+    id: 'flex-lying', quality: 'Flexion', home: true,
+    levels: [
+      { name: 'Lying leg raise, knees bent', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'On your back, hands under the hips if needed. Knees bent, raise until the hips just lift, lower slowly.' },
+      { name: 'Lying leg raise, straight', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'Legs straight. Lower until just before the lower back lifts off, then reverse. That point is your range.' },
+      { name: 'Lying leg raise with hip lift', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'At the top, drive the hips towards the ceiling. This is the part that gets the abs rather than the hip flexors.' },
+      { name: 'Reverse crunch, weighted', unit: 'reps', target: 12, sets: 3, w: 5,
+        cue: 'Dumbbell held between the feet. Curl the pelvis up, do not swing.' }
+    ]
+  },
+  {
+    id: 'flex-hang', quality: 'Flexion',
+    levels: [
+      { name: 'Hanging knee raise', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'Hang, knees up to hip height, and stop swinging before the next rep. Control beats height.' },
+      { name: 'Hanging knee raise, slow return', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Same up, three seconds down. The lowering is where the strength is built.' },
+      { name: 'Hanging leg raise to 90°', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Straight legs to horizontal. If the knees bend, drop back a level rather than cheating the rep.' },
+      { name: 'Hanging leg raise to the bar', unit: 'reps', target: 8, sets: 3, w: 0,
+        cue: 'Toes to the bar, controlled the whole way down. The one you were already chasing in your log.' }
+    ]
+  },
+  {
+    id: 'flex-crunch', quality: 'Flexion',
+    levels: [
+      { name: 'Cable crunch', unit: 'reps', target: 15, sets: 3, w: 30,
+        cue: 'Kneeling, rope at the head, curl the ribs towards the pelvis. The hips do not move — only the spine.' },
+      { name: 'Cable crunch, heavier', unit: 'reps', target: 15, sets: 3, w: 42.5,
+        cue: 'Same shape, more load. If you start hinging at the hips the weight is too heavy.' },
+      { name: 'Cable crunch, slow eccentric', unit: 'reps', target: 12, sets: 3, w: 42.5,
+        cue: 'Three seconds back up. Fewer reps, considerably more work.' },
+      { name: 'Weighted decline sit-up', unit: 'reps', target: 12, sets: 3, w: 10,
+        cue: 'Plate on the chest. Roll up one vertebra at a time rather than throwing yourself forward.' }
+    ]
+  }
 ];
 
+/* Two clean sessions at the target and the track moves up a rung. */
+export const CORE_LEVEL_UP = 2;
+
+/* Which qualities a session draws from, in order of how much they matter
+   when you can only fit two or three. */
+export const CORE_ROTATION = ['Anti-extension', 'Flexion', 'Anti-lateral', 'Anti-rotation'];
+
 export const MOBILITY = [
-  { id: 'm-9090',   name: '90/90 hip switch',             secs: 120 },
-  { id: 'm-couch',  name: 'Couch stretch',                secs: 120, note: '60s a side.' },
-  { id: 'm-ankle',  name: 'Ankle dorsiflexion rock',      secs: 90,  note: 'Knee past toes, heel down.' },
-  { id: 'm-adduct', name: 'Adductor rock back',           secs: 90 },
-  { id: 'm-tspine', name: 'Thoracic opener over a bench', secs: 90 },
-  { id: 'm-hang',   name: 'Dead hang',                    secs: 60 },
-  { id: 'm-wgs',    name: "World's greatest stretch",     secs: 120 },
-  { id: 'm-calf',   name: 'Soleus wall stretch',          secs: 90,  note: 'Bent knee. Trail descents load this hard.' },
-  { id: 'm-glute',  name: 'Glute bridge, slow',           secs: 90 },
-  { id: 'm-band',   name: 'Band shoulder pass-through',   secs: 90 },
-  { id: 'm-ham',    name: 'Hamstring floss, gentle',      secs: 90,  note: 'Nothing sharp. Back off if it grabs.' }
+  { id: 'm-9090', name: '90/90 hip switch', secs: 120,
+    cue: 'Sit with both knees bent at 90°, one shin in front, one out to the side. Keep the chest tall and rotate both knees over to the other side without using your hands.' },
+  { id: 'm-couch', name: 'Couch stretch', secs: 120,
+    cue: 'Back foot up on a bench, shin against it, front foot planted. Squeeze the back glute and stand the torso up. 60s a side.' },
+  { id: 'm-ankle', name: 'Ankle dorsiflexion rock', secs: 90,
+    cue: 'Half-kneeling, front foot flat. Drive the knee forward past the toes with the heel glued down. Small rocks, not a hold.' },
+  { id: 'm-adduct', name: 'Adductor rock back', secs: 90,
+    cue: 'On all fours, one leg straight out to the side, foot flat. Rock the hips backwards until the inner thigh loads, then return.' },
+  { id: 'm-tspine', name: 'Thoracic opener over a bench', secs: 90,
+    cue: 'Kneel with elbows on a bench, hands together behind the head. Let the chest sink towards the floor. The lower back stays neutral.' },
+  { id: 'm-hang', name: 'Dead hang', secs: 60,
+    cue: 'Hang from a bar with a full grip and let the shoulders rise around your ears. Relax into it rather than holding yourself up.' },
+  { id: 'm-wgs', name: "World's greatest stretch", secs: 120,
+    cue: 'Deep lunge, same-side hand to the floor inside the front foot. Drop the elbow towards the instep, then rotate that arm to the ceiling.' },
+  { id: 'm-calf', name: 'Soleus wall stretch', secs: 90,
+    cue: 'Foot against a wall, heel down, knee bent and driven forwards. The bent knee is the whole point — straight leg hits a different muscle.' },
+  { id: 'm-glute', name: 'Glute bridge, slow', secs: 90,
+    cue: 'On your back, heels close to your backside. Drive through the heels and squeeze at the top. Ribs stay down, do not arch the back.' },
+  { id: 'm-band', name: 'Band shoulder pass-through', secs: 90,
+    cue: 'Wide grip on a band, arms straight, take it from in front of the thighs over your head to behind you. Widen the grip if it pinches.' },
+  { id: 'm-ham', name: 'Hamstring floss, gentle', secs: 90,
+    cue: 'On your back, one leg up, hands behind the thigh. Straighten and bend the knee slowly. Nothing sharp — back off the moment it grabs.' }
 ];
 
 /* The week. Thursday is deliberately the lighter lower day — it carries a run. */
@@ -241,18 +386,26 @@ export const CLUBS = ['Wembley Square', 'Foreshore', 'Other'];
    The rest rotate. */
 export const UPPER_PREP_OPENER = {
   id: 'p-lat', name: 'Light lateral raise', secs: 90, sets: '2 × 15 very light',
-  note: 'Warms the delts and the cuff. This should feel like nothing.'
+  cue: 'Tiny dumbbells — 4 to 6kg. Lead with the elbows to shoulder height and lower slowly. This warms the delts and the cuff; it should feel like almost nothing.'
 };
 
 export const UPPER_PREP = [
-  { id: 'p-pullapart', name: 'Band pull-apart',        secs: 60, sets: '20 reps' },
-  { id: 'p-scap',      name: 'Scapular push-up',       secs: 60, sets: '12 reps', note: 'Arms locked. Only the shoulder blades move.' },
-  { id: 'p-dislocate', name: 'Shoulder pass-through',  secs: 60, sets: '10 slow', note: 'Band or a broomstick. Widen your grip if it pinches.' },
-  { id: 'p-extrot',    name: 'Cable external rotation',secs: 75, sets: '15 a side', note: 'Elbow pinned to your ribs.' },
-  { id: 'p-wallslide', name: 'Wall slide',             secs: 60, sets: '10 reps' },
-  { id: 'p-tspine',    name: 'Thoracic opener',        secs: 75 },
-  { id: 'p-hang',      name: 'Dead hang',              secs: 45, note: 'Let the shoulders come up around your ears.' },
-  { id: 'p-catcow',    name: 'Cat-cow',                secs: 60 }
+  { id: 'p-pullapart', name: 'Band pull-apart', secs: 60, sets: '20 reps',
+    cue: 'Arms straight out in front holding a band. Pull it apart to your chest, squeezing the shoulder blades. Do not shrug.' },
+  { id: 'p-scap', name: 'Scapular push-up', secs: 60, sets: '12 reps',
+    cue: 'Push-up position, arms locked straight throughout. Let the chest sink between the shoulder blades, then push the upper back to the ceiling. Only the blades move.' },
+  { id: 'p-dislocate', name: 'Shoulder pass-through', secs: 60, sets: '10 slow',
+    cue: 'Wide grip on a band or broomstick. Straight arms, take it overhead and behind you, then back. Widen the grip if it pinches.' },
+  { id: 'p-extrot', name: 'Cable external rotation', secs: 75, sets: '15 a side',
+    cue: 'Elbow pinned to your ribs at 90°, rotate the forearm away from your body against a light cable. A rolled towel under the elbow helps.' },
+  { id: 'p-wallslide', name: 'Wall slide', secs: 60, sets: '10 reps',
+    cue: 'Forearms on a wall, elbows at shoulder height. Slide them up while keeping contact and keeping the ribs down.' },
+  { id: 'p-tspine', name: 'Thoracic opener', secs: 75,
+    cue: 'Kneel with elbows on a bench, hands behind the head, let the chest sink. Keep the lower back out of it.' },
+  { id: 'p-hang', name: 'Dead hang', secs: 45,
+    cue: 'Full grip on the bar, relax and let the shoulders come up around your ears.' },
+  { id: 'p-catcow', name: 'Cat-cow', secs: 60,
+    cue: 'On all fours, alternate rounding the spine towards the ceiling and letting it sag, moving one vertebra at a time.' }
 ];
 
 /* ── What the words mean ───────────────────────────────────

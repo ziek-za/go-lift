@@ -1,6 +1,6 @@
 import {
-  BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES, CORE, MOBILITY,
-  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
+  BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES, MOBILITY,
+  CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
   UPPER_PREP, UPPER_PREP_OPENER, GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS
 } from './data.js';
@@ -141,27 +141,81 @@ function estimateMinutes(sess) {
   return Math.round(s / 60);
 }
 
+/* Every clock stores an absolute deadline rather than counting a variable
+   down. Android throttles or suspends setInterval when the screen locks, so
+   anything decrementing per tick loses time; recomputing from Date.now()
+   survives a locked phone, a backgrounded app, even a killed process. */
+
 let timer = null;
+
 function startRest(secs, label) {
   clearInterval(timer?.h);
-  const bar = $('#timerbar');
-  timer = { left: secs, label, h: setInterval(tick, 1000) };
-  bar.classList.add('on'); paint();
-  function paint() {
-    bar.innerHTML = `<span class="mono">${mmss(Math.max(0, timer.left))}</span>
-      <span class="lb">${timer.label}</span><button class="skip">Skip</button>`;
-  }
-  function tick() {
-    timer.left--;
-    if (timer.left <= 0) {
-      clearInterval(timer.h); bar.classList.remove('on');
-      if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
-      toast('Rest done'); timer = null; return;
-    }
-    paint();
-  }
+  timer = { endAt: Date.now() + secs * 1000, label, fired: false };
+  S.restEnd = timer.endAt; S.restLabel = label; save();
+  timer.h = setInterval(paintRest, 250);
+  paintRest();
 }
-function stopRest() { clearInterval(timer?.h); timer = null; $('#timerbar').classList.remove('on'); }
+
+function paintRest() {
+  const bar = $('#timerbar');
+  if (!timer) { bar.classList.remove('on'); return; }
+  const left = Math.round((timer.endAt - Date.now()) / 1000);
+  if (left <= 0) {
+    if (!timer.fired) {
+      timer.fired = true;
+      if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+      notify('Rest done', timer.label);
+      toast('Rest done');
+    }
+    stopRest();
+    return;
+  }
+  bar.classList.add('on');
+  bar.innerHTML = `<span class="mono">${mmss(left)}</span>
+    <span class="lb">${timer.label}</span><button class="skip">Skip</button>`;
+}
+
+function stopRest() {
+  clearInterval(timer?.h);
+  timer = null;
+  S.restEnd = null; S.restLabel = null; save();
+  $('#timerbar').classList.remove('on');
+}
+
+/* A rest interval that ends while the screen is off is useless unless the
+   phone says something. Opt-in; degrades to vibration alone. */
+function notify(title, body) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (document.visibilityState === 'visible') return;
+    new Notification(title, { body, icon: './icon-192.png', tag: 'load-rest' });
+  } catch (e) { /* unsupported */ }
+}
+
+function resumeRest() {
+  if (!S.restEnd || S.restEnd <= Date.now()) { S.restEnd = null; return; }
+  timer = { endAt: S.restEnd, label: S.restLabel || 'Rest', fired: false };
+  timer.h = setInterval(paintRest, 250);
+  paintRest();
+}
+
+/* ═══ session clock ═════════════════════════════════════════ */
+
+function startSession(sess) { S.active = { id: sess.id, t0: Date.now() }; save(); paintSession(); }
+function endSession() { S.active = null; save(); paintSession(); }
+
+function paintSession() {
+  const el = $('#sessionclock');
+  if (!el) return;
+  if (!S.active) { el.classList.remove('on'); el.textContent = ''; return; }
+  el.classList.add('on');
+  const t = Math.round((Date.now() - S.active.t0) / 1000);
+  const h = Math.floor(t / 3600);
+  el.textContent = (h ? h + ':' : '') + mmss(t % 3600);
+}
+
+setInterval(() => { paintSession(); if (timer) paintRest(); }, 1000);
+
 
 /* ═══ club weights ══════════════════════════════════════════
    Cable stacks and plate-loaded machines do not read the same
@@ -176,6 +230,82 @@ function switchClub(to) {
   if (saved) for (const [id, w] of Object.entries(saved)) if (S.acc[id]) S.acc[id].w = w;
   S.club = to;
   toast(saved ? `Machine weights restored for ${to}` : `Now logging at ${to} — adjust machines as you go`);
+}
+
+
+/* ═══ core ══════════════════════════════════════════════════
+   Each quality is a ladder. You enter at the bottom rung whatever your
+   training age, and two clean sessions moves you up one. Levels change the
+   leverage, not just the number — which is how core work actually progresses,
+   since adding minutes to a plank stops doing anything fairly quickly. */
+
+const coreLevel = id => Math.min((S.coreLevel?.[id] ?? 0), trackOf(id).levels.length - 1);
+const trackOf = id => CORE_TRACKS.find(t => t.id === id);
+const coreRung = id => trackOf(id).levels[coreLevel(id)];
+
+function coreW(trackId) {
+  const key = `${trackId}:${coreLevel(trackId)}`;
+  return (S.coreW && S.coreW[key] != null) ? S.coreW[key] : coreRung(trackId).w;
+}
+
+/* Pick n tracks from n different qualities, rotating both which qualities
+   come up and which track represents each one. */
+function pickCore(n, homeOnly) {
+  /* Least recently used wins. Never-used sorts ahead of everything, then
+     oldest first — an index of 0 means it was the last thing you did, so it
+     must sort last, which the obvious version of this gets backwards. */
+  const rank = (list, id) => { const i = list.indexOf(id); return i === -1 ? Infinity : i; };
+  const seen = S.coreSeen || [], qSeen = S.coreQ || [];
+
+  const qualities = [...CORE_ROTATION].sort((a, b) => rank(qSeen, b) - rank(qSeen, a));
+  const chosen = [];
+  for (const q of qualities) {
+    if (chosen.length >= n) break;
+    const pool = CORE_TRACKS.filter(t => t.quality === q && (!homeOnly || t.home));
+    if (!pool.length) continue;
+    pool.sort((a, b) => rank(seen, b.id) - rank(seen, a.id));
+    chosen.push(pool[0]);
+  }
+  return chosen;
+}
+
+function coreItem(track) {
+  const rung = coreRung(track.id), lv = coreLevel(track.id);
+  const next = track.levels[lv + 1];
+  return {
+    kind: 'core', ref: track.id, name: rung.name, note: rung.note, cue: rung.cue,
+    unit: rung.unit, quality: track.quality, level: lv + 1, levels: track.levels.length,
+    nextName: next ? next.name : null,
+    sets: Array.from({ length: rung.sets }, () => ({ w: coreW(track.id), target: rung.target, reps: null }))
+  };
+}
+
+/* ═══ weight adjustment ═════════════════════════════════════
+   Seeded numbers are a starting guess, most of all on machines where the
+   stack is unknown. Changing a weight here changes it everywhere — the
+   remaining sets today, and every session after. */
+
+
+function nudgeWeight(kind, ref, dir) {
+  if (kind === 'core') {
+    if (!trackOf(ref)) return null;
+    const cur = coreW(ref), step = cur >= 40 ? 2.5 : cur >= 10 ? 1 : 0.5;
+    const key = `${ref}:${coreLevel(ref)}`;
+    S.coreW = S.coreW || {};
+    S.coreW[key] = Math.max(0, round(cur + dir * step, step));
+    return S.coreW[key];
+  }
+  const a = ACCESSORIES[ref], st = S.acc[ref];
+  if (!a || !st) return null;
+  st.w = Math.max(a.inc, round(st.w + dir * a.inc, a.inc));
+  return st.w;
+}
+
+function setWeight(kind, ref, value) {
+  const v = Math.max(0, parseFloat(value) || 0);
+  if (kind === 'core') { S.coreW = S.coreW || {}; S.coreW[`${ref}:${coreLevel(ref)}`] = v; return v; }
+  if (S.acc[ref]) S.acc[ref].w = v;
+  return v;
 }
 
 /* ═══ session construction ══════════════════════════════════ */
@@ -211,11 +341,7 @@ function buildPlanned(dateStr, dayKey) {
     items.push({ kind: 'mobility', ref: 'mob', name: `Mobility · ${Math.round(mob.reduce((s, m) => s + m.secs, 0) / 60)} min`,
       list: mob.map(m => ({ id: m.id, name: m.name, secs: m.secs, note: m.note })), sets: [] });
   }
-  if (D.core) {
-    for (const c of pickRotating(CORE, S.coreSeen, D.core, atHome ? (x => x.home) : null))
-      items.push({ kind: 'core', ref: c.id, name: c.name, note: c.note, unit: c.unit,
-        sets: Array.from({ length: 3 }, () => ({ w: c.w, target: c.target, reps: null })) });
-  }
+  if (D.core) for (const t of pickCore(D.core, atHome)) items.push(coreItem(t));
 
   if (D.main) {
     const M = MAINS[D.main], tm = S.mains[D.main].tm;
@@ -261,10 +387,7 @@ function buildAdhoc(dateStr, focusKey, minutes, atHome, ignoreRecovery) {
   const items = [];
 
   if (F.patterns.includes('core')) {
-    const k = focusKey === 'core' ? n : 2;
-    for (const c of pickRotating(CORE, S.coreSeen, k, atHome ? (x => x.home) : null))
-      items.push({ kind: 'core', ref: c.id, name: c.name, note: c.note, unit: c.unit,
-        sets: Array.from({ length: 3 }, () => ({ w: c.w, target: c.target, reps: null })) });
+    for (const t of pickCore(focusKey === 'core' ? Math.min(n, 4) : 2, atHome)) items.push(coreItem(t));
   }
   if (focusKey !== 'core') {
     const want = n - items.length, perPattern = {};
@@ -347,7 +470,23 @@ function applyProgression(sess) {
         else { st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push(`${a.name} → ${st.w}kg`); }
       } else st.misses++;
     }
-    if (it.kind === 'core') S.coreSeen = [it.ref, ...S.coreSeen.filter(x => x !== it.ref)].slice(0, 12);
+    if (it.kind === 'core') {
+      S.coreSeen = [it.ref, ...(S.coreSeen || []).filter(x => x !== it.ref)].slice(0, 12);
+      S.coreQ = [it.quality, ...(S.coreQ || []).filter(x => x !== it.quality)].slice(0, 4);
+      const logged = it.sets.filter(x => x.reps != null);
+      if (!logged.length) continue;
+      S.coreClean = S.coreClean || {};
+      const clean = logged.length >= it.sets.length && logged.every(x => x.reps >= x.target);
+      if (!clean) { S.coreClean[it.ref] = 0; continue; }
+      S.coreClean[it.ref] = (S.coreClean[it.ref] || 0) + 1;
+      const t = trackOf(it.ref), lv = coreLevel(it.ref);
+      if (S.coreClean[it.ref] >= CORE_LEVEL_UP && lv < t.levels.length - 1) {
+        S.coreLevel = S.coreLevel || {};
+        S.coreLevel[it.ref] = lv + 1;
+        S.coreClean[it.ref] = 0;
+        notes.push(`Core levelled up → ${t.levels[lv + 1].name}`);
+      }
+    }
     if (it.kind === 'mobility' || it.kind === 'prep') for (const m of it.list) S.mobSeen = [m.id, ...S.mobSeen.filter(x => x !== m.id)].slice(0, 8);
   }
   return notes;
@@ -554,6 +693,13 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
   startRest(restFor(it, s), `${it.name} · set ${setIdx + 1} done`);
 }
 
+function applyWeightToSession(sess, idx, w) {
+  const it = sess?.items?.[idx];
+  if (!it) return;
+  for (const set of it.sets) if (set.reps == null) { set.w = w; delete set.full; }
+  if (sess.easy) for (const set of it.sets) if (set.reps == null) { set.full = w; set.w = round(w * 0.85, 1.25); }
+}
+
 function redrawItem(sess, idx) {
   const card = $(`[data-item="${idx}"]`);
   if (!card) return;
@@ -629,10 +775,15 @@ function itemCard(it, idx) {
         <span class="s mono">${it.kind === 'prep' ? 'before you touch anything heavy' : 'rotates every session'}</span></span>
         <span class="tick">✓</span></div>
       <div class="body">${it.list.map(m => `
-        <div class="prepline">
-          <span class="presc mono">${m.name}</span>
-          <span class="mono dur">${m.sets || m.secs + 's'}</span>
-        </div>${m.note ? `<p class="hint">${m.note}</p>` : ''}`).join('')}</div></div>`;
+        <div class="movement">
+          <div class="prepline">
+            <span class="presc mono">${m.name}</span>
+            <span class="mono dur">${m.sets || m.secs + 's'}</span>
+          </div>
+          ${m.cue ? `<p class="mcue">${m.cue}</p>` : ''}
+          ${m.note ? `<p class="hint">${m.note}</p>` : ''}
+          <a class="watch" href="${howToUrl(m.name)}" target="_blank" rel="noopener">Watch it →</a>
+        </div>`).join('')}</div></div>`;
   }
 
   const done = it.sets.length && it.sets.every(s => s.reps != null);
@@ -640,7 +791,7 @@ function itemCard(it, idx) {
   const pl = it.kind === 'acc' ? plateauFor(it.ref) : null;
   const cue = CUES[it.ref];
   const sub = it.kind === 'main' ? `${it.wave} · TM ${S.mains[it.ref].tm}kg`
-    : it.kind === 'core' ? `3 × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''}${it.sets[0].w ? ' · ' + it.sets[0].w + 'kg' : ''}`
+    : it.kind === 'core' ? `${it.quality} · level ${it.level}/${it.levels} · ${it.sets.length} × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''}${it.sets[0].w ? ' · ' + it.sets[0].w + 'kg' : ''}`
     : `${it.sets.length} × ${it.sets[0].target} · ${it.sets[0].w}kg${it.dbl ? ' each hand' : ''}`;
 
   return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
@@ -651,10 +802,20 @@ function itemCard(it, idx) {
     <div class="body">
       ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.at(-1)).w) : ''}
       <div class="howto">
-        <p class="cue">${cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
+        <p class="cue">${it.cue || cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
+        ${it.kind === 'core' && it.nextName ? `<p class="nextrung mono">Two clean sessions unlocks: ${it.nextName}</p>` : ''}
+        ${it.kind === 'core' && !it.nextName ? `<p class="nextrung mono">Top of this ladder</p>` : ''}
         <a class="watch" href="${howToUrl(it.name)}" target="_blank" rel="noopener">Watch how it is done →</a>
       </div>
       ${it.note && cue ? `<p class="hint">${it.note}</p>` : ''}
+      ${it.kind !== 'main' ? `<div class="wadj">
+        <span class="wl">Working weight${it.dbl ? ' · each hand' : ''}</span>
+        <span class="step">
+          <button data-wn="-1" data-wk="${it.kind}" data-wr="${it.ref}" data-wi="${idx}" aria-label="Less">−</button>
+          <input type="number" inputmode="decimal" value="${it.sets[0].w}"
+                 data-wv="${it.ref}" data-wk="${it.kind}" data-wi="${idx}" aria-label="Working weight">
+          <button data-wn="1" data-wk="${it.kind}" data-wr="${it.ref}" data-wi="${idx}" aria-label="More">+</button>
+        </span></div>` : ''}
       ${it.sets.map((s, i) => setRow(it, s, i)).join('')}
       <div class="btn-row">
         ${it.kind === 'acc' ? `<button class="btn-sm btn-quiet" data-unavailable="${idx}">Not available here</button>` : ''}
@@ -717,14 +878,19 @@ function renderToday() {
     <h2 style="font-size:22px;margin-bottom:2px">${sess.label}</h2>
     <p class="hint" style="margin:0 0 12px">${sess.adhoc ? 'Unplanned — it still counts.'
       : sess.note || `Week ${sess.week + 1} of 4 · ${sess.wave} · cycle ${cycleNo(d)}`}
-      <span class="mono" style="color:var(--dust-2)"> · about ${estimateMinutes(sess)} min</span></p>
+      <span class="mono" style="color:var(--dust-2)"> · ${sess.duration
+        ? 'took ' + Math.round(sess.duration / 60) + ' min'
+        : 'about ' + estimateMinutes(sess) + ' min'}</span></p>
 
     ${sess.runTrim ? `<div class="flag amber"><div class="why mono">${sess.runTrim.why}</div>
       Accessory sets trimmed, main lift untouched. Intensity keeps strength; volume is what costs you recovery.</div>` : ''}
     ${sess.easy ? `<div class="flag amber"><div class="why mono">Easy day</div>
       Everything at 85%. This session will not move any weights up or down.</div>` : ''}
 
-    <div class="btn-row" style="margin:0 0 12px">
+    <div class="btn-row" style="margin:0 0 14px">
+      ${S.active?.id === sess.id
+        ? `<button class="btn-sm" id="endsession">Stop clock</button>`
+        : `<button class="btn-go" id="startsession">Start session</button>`}
       <button class="btn-sm ${sess.easy ? 'btn-go' : ''}" id="easy">${sess.easy ? 'Back to full' : 'Not feeling great'}</button>
     </div>
 
@@ -799,6 +965,33 @@ function renderPlan() {
         ${d.main ? MAINS[d.main].name + ' · ' : ''}${d.work.map(w => ACCESSORIES[w]?.name).filter(Boolean).join(' · ')}${d.core ? ` · ${d.core} core` : ''}${d.mobility ? ' · mobility' : ''}
       </div></div>`).join('')}
     <p class="hint">Saturday is the long run. Sunday is yours.</p>
+
+    <p class="eyebrow">Core ladders</p>
+    <p class="hint" style="margin:0 0 10px">Four qualities, ten ladders. Each session takes one from three different qualities, so nothing gets neglected. Two clean sessions moves a ladder up a rung.</p>
+    ${CORE_ROTATION.map(q => `<div class="card" style="padding:12px 14px">
+      <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:6px">${q.toUpperCase()}</div>
+      ${CORE_TRACKS.filter(t => t.quality === q).map(t => {
+        const lv = coreLevel(t.id), pct = Math.round(((lv + 1) / t.levels.length) * 100);
+        return `<div class="ladder">
+          <div class="lrow"><span class="ln">${t.levels[lv].name}</span>
+            <span class="mono lv">${lv + 1}/${t.levels.length}</span></div>
+          <div class="track"><i style="width:${pct}%"></i></div>
+        </div>`;
+      }).join('')}
+    </div>`).join('')}
+
+    <p class="eyebrow">Working weights</p>
+    <p class="hint" style="margin:0 0 10px">Seeded from your log. Machine numbers especially are guesses — correct them here or on the exercise itself, and it sticks.</p>
+    ${Object.values(DAYS).map(d => `<div class="card" style="padding:12px 14px">
+      <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:4px">${d.label.toUpperCase()}</div>
+      ${d.work.map(id => ACCESSORIES[id] ? `<div class="wrow">
+        <span class="wn">${ACCESSORIES[id].name}${ACCESSORIES[id].dbl ? ' <em>each hand</em>' : ''}</span>
+        <span class="step">
+          <button data-wn="-1" data-wk="acc" data-wr="${id}">−</button>
+          <input type="number" inputmode="decimal" value="${S.acc[id].w}" data-wv="${id}" data-wk="acc">
+          <button data-wn="1" data-wk="acc" data-wr="${id}">+</button>
+        </span></div>` : '').join('')}
+    </div>`).join('')}
 
     <p class="eyebrow">Training maxes</p>
     ${Object.entries(MAINS).map(([k, m]) => `<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px">
@@ -1086,6 +1279,16 @@ function wire() {
       await save(); redrawItem(sess, idx); stopRest(); return;
     }
 
+    /* Working weight */
+    const wn = t.closest('[data-wn]');
+    if (wn) {
+      const sess = $('#v-today')._sess;
+      const v = nudgeWeight(wn.dataset.wk, wn.dataset.wr, +wn.dataset.wn);
+      if (v == null) return;
+      applyWeightToSession(sess, +wn.dataset.wi, v);
+      await save(); redrawItem(sess, +wn.dataset.wi); return;
+    }
+
     /* Kit not available at this club */
     const un = t.closest('[data-unavailable]');
     if (un) {
@@ -1193,6 +1396,14 @@ function wire() {
     }
     if (t.id === 'discard') { draft = null; render(); return; }
 
+    if (t.id === 'startsession') {
+      const sess = $('#v-today')._sess; if (!sess) return;
+      startSession(sess);
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+      render(); toast('Clock running'); return;
+    }
+    if (t.id === 'endsession') { endSession(); render(); return; }
+
     if (t.id === 'easy') {
       const sess = $('#v-today')._sess; if (!sess) return;
       makeEasy(sess, !sess.easy);
@@ -1204,6 +1415,7 @@ function wire() {
     if (t.id === 'finish') {
       const sess = $('#v-today')._sess; if (!sess || sess.done) return;
       sess.done = true; sess.completedAt = new Date().toISOString();
+      if (S.active?.id === sess.id) { sess.duration = Math.round((Date.now() - S.active.t0) / 1000); endSession(); }
       const notes = applyProgression(sess);
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
       draft = null; stopRest(); stopSetClock();
@@ -1227,6 +1439,15 @@ function wire() {
   });
 
   document.addEventListener('change', async e => {
+    if (e.target.matches('[data-wv]')) {
+      const sess = $('#v-today')._sess;
+      const v = setWeight(e.target.dataset.wk, e.target.dataset.wv, e.target.value);
+      const idx = e.target.dataset.wi;
+      if (sess && idx != null) { applyWeightToSession(sess, +idx, v); redrawItem(sess, +idx); }
+      await save();
+      if (VIEW === 'plan') render();
+      return;
+    }
     if (e.target.matches('[data-tmv]')) {
       S.mains[e.target.dataset.tmv].tm = round(parseFloat(e.target.value) || 0);
       await save();
@@ -1234,7 +1455,10 @@ function wire() {
   });
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden' && fileHandle) syncNow(true);
+    if (document.visibilityState === 'hidden') { if (fileHandle) syncNow(true); return; }
+    /* Back from a locked screen — recompute every clock from its timestamp */
+    paintSession();
+    if (timer) paintRest(); else resumeRest();
   });
 }
 
@@ -1247,6 +1471,9 @@ function wire() {
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
+  S.coreLevel = S.coreLevel || {}; S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
+  /* Old builds stored flat core exercise ids; only track ids mean anything now. */
+  S.coreSeen = (S.coreSeen || []).filter(id => CORE_TRACKS.some(t => t.id === id));
   if (!S.records) {
     S.records = {};
     for (const [k, r] of Object.entries(SEED_RECORDS)) S.records[k] = JSON.parse(JSON.stringify(r));
@@ -1258,6 +1485,6 @@ function wire() {
     S.cycleStart = S.sessions.some(s => s.done) ? anchor : iso(mondayOf(new Date()));
   }
   rehydrateSwaps();
-  await save(); wire(); render();
+  await save(); wire(); render(); resumeRest(); paintSession();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 })();

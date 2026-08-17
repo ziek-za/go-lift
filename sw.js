@@ -1,7 +1,7 @@
 /* Cache the shell so the app opens with no signal — basements, Foreshore
    parking levels, anywhere the phone drops off. Data lives in IndexedDB,
    never here. */
-const V = 'load-v4';
+const V = 'load-v7';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './data.js',
                './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
