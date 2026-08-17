@@ -580,4 +580,4 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v10', date: '2026-08-17' };
+export const BUILD = { version: 'v11', date: '2026-08-17' };

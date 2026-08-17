@@ -1625,5 +1625,15 @@ function wire() {
   rehydrateSwaps();
   await save(); wire(); render(); resumeRest(); paintSession();
   setTimeout(() => checkForUpdate(true), 2500);
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    /* updateViaCache 'none' stops the browser handing back a cached sw.js */
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+    /* When a new worker takes control, reload once so the running code matches it */
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+  }
 })();
