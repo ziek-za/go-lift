@@ -262,32 +262,6 @@ export const CORE_LEVEL_UP = 2;
    when you can only fit two or three. */
 export const CORE_ROTATION = ['Anti-extension', 'Flexion', 'Anti-lateral', 'Anti-rotation'];
 
-export const MOBILITY = [
-  { id: 'm-9090', name: '90/90 hip switch', secs: 120,
-    cue: 'Sit with both knees bent at 90°, one shin in front, one out to the side. Keep the chest tall and rotate both knees over to the other side without using your hands.' },
-  { id: 'm-couch', name: 'Couch stretch', secs: 120,
-    cue: 'Back foot up on a bench, shin against it, front foot planted. Squeeze the back glute and stand the torso up. 60s a side.' },
-  { id: 'm-ankle', name: 'Ankle dorsiflexion rock', secs: 90,
-    cue: 'Half-kneeling, front foot flat. Drive the knee forward past the toes with the heel glued down. Small rocks, not a hold.' },
-  { id: 'm-adduct', name: 'Adductor rock back', secs: 90,
-    cue: 'On all fours, one leg straight out to the side, foot flat. Rock the hips backwards until the inner thigh loads, then return.' },
-  { id: 'm-tspine', name: 'Thoracic opener over a bench', secs: 90,
-    cue: 'Kneel with elbows on a bench, hands together behind the head. Let the chest sink towards the floor. The lower back stays neutral.' },
-  { id: 'm-hang', name: 'Dead hang', secs: 60,
-    cue: 'Hang from a bar with a full grip and let the shoulders rise around your ears. Relax into it rather than holding yourself up.' },
-  { id: 'm-wgs', name: "World's greatest stretch", secs: 120,
-    cue: 'Deep lunge, same-side hand to the floor inside the front foot. Drop the elbow towards the instep, then rotate that arm to the ceiling.' },
-  { id: 'm-calf', name: 'Soleus wall stretch', secs: 90,
-    cue: 'Foot against a wall, heel down, knee bent and driven forwards. The bent knee is the whole point — straight leg hits a different muscle.' },
-  { id: 'm-glute', name: 'Glute bridge, slow', secs: 90,
-    cue: 'On your back, heels close to your backside. Drive through the heels and squeeze at the top. Ribs stay down, do not arch the back.' },
-  { id: 'm-band', name: 'Band shoulder pass-through', secs: 90,
-    cue: 'Wide grip on a band, arms straight, take it from in front of the thighs over your head to behind you. Widen the grip if it pinches.' },
-  { id: 'm-ham', name: 'Hamstring floss, gentle', secs: 90,
-    cue: 'On your back, one leg up, hands behind the thigh. Straighten and bend the knee slowly. Nothing sharp — back off the moment it grabs.' }
-];
-
-/* The week. Thursday is deliberately the lighter lower day — it carries a run. */
 export const DAYS = {
   /* Core on the barbell days is bracing, not ab training — dead bugs and
      Pallof presses before a heavy squat prime the trunk without costing
