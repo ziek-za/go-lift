@@ -75,7 +75,7 @@ export const ACCESSORIES = {
 
   leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true, note: 'Warm the cuff first. This one bites cold.', variants: ['dblat', 'cablelat-light'] },
   dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, home: true },
-  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 4, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true },
+  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
   reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'revpec', 'cablerear'] },
@@ -151,14 +151,17 @@ export const DAYS = {
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
-    main: null, work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext'],
+    main: null,
+    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull'],
     core: 3, mobility: 0,
     note: 'Trail run tonight. Nothing here should touch your legs.'
   },
+  /* Order alternates push and pull deliberately. Three presses in a row
+     fatigues the front delts across all of them and the third one suffers. */
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'pullup', 'dblat', 'facepull', 'inclinecurl', 'dip'],
+    work: ['bbrow', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
     core: 0, mobility: 0, prep: 4
   },
   lowerB: {
@@ -170,9 +173,34 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['machinepress', 'inclinebb', 'fixedlat', 'leancable', 'revpec', 'ezpreacher'],
-    core: 0, mobility: 0, prep: 4
+    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'revpec', 'ezpreacher'],
+    core: 0, mobility: 0, prep: 3
   }
+};
+
+/* Weekly set targets per muscle, used by the on-track panel. Roughly the
+   range the hypertrophy literature converges on, adjusted for your stated
+   priorities: shoulders, arms and core high, chest and back at solid
+   maintenance because 75 minutes and 40km of running will not carry more. */
+export const VOLUME_TARGET = {
+  quads: 12, 'hams/glutes': 12, calves: 6, chest: 8, 'front delts': 8,
+  'back horizontal': 6, 'back vertical': 6, 'side delts': 9,
+  'rear delts': 9, biceps: 12, triceps: 6, core: 12
+};
+
+export const MUSCLE_OF = {
+  squat: 'quads', hinge: 'hams/glutes', calf: 'calves', hpush: 'chest',
+  vpush: 'front delts', hpull: 'back horizontal', vpull: 'back vertical',
+  lat: 'side delts', rear: 'rear delts', biceps: 'biceps', triceps: 'triceps'
+};
+
+/* Known bests from the log, so Records is populated before you log anything.
+   `tested` is a real single actually performed; everything else is arithmetic. */
+export const SEED_RECORDS = {
+  squat: { w: 155, reps: 3, date: '2026-02-01' },
+  dead:  { w: 180, reps: 6, date: '2026-03-12', tested: { w: 220, date: '2026-03-12' } },
+  bench: { w: 120, reps: 3, date: '2026-02-01' },
+  ohp:   { w: 70,  reps: 7, date: '2026-02-01' }
 };
 
 export const ADHOC_FOCUS = {

@@ -1,7 +1,8 @@
 import {
   BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES, CORE, MOBILITY,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
-  UPPER_PREP, UPPER_PREP_OPENER, GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES
+  UPPER_PREP, UPPER_PREP_OPENER, GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES,
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -60,11 +61,12 @@ function plateSplit(total) {
 function seed() {
   const st = {
     v: 2, created: today(), cycleStart: iso(mondayOf(new Date())),
-    club: 'Foreshore', clubW: {}, mains: {}, acc: {}, runs: [],
+    club: 'Foreshore', clubW: {}, clubOut: {}, records: {}, mains: {}, acc: {}, runs: [],
     coreSeen: [], mobSeen: [], sessions: [], lastSync: null,
     settings: { swaps: {}, runAdjust: true }
   };
   for (const [k, m] of Object.entries(MAINS)) st.mains[k] = { tm: m.tm, misses: 0, hist: [] };
+  for (const [k, r] of Object.entries(SEED_RECORDS)) st.records[k] = JSON.parse(JSON.stringify(r));
   for (const [k, a] of Object.entries(ACCESSORIES))
     st.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
   return st;
@@ -226,7 +228,7 @@ function buildPlanned(dateStr, dayKey) {
     items.push({ kind: 'main', ref: D.main, name: M.name, wave: wave.name, sets });
   }
 
-  const work = [...D.work];
+  const work = resolveWork(D.work, atHome);
   if (verdict.trim >= 2) work.pop();
   for (const id of work) {
     const a = ACCESSORIES[id], s = S.acc[id];
@@ -306,7 +308,10 @@ function applyProgression(sess) {
     if (it.kind === 'main') {
       const st = S.mains[it.ref], M = MAINS[it.ref];
       const logged = it.sets.filter(s => s.reps != null && !s.warm);
-      if (logged.length) st.hist.push({ d: sess.date, e1rm: Math.round(Math.max(...logged.map(s => e1rm(s.w, s.reps)))), tm: st.tm });
+      if (logged.length) {
+        st.hist.push({ d: sess.date, e1rm: Math.round(Math.max(...logged.map(s => e1rm(s.w, s.reps)))), tm: st.tm });
+        for (const l of logged) noteRecord(it.ref, l.w, l.reps, sess.date);
+      }
       const openSet = it.sets.find(s => s.open);
       if (sess.week === 2 && openSet?.reps != null) {
         const floor = WAVE[2].floor, rpe = openSet.rpe;
@@ -400,6 +405,103 @@ function barDiagram(w) {
     <span class="sleeve"></span>${sp.side.map(pl).join('')}</div>`;
 }
 
+
+/* ═══ equipment ═════════════════════════════════════════════
+   Kit varies by club. Marking something unavailable removes it from that
+   club only, and pulls in the nearest same-pattern replacement. */
+
+const outAt = (club = S.club) => (S.clubOut && S.clubOut[club]) || [];
+
+function substituteFor(id, taken = new Set(), homeOnly = false) {
+  const out = outAt(), a = ACCESSORIES[id];
+  if (!a) return null;
+  const ranked = [
+    ...(a.variants || []),
+    ...Object.keys(ACCESSORIES).filter(k => ACCESSORIES[k].pattern === a.pattern)
+  ];
+  for (const c of ranked) {
+    const cand = ACCESSORIES[c];
+    if (!cand || c === id || out.includes(c) || taken.has(c)) continue;
+    if (homeOnly && !cand.home) continue;
+    return c;
+  }
+  return null;
+}
+
+function resolveWork(ids, homeOnly) {
+  const out = outAt(), taken = new Set(), resolved = [];
+  for (const id of ids) {
+    if (!out.includes(id)) { taken.add(id); resolved.push(id); continue; }
+    const sub = substituteFor(id, taken, homeOnly);
+    if (sub) { taken.add(sub); resolved.push(sub); }
+  }
+  return resolved;
+}
+
+/* ═══ records ═══════════════════════════════════════════════ */
+
+function noteRecord(lift, w, reps, date) {
+  const r = S.records[lift] = S.records[lift] || {};
+  if (!r.w || e1rm(w, reps) > e1rm(r.w, r.reps)) { r.w = w; r.reps = reps; r.date = date; }
+}
+
+const bestEstimate = lift => {
+  const r = S.records[lift];
+  if (!r) return null;
+  const est = r.w ? Math.round(e1rm(r.w, r.reps)) : null;
+  return { est, tested: r.tested || null, best: r.w ? r : null };
+};
+
+/* ═══ on track ══════════════════════════════════════════════ */
+
+function setsLast7ByMuscle() {
+  const cut = Date.now() - 7 * 864e5, m = {};
+  for (const s of S.sessions) {
+    if (!s.done || parseDay(s.date) < cut) continue;
+    for (const it of s.items) {
+      const logged = it.sets.filter(x => x.reps != null && !x.warm).length;
+      if (!logged) continue;
+      if (it.kind === 'core') { m.core = (m.core || 0) + logged; continue; }
+      const pat = it.kind === 'main' ? MAINS[it.ref]?.pattern : ACCESSORIES[it.ref]?.pattern;
+      const mus = MUSCLE_OF[pat];
+      if (mus) m[mus] = (m[mus] || 0) + logged;
+    }
+  }
+  return m;
+}
+
+function trackStatus() {
+  const done = S.sessions.filter(s => s.done && !s.adhoc);
+  const cut = Date.now() - 28 * 864e5;
+  const recent = done.filter(s => parseDay(s.date) >= cut).length;
+  const weeksIn = Math.max(1, Math.min(4, Math.ceil((Date.now() - parseDay(S.created)) / 6048e5)));
+  const expected = weeksIn * 5;
+  const adherence = Math.min(1, recent / expected);
+
+  const cycles = Math.max(0, cycleNo(today()) - 1);
+  let gained = 0, due = 0;
+  for (const [k, m] of Object.entries(MAINS)) {
+    gained += S.mains[k].tm - m.tm;
+    due += cycles * m.inc;
+  }
+  const strength = due > 0 ? gained / due : null;
+
+  const vol = setsLast7ByMuscle();
+  const short = Object.entries(VOLUME_TARGET)
+    .filter(([k, t]) => (vol[k] || 0) < t * 0.7)
+    .map(([k]) => k);
+  const stalls = Object.keys(S.acc).filter(id => S.acc[id].misses >= 2).length;
+
+  let verdict, tone;
+  if (done.length < 4) { verdict = 'Too early to tell — log a couple more sessions'; tone = 'flat'; }
+  else if (adherence < 0.7) { verdict = 'Behind on sessions. Consistency outranks everything else here'; tone = 'down'; }
+  else if (strength !== null && strength < 0.5 && cycles >= 1) { verdict = 'Showing up, but the main lifts are not moving'; tone = 'down'; }
+  else if (short.length > 3) { verdict = 'On the lifts, light on volume this week'; tone = 'warn'; }
+  else { verdict = 'On track'; tone = 'up'; }
+
+  return { verdict, tone, adherence, recent, expected, strength, gained, due, short, stalls, vol, cycles };
+}
+
 /* ═══ set completion ════════════════════════════════════════ */
 
 let setClock = null;   // one running set at a time
@@ -474,46 +576,47 @@ function setRow(it, s, i) {
   const running = setClock?.itemIdx === it._idx && setClock?.setIdx === i;
 
   const label = {
-    warm: 'Warm-up', open: 'Open set — minimum shown',
+    warm: 'Warm-up', open: 'Open set — the number is a minimum',
     backoff: 'Back-off — lighter, more reps', work: null
   }[kind];
 
-  const prescription = `<span class="w mono">${s.w ? s.w + 'kg' : 'bodyweight'}</span>
-    <span class="x">×</span>
-    <span class="r mono">${s.open ? s.target + '+' : s.target + u}</span>
-    <button class="what" data-what="${kind === 'work' ? 'work' : kind}" aria-label="What this means">?</button>`;
-
-  const result = done
+  const actions = done
     ? `<button class="result ${hit ? 'hit' : 'miss'}" data-undo="${i}">
-         <b>${s.reps}${u}</b>${s.dur ? `<span class="mono"> · ${mmss(s.dur)}</span>` : ''}
-         <span class="undo">undo</span></button>`
-    : `<div class="acts">
-         <button class="go ${running ? 'live-on' : ''}" data-do="start" data-set="${i}">
-           ${running ? '<span class="live mono">0:00</span>' : 'Start'}</button>
-         <button class="ok" data-do="done" data-set="${i}">Done</button>
-         <button class="alt" data-do="edit" data-set="${i}" aria-label="Different number">±</button>
-       </div>`;
+         <b>${s.reps}${u}</b>${s.dur ? `<span class="mono dur"> ${mmss(s.dur)}</span>` : ''}
+         <span class="undo">tap to undo</span></button>`
+    : `<button class="go ${running ? 'live-on' : ''}" data-do="start" data-set="${i}">
+         ${running ? '<span class="live mono">0:00</span>' : (it.unit === 'secs' ? 'Time it' : 'Start')}</button>
+       <button class="ok" data-do="done" data-set="${i}">Done</button>
+       <button class="alt" data-do="edit" data-set="${i}">Other<span>±</span></button>`;
 
   const editor = `<div class="editor" data-editor="${i}" hidden>
       <button data-adj="-1">−</button>
       <input type="number" inputmode="numeric" value="${s.target}" aria-label="Reps completed">
       <button data-adj="1">+</button>
-      <button class="btn-go btn-sm" data-save="${i}">Log it</button>
+      <button class="btn-go" data-save="${i}">Log it</button>
     </div>`;
 
   const rpe = it.kind === 'main' && !s.warm && done
-    ? `<div class="rpe" data-set="${i}">${[6, 7, 8, 9, 10].map(v =>
-        `<button data-rpe="${v}" aria-pressed="${s.rpe === v}">${v}</button>`).join('')}
-       <span>RPE<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span></div>` : '';
+    ? `<div class="rpe" data-set="${i}">
+         <span class="q">How hard?<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span>
+         <span class="nums">${[6, 7, 8, 9, 10].map(v =>
+           `<button data-rpe="${v}" aria-pressed="${s.rpe === v}">${v}</button>`).join('')}</span>
+       </div>` : '';
 
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
-      <span class="n mono">${s.warm ? '·' : i + 1}</span>
-      <div class="mid">
-        <div class="presc">${prescription}</div>
-        ${label ? `<div class="kindlabel mono">${label}</div>` : ''}
+      <div class="line">
+        <span class="n mono">${s.warm ? '·' : i + 1}</span>
+        <span class="presc">
+          <span class="w mono">${s.w ? s.w + 'kg' : 'bodyweight'}</span>
+          <span class="x">×</span>
+          <span class="r">${s.open ? s.target + '+' : s.target + u}</span>
+          <button class="what" data-what="${kind === 'work' ? 'work' : kind}" aria-label="What this means">?</button>
+        </span>
+        ${label ? `<span class="kindlabel mono">${label}</span>` : ''}
       </div>
-      ${result}
-    </div>${editor}${rpe}`;
+      <div class="acts">${actions}</div>
+      ${editor}${rpe}
+    </div>`;
 }
 
 function itemCard(it, idx) {
@@ -553,7 +656,10 @@ function itemCard(it, idx) {
       </div>
       ${it.note && cue ? `<p class="hint">${it.note}</p>` : ''}
       ${it.sets.map((s, i) => setRow(it, s, i)).join('')}
-      ${it.added ? `<div class="btn-row"><button class="btn-sm btn-quiet" data-remove="${idx}">Remove this exercise</button></div>` : ''}
+      <div class="btn-row">
+        ${it.kind === 'acc' ? `<button class="btn-sm btn-quiet" data-unavailable="${idx}">Not available here</button>` : ''}
+        ${it.added ? `<button class="btn-sm btn-quiet" data-remove="${idx}">Remove</button>` : ''}
+      </div>
       ${pl ? `<div class="plateau" data-plateau="${it.ref}">
         <div class="why mono">Stalled ${pl.misses} sessions at this load</div>
         Two sessions short of target. Holding here rarely fixes it — change one variable.
@@ -711,7 +817,32 @@ function renderProgress() {
     t + it.sets.reduce((u, x) => u + (x.reps != null && x.w ? x.w * x.reps : 0), 0), 0));
   const v = runVerdict();
 
+  const tr = trackStatus();
   el.innerHTML = `
+    <div class="status ${tr.tone}">
+      <div class="verdict">${tr.verdict}</div>
+      <div class="bars">
+        ${statusBar('Sessions', tr.recent + ' of ' + tr.expected, tr.adherence)}
+        ${statusBar('Main lifts', tr.due ? (tr.gained >= 0 ? '+' : '') + tr.gained + 'kg of ' + tr.due + 'kg due' : 'first cycle', tr.strength ?? 0)}
+        ${statusBar('Volume this week', tr.short.length ? tr.short.length + ' below target' : 'all groups met', tr.short.length ? 0.45 : 1)}
+      </div>
+      ${tr.short.length ? `<div class="shortlist mono">light on: ${tr.short.join(', ')}</div>` : ''}
+      ${tr.stalls ? `<div class="shortlist mono">${tr.stalls} lift${tr.stalls > 1 ? 's' : ''} stalled — see Today</div>` : ''}
+    </div>
+
+    <p class="eyebrow">Records</p>
+    ${Object.entries(MAINS).map(([k, m]) => recordCard(k, m)).join('')}
+    <div class="card" style="padding:14px">
+      <label class="f">Log a tested single</label>
+      <div style="display:flex;gap:6px">
+        <select id="prlift" style="flex:1">${Object.entries(MAINS).map(([k, m]) =>
+          `<option value="${k}">${m.name}</option>`).join('')}</select>
+        <input type="number" id="prw" placeholder="kg" inputmode="decimal" style="width:88px">
+        <button class="btn-go" id="prsave" style="flex:0 0 auto">Save</button>
+      </div>
+      <p class="hint">A real single you actually performed. The app keeps it separate from the estimate and will offer to reset that lift's training max.</p>
+    </div>
+
     <p class="eyebrow">Estimated one-rep max · logged and projected</p>
     ${Object.entries(MAINS).map(([k, m]) => chartFor(k, m)).join('')}
     <p class="eyebrow">Where you are</p>
@@ -725,6 +856,33 @@ function renderProgress() {
     ${stalls.length ? `<p class="eyebrow">Stalled</p>${stalls.map(id => `<div class="card" style="padding:12px 14px">
       <div class="display" style="font-size:16px">${ACCESSORIES[id].name}</div>
       <div class="mono" style="font-size:11px;color:var(--dust)">${S.acc[id].misses} short at ${S.acc[id].w}kg × ${S.acc[id].reps}</div></div>`).join('')}` : ''}`;
+}
+
+
+function statusBar(label, detail, ratio) {
+  const pct = Math.max(3, Math.min(100, Math.round((ratio || 0) * 100)));
+  return `<div class="sbar">
+    <div class="srow"><span>${label}</span><span class="mono">${detail}</span></div>
+    <div class="track"><i style="width:${pct}%"></i></div>
+  </div>`;
+}
+
+function recordCard(k, m) {
+  const r = bestEstimate(k), st = S.mains[k];
+  if (!r) return '';
+  return `<div class="card rec" style="padding:13px 14px">
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span class="display" style="font-size:17px">${m.name}</span>
+      <span class="mono" style="margin-left:auto;font-size:11px;color:var(--dust)">TM ${st.tm}kg</span>
+    </div>
+    <div class="recgrid">
+      <div><span class="k mono">Best set</span><span class="v">${r.best ? r.best.w + '×' + r.best.reps : '—'}</span>
+        <span class="d mono">${r.best ? r.best.date : ''}</span></div>
+      <div><span class="k mono">Estimated</span><span class="v">${r.est ? r.est + '<small>kg</small>' : '—'}</span>
+        <span class="d mono">calculated</span></div>
+      <div><span class="k mono">Tested</span><span class="v ${r.tested ? 'real' : ''}">${r.tested ? r.tested.w + '<small>kg</small>' : '—'}</span>
+        <span class="d mono">${r.tested ? r.tested.date : 'never tested'}</span></div>
+    </div></div>`;
 }
 
 function chartFor(k, m) {
@@ -777,6 +935,14 @@ function renderData() {
         <button id="lang-clean" aria-pressed="${S.settings.language === 'clean'}">Keep it clean</button></div>
       <p class="hint">What pops up when you finish a set.</p>
     </div>
+
+    ${Object.keys(S.clubOut || {}).some(c => outAt(c).length) ? `<p class="eyebrow">Not available</p>
+    ${Object.entries(S.clubOut).filter(([, v]) => v.length).map(([club, ids]) => `<div class="card" style="padding:13px 14px">
+      <div class="mono" style="font-size:11px;color:var(--dust-2);margin-bottom:7px">${club.toUpperCase()}</div>
+      ${ids.map(id => `<button class="addrow" data-restore="${club}|${id}">
+        <span class="an">${ACCESSORIES[id]?.name || id}</span>
+        <span class="aw mono">tap to put it back</span></button>`).join('')}
+    </div>`).join('')}` : ''}
 
     <p class="eyebrow">Running</p>
     <div class="card" style="padding:14px">
@@ -920,6 +1086,57 @@ function wire() {
       await save(); redrawItem(sess, idx); stopRest(); return;
     }
 
+    /* Kit not available at this club */
+    const un = t.closest('[data-unavailable]');
+    if (un) {
+      const sess = $('#v-today')._sess, idx = +un.dataset.unavailable;
+      const it = sess.items[idx], id = it.ref;
+      S.clubOut[S.club] = [...new Set([...(S.clubOut[S.club] || []), id])];
+      const taken = new Set(sess.items.map(x => x.ref));
+      const sub = substituteFor(id, taken, sess.venue === 'home');
+      if (sub) {
+        const a = ACCESSORIES[sub], st = S.acc[sub];
+        sess.items[idx] = { kind: 'acc', ref: sub, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
+          sets: Array.from({ length: st.sets }, () => ({ w: st.w, target: st.reps, reps: null })) };
+        toast(`${a.name} instead — ${S.club} will not offer that again`);
+      } else {
+        sess.items.splice(idx, 1);
+        toast(`Removed. Nothing else covers that pattern here.`);
+      }
+      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+      if (sess.adhoc) draft = sess;
+      await save(); render(); return;
+    }
+
+    const rs = t.closest('[data-restore]');
+    if (rs) {
+      const [club, id] = rs.dataset.restore.split('|');
+      S.clubOut[club] = outAt(club).filter(x => x !== id);
+      await save(); render(); toast(`${ACCESSORIES[id]?.name || id} restored`); return;
+    }
+
+    /* Tested single */
+    if (t.id === 'prsave') {
+      const lift = $('#prlift').value, w = parseFloat($('#prw').value);
+      if (!w) return toast('What did you lift?');
+      S.records[lift] = S.records[lift] || {};
+      S.records[lift].tested = { w, date: today() };
+      const suggested = round(w * 0.9);
+      await save();
+      const box = $('#sheet');
+      box.innerHTML = `<h3>${MAINS[lift].name} · ${w}kg</h3>
+        <p>Logged as a tested single. Your training max for this lift is ${S.mains[lift].tm}kg; ninety percent of what you just did would be ${suggested}kg.</p>
+        <button class="btn-go" id="tmset" data-lift="${lift}" data-w="${suggested}">Set training max to ${suggested}kg</button>
+        <button id="sheetclose" style="margin-top:8px">Leave it where it is</button>`;
+      box.classList.add('on'); return;
+    }
+    const tset = t.closest('#tmset');
+    if (tset) {
+      S.mains[tset.dataset.lift].tm = +tset.dataset.w;
+      $('#sheet').classList.remove('on');
+      await save(); render(); toast('Training max updated'); return;
+    }
+
     /* Add or remove an exercise mid-session */
     const add = t.closest('[data-add]');
     if (add) {
@@ -1029,7 +1246,11 @@ function wire() {
   if (S.v !== 2) S = seed();
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
-  S.runs = S.runs || []; S.clubW = S.clubW || {};
+  S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
+  if (!S.records) {
+    S.records = {};
+    for (const [k, r] of Object.entries(SEED_RECORDS)) S.records[k] = JSON.parse(JSON.stringify(r));
+  }
   /* Repair a cycle start written before dates were handled in local time.
      Safe while nothing has been logged; after that, use Restart in Data. */
   const anchor = iso(mondayOf(parseDay(S.cycleStart)));

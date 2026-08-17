@@ -414,3 +414,74 @@ details.addex summary::after { content: ' +'; color: var(--go); }
 #sheet h3 { font-family: var(--display); font-size: 24px; margin-bottom: 8px; max-width: 420px; }
 #sheet p { font-size: 14.5px; line-height: 1.6; color: var(--chalk); max-width: 420px; margin: 0 0 18px; }
 #sheet button { max-width: 420px; width: 100%; }
+
+/* ── Set rows: stacked so the buttons get real estate ────── */
+.set { display: block; padding: 11px 0; }
+.set .line { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.set .line .n { flex: 0 0 16px; }
+.set .presc { display: flex; align-items: baseline; gap: 6px; }
+.set .presc .w { font-size: 16px; }
+.set .presc .r { font-size: 18px; font-family: var(--display); font-weight: 600; }
+.set .kindlabel { flex-basis: 100%; padding-left: 24px; margin-top: 1px; }
+
+.set .acts { display: flex; gap: 6px; margin-top: 9px; padding-left: 24px; }
+.set .acts button { min-height: 44px; font-size: 14px; padding: 0 12px; }
+.set .acts .ok { flex: 1; background: var(--go); border-color: var(--go); color: #fff; font-weight: 500; }
+.set .acts .go { flex: 0 0 86px; font-family: var(--mono); font-size: 12.5px; color: var(--dust); }
+.set .acts .go.live-on { border-color: var(--warn); color: var(--warn); }
+.set .acts .alt { flex: 0 0 72px; font-size: 12.5px; color: var(--dust); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.set .acts .alt span { font-size: 15px; }
+
+.set .result {
+  width: calc(100% - 24px); margin-left: 24px; margin-top: 9px;
+  display: flex; align-items: baseline; gap: 7px; min-height: 44px; padding: 0 14px;
+}
+.set .result b { font-family: var(--display); font-size: 20px; font-weight: 600; }
+.set .result .dur { font-size: 11px; color: var(--dust); }
+.set .result .undo { margin-left: auto; font-size: 11px; color: var(--dust-2); }
+.set.hit .result { border-color: rgba(43,162,95,.45); color: var(--good); background: rgba(43,162,95,.06); }
+.set.miss .result { border-color: rgba(200,32,45,.45); color: var(--stall); background: rgba(200,32,45,.05); }
+
+.editor { padding: 9px 0 2px 24px; }
+
+/* ── RPE, now announced rather than hidden ───────────────── */
+.rpe {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 10px 0 2px 24px; padding: 9px 11px;
+  background: var(--iron); border-radius: 8px;
+}
+.rpe .q { font-size: 12.5px; color: var(--dust); display: flex; align-items: center; gap: 4px; }
+.rpe .nums { display: flex; gap: 4px; margin-left: auto; }
+.rpe button[data-rpe] { min-height: 34px; width: 34px; padding: 0; font-size: 13px; }
+
+/* ── On-track panel ──────────────────────────────────────── */
+.status {
+  background: var(--steel); border: 1px solid var(--edge);
+  border-left-width: 3px; border-radius: var(--r);
+  padding: 15px 15px 13px; margin-bottom: 12px;
+}
+.status.up { border-left-color: var(--good); }
+.status.warn { border-left-color: var(--warn); }
+.status.down { border-left-color: var(--stall); }
+.status.flat { border-left-color: var(--dust-2); }
+.status .verdict { font-family: var(--display); font-size: 21px; font-weight: 600; margin-bottom: 12px; }
+.status.up .verdict { color: var(--good); }
+.status.down .verdict { color: var(--stall); }
+.status.warn .verdict { color: var(--warn); }
+.sbar { margin-bottom: 10px; }
+.sbar .srow { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--dust); margin-bottom: 4px; }
+.sbar .track { height: 4px; background: var(--iron); border-radius: 2px; overflow: hidden; }
+.sbar .track i { display: block; height: 100%; background: var(--go); border-radius: 2px; }
+.status.up .track i { background: var(--good); }
+.status.down .track i { background: var(--stall); }
+.status.warn .track i { background: var(--warn); }
+.shortlist { font-size: 11px; color: var(--dust-2); margin-top: 6px; }
+
+/* ── Records ─────────────────────────────────────────────── */
+.recgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.recgrid > div { display: flex; flex-direction: column; }
+.recgrid .k { font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--dust-2); }
+.recgrid .v { font-family: var(--display); font-size: 21px; font-weight: 600; line-height: 1.2; margin-top: 2px; }
+.recgrid .v small { font-size: 12px; color: var(--dust); font-weight: 400; }
+.recgrid .v.real { color: var(--p15); }
+.recgrid .d { font-size: 9.5px; color: var(--dust-2); margin-top: 1px; }
