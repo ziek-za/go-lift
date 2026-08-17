@@ -1,6 +1,6 @@
 import {
-  BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES, MOBILITY,
-  CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
+  BAR, PLATES, PLATE_COLOUR, HOME_MAX, MAINS, WAVE, ACCESSORIES,
+  CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START, PREP, DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
   UPPER_PREP, UPPER_PREP_OPENER, GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS
 } from './data.js';
@@ -63,10 +63,12 @@ function seed() {
     v: 2, created: today(), cycleStart: iso(mondayOf(new Date())),
     club: 'Foreshore', clubW: {}, clubOut: {}, records: {}, mains: {}, acc: {}, runs: [],
     coreSeen: [], mobSeen: [], sessions: [], lastSync: null,
-    settings: { swaps: {}, runAdjust: true }
+    settings: { swaps: {}, runAdjust: true, coreStart: 'advanced' }
   };
   for (const [k, m] of Object.entries(MAINS)) st.mains[k] = { tm: m.tm, misses: 0, hist: [] };
   for (const [k, r] of Object.entries(SEED_RECORDS)) st.records[k] = JSON.parse(JSON.stringify(r));
+  st.coreLevel = {};
+  for (const t of CORE_TRACKS) st.coreLevel[t.id] = Math.min(CORE_START.advanced.rung, t.levels.length - 1);
   for (const [k, a] of Object.entries(ACCESSORIES))
     st.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
   return st;
@@ -233,6 +235,14 @@ function switchClub(to) {
 }
 
 
+function setCoreStart(key) {
+  const rung = CORE_START[key]?.rung ?? 1;
+  S.coreLevel = S.coreLevel || {};
+  for (const t of CORE_TRACKS) S.coreLevel[t.id] = Math.min(rung, t.levels.length - 1);
+  S.coreClean = {};
+  S.settings.coreStart = key;
+}
+
 /* ═══ core ══════════════════════════════════════════════════
    Each quality is a ladder. You enter at the bottom rung whatever your
    training age, and two clean sessions moves you up one. Levels change the
@@ -250,21 +260,28 @@ function coreW(trackId) {
 
 /* Pick n tracks from n different qualities, rotating both which qualities
    come up and which track represents each one. */
-function pickCore(n, homeOnly) {
+function pickCore(n, homeOnly, wanted) {
   /* Least recently used wins. Never-used sorts ahead of everything, then
      oldest first — an index of 0 means it was the last thing you did, so it
      must sort last, which the obvious version of this gets backwards. */
   const rank = (list, id) => { const i = list.indexOf(id); return i === -1 ? Infinity : i; };
   const seen = S.coreSeen || [], qSeen = S.coreQ || [];
+  const order = wanted && wanted.length
+    ? wanted.slice(0, n)
+    : [...CORE_ROTATION].sort((a, b) => rank(qSeen, b) - rank(qSeen, a)).slice(0, n);
 
-  const qualities = [...CORE_ROTATION].sort((a, b) => rank(qSeen, b) - rank(qSeen, a));
-  const chosen = [];
-  for (const q of qualities) {
-    if (chosen.length >= n) break;
-    const pool = CORE_TRACKS.filter(t => t.quality === q && (!homeOnly || t.home));
+  const chosen = [], used = new Set();
+  for (const q of order) {
+    const pool = CORE_TRACKS.filter(t => t.quality === q && !used.has(t.id) && (!homeOnly || t.home));
     if (!pool.length) continue;
     pool.sort((a, b) => rank(seen, b.id) - rank(seen, a.id));
-    chosen.push(pool[0]);
+    chosen.push(pool[0]); used.add(pool[0].id);
+  }
+  /* If a requested quality had nothing left, top up from anywhere. */
+  if (chosen.length < n) {
+    const rest = CORE_TRACKS.filter(t => !used.has(t.id) && (!homeOnly || t.home))
+      .sort((a, b) => rank(seen, b.id) - rank(seen, a.id));
+    for (const t of rest) { if (chosen.length >= n) break; chosen.push(t); used.add(t.id); }
   }
   return chosen;
 }
@@ -329,19 +346,17 @@ function buildPlanned(dateStr, dayKey) {
   const verdict = isLower && S.settings.runAdjust ? runVerdict() : { trim: 0 };
   const items = [];
 
-  if (D.prep) {
-    const rest = pickRotating(UPPER_PREP, S.mobSeen, D.prep - 1);
-    const list = [UPPER_PREP_OPENER, ...rest];
-    items.push({ kind: 'prep', ref: 'prep',
-      name: `Warm-up · ${Math.round(list.reduce((s, m) => s + m.secs, 0) / 60)} min`,
-      list: list.map(m => ({ id: m.id, name: m.name, secs: m.secs, sets: m.sets, note: m.note })), sets: [] });
+  if (D.prepKey && PREP[D.prepKey]) {
+    const P = PREP[D.prepKey];
+    const rank = id => { const i = (S.mobSeen || []).indexOf(id); return i === -1 ? Infinity : i; };
+    const rest = [...P.pool].sort((a, b) => rank(b.id) - rank(a.id)).slice(0, Math.max(0, D.prep - 1));
+    const list = [P.opener, ...rest].filter(Boolean);
+    items.push({ kind: 'prep', ref: D.prepKey,
+      name: `${P.label} · ${Math.round(list.reduce((t, m) => t + m.secs, 0) / 60)} min`,
+      list, sets: [] });
   }
-  if (D.mobility) {
-    const mob = pickRotating(MOBILITY, S.mobSeen, D.mobility);
-    items.push({ kind: 'mobility', ref: 'mob', name: `Mobility · ${Math.round(mob.reduce((s, m) => s + m.secs, 0) / 60)} min`,
-      list: mob.map(m => ({ id: m.id, name: m.name, secs: m.secs, note: m.note })), sets: [] });
-  }
-  if (D.core) for (const t of pickCore(D.core, atHome)) items.push(coreItem(t));
+
+  if (D.core) for (const t of pickCore(D.core, atHome, D.coreQ)) items.push(coreItem(t));
 
   if (D.main) {
     const M = MAINS[D.main], tm = S.mains[D.main].tm;
@@ -966,6 +981,13 @@ function renderPlan() {
       </div></div>`).join('')}
     <p class="hint">Saturday is the long run. Sunday is yours.</p>
 
+    <p class="eyebrow">Core starting level</p>
+    <div class="card" style="padding:14px">
+      <div class="chips">${Object.entries(CORE_START).map(([k, v]) =>
+        `<button data-cstart="${k}" aria-pressed="${(S.settings.coreStart || 'advanced') === k}">${v.label}</button>`).join('')}</div>
+      <p class="hint">${CORE_START[S.settings.coreStart || 'advanced'].blurb} Resets every ladder — tune individual ones below afterwards.</p>
+    </div>
+
     <p class="eyebrow">Core ladders</p>
     <p class="hint" style="margin:0 0 10px">Four qualities, ten ladders. Each session takes one from three different qualities, so nothing gets neglected. Two clean sessions moves a ladder up a rung.</p>
     ${CORE_ROTATION.map(q => `<div class="card" style="padding:12px 14px">
@@ -974,7 +996,11 @@ function renderPlan() {
         const lv = coreLevel(t.id), pct = Math.round(((lv + 1) / t.levels.length) * 100);
         return `<div class="ladder">
           <div class="lrow"><span class="ln">${t.levels[lv].name}</span>
-            <span class="mono lv">${lv + 1}/${t.levels.length}</span></div>
+            <span class="step lstep">
+              <button data-clv="-1" data-ct="${t.id}" aria-label="Easier">−</button>
+              <span class="mono lv">${lv + 1}/${t.levels.length}</span>
+              <button data-clv="1" data-ct="${t.id}" aria-label="Harder">+</button>
+            </span></div>
           <div class="track"><i style="width:${pct}%"></i></div>
         </div>`;
       }).join('')}
@@ -1279,6 +1305,18 @@ function wire() {
       await save(); redrawItem(sess, idx); stopRest(); return;
     }
 
+    const cs = t.closest('[data-cstart]');
+    if (cs) { setCoreStart(cs.dataset.cstart); await save(); render(); toast('Core levels set'); return; }
+
+    const clv = t.closest('[data-clv]');
+    if (clv) {
+      const id = clv.dataset.ct, tr = trackOf(id);
+      S.coreLevel = S.coreLevel || {};
+      S.coreLevel[id] = Math.max(0, Math.min(tr.levels.length - 1, coreLevel(id) + (+clv.dataset.clv)));
+      S.coreClean[id] = 0;
+      await save(); render(); return;
+    }
+
     /* Working weight */
     const wn = t.closest('[data-wn]');
     if (wn) {
@@ -1471,7 +1509,13 @@ function wire() {
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
-  S.coreLevel = S.coreLevel || {}; S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
+  S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
+  if (!S.coreLevel || !Object.keys(S.coreLevel).length) {
+    S.coreLevel = {};
+    const rung = CORE_START[S.settings.coreStart || 'advanced'].rung;
+    for (const t of CORE_TRACKS) S.coreLevel[t.id] = Math.min(rung, t.levels.length - 1);
+  }
+  S.settings.coreStart = S.settings.coreStart || 'advanced';
   /* Old builds stored flat core exercise ids; only track ids mean anything now. */
   S.coreSeen = (S.coreSeen || []).filter(id => CORE_TRACKS.some(t => t.id === id));
   if (!S.records) {

@@ -535,3 +535,7 @@ details.addex summary::after { content: ' +'; color: var(--go); }
 .ladder .lv { font-size: 11px; color: var(--dust-2); }
 .ladder .track { height: 3px; background: var(--iron); border-radius: 2px; overflow: hidden; }
 .ladder .track i { display: block; height: 100%; background: var(--go); border-radius: 2px; }
+
+.lstep { display: flex; align-items: center; gap: 3px; flex: 0 0 auto; }
+.lstep button { width: 30px; height: 30px; min-height: 0; padding: 0; font-size: 15px; }
+.lstep .lv { min-width: 30px; text-align: center; }
