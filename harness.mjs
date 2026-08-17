@@ -37,6 +37,9 @@ global.confirm = () => true;
 global.Notification = undefined;
 global.URL = { createObjectURL: () => '', revokeObjectURL: () => {} };
 global.Blob = class {};
+global.fetch = async () => ({ text: async () => "export const BUILD = { version: 'v10', date: '2026-08-17' };" });
+global.caches = { keys: async () => [], delete: async () => {} };
+global.location = { reload: () => {} };
 
 // minimal IndexedDB
 const db = new Map();
@@ -123,6 +126,7 @@ await handlers.click({ target: global.__target('nav button', { v: 'progress' }) 
 const prog = strip(get$('#v-progress').innerHTML);
 await handlers.click({ target: global.__target('nav button', { v: 'plan' }) });
 const plan2 = strip(get$('#v-plan').innerHTML);
+await handlers.click({ target: global.__target('nav button', { v: 'data' }) });
 await handlers.click({ target: global.__target('nav button', { v: 'today' }) });
 const tod = strip(get$('#v-today').innerHTML);
 
@@ -143,7 +147,9 @@ const expect = [
   ['no bare "90s" left', !/\b\d+s\b(?!\s*(each|,|hold|total|a side))/.test(
       (tod.match(/(?:Ankle dorsiflexion rock|Couch stretch|Dead hang)[^·]*/)||[''])[0])],
   ['rpe scale has all five', /\bdata-rpe="10"/.test(get$('#v-today').innerHTML) || true],
-  ['clock element exists', true]
+  ['clock element exists', true],
+  ['version shown in Data', /v10|deployed/.test(strip(get$('#v-data').innerHTML))],
+  ['update check button', /Check for a new version/.test(strip(get$('#v-data').innerHTML))]
 ];
 console.log('\ncontent checks:');
 let bad = 0;

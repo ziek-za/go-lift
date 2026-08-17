@@ -2,6 +2,11 @@
    parking levels, anywhere the phone drops off. Data lives in IndexedDB,
    never here. */
 const V = 'load-v10';
+
+/* The app asks the waiting worker to take over when you tap Update. */
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 const SHELL = ['./', './index.html', './styles.css', './app.js', './data.js',
                './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 

@@ -577,3 +577,7 @@ export const RPE_SCALE = {
   10: { label: 'Maximal', rir: 'nothing left', colour: '#C8202D',
         body: 'Nothing remaining, and the last rep may have broken form. Fine occasionally, expensive if it happens every session.' }
 };
+
+/* Bumped on every deploy. The app compares this against the copy actually
+   being served, which is how you tell a stale cached build from a fresh one. */
+export const BUILD = { version: 'v10', date: '2026-08-17' };

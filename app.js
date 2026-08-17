@@ -3,7 +3,7 @@ import {
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
   GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE,
-  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -1145,6 +1145,25 @@ function renderData() {
   const last = S.lastSync ? new Date(S.lastSync) : null;
   const ok = 'showSaveFilePicker' in window;
   $('#v-data').innerHTML = `
+    <p class="eyebrow">Version</p>
+    <div class="card build">
+      <div class="brow">
+        <span class="bv">${BUILD.version}</span>
+        <span class="bd mono">deployed ${BUILD.date}</span>
+      </div>
+      ${updateState.latest && updateState.latest.version !== BUILD.version
+        ? `<div class="bnew">
+             <b>${updateState.latest.version} is live on the server</b>
+             <span>You are running a cached copy. Reloading clears it.</span>
+             <button class="btn-go" id="applyupdate">Update and reload</button>
+           </div>`
+        : `<p class="hint" style="margin:6px 0 0">${
+             updateState.checking ? 'Checking…'
+             : updateState.checked ? 'Up to date as of ' + new Date(updateState.checked).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit' })
+             : 'Tap to see whether a newer build has been deployed.'}</p>`}
+      <div class="btn-row"><button class="btn-sm" id="checkupdate" ${updateState.checking ? 'disabled' : ''}>Check for a new version</button></div>
+    </div>
+
     <p class="eyebrow">Backup</p>
     <div class="sync"><span class="dot ${last ? 'ok' : ''}"></span>
       <span class="txt"><b>${last ? 'Last saved ' + last.toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not backed up yet'}</b>
@@ -1196,6 +1215,45 @@ function render() {
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + VIEW));
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === VIEW ? 'page' : 'false'));
   $('#cycle').innerHTML = `<b>Cycle ${cycleNo(today())}</b>wk ${weekIndex(today()) + 1} · ${WAVE[weekIndex(today())].name}`;
+}
+
+/* ═══ build ═════════════════════════════════════════════════
+   Service workers happily serve a cached build for a launch or two after a
+   deploy, which makes "did my change land" unanswerable from the phone. This
+   fetches the copy on the server, bypassing every cache, and compares. */
+
+let updateState = { checking: false, latest: null, checked: null };
+
+async function checkForUpdate(quiet) {
+  updateState.checking = true;
+  if (!quiet && VIEW === 'data') render();
+  try {
+    const res = await fetch('./data.js?t=' + Date.now(), { cache: 'no-store' });
+    const txt = await res.text();
+    const m = txt.match(/BUILD\s*=\s*\{\s*version:\s*'([^']+)',\s*date:\s*'([^']+)'/);
+    updateState.latest = m ? { version: m[1], date: m[2] } : null;
+    updateState.checked = Date.now();
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
+    }
+  } catch (e) {
+    updateState.latest = null;
+  }
+  updateState.checking = false;
+  if (VIEW === 'data') render();
+}
+
+async function applyUpdate() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      if (reg) await reg.update();
+    }
+    if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
+  } catch (e) { /* carry on and reload anyway */ }
+  location.reload(true);
 }
 
 /* ═══ sync ══════════════════════════════════════════════════ */
@@ -1500,6 +1558,8 @@ function wire() {
       pop(phraseFor(true)); return;
     }
     if (t.id === 'ra-on' || t.id === 'ra-off') { S.settings.runAdjust = t.id === 'ra-on'; await save(); render(); return; }
+    if (t.id === 'checkupdate') return checkForUpdate(false);
+    if (t.id === 'applyupdate') return applyUpdate();
     if (t.id === 'sync') return syncNow(false);
     if (t.id === 'export') return exportCopy();
     if (t.id === 'import') return importFile();
@@ -1564,5 +1624,6 @@ function wire() {
   }
   rehydrateSwaps();
   await save(); wire(); render(); resumeRest(); paintSession();
+  setTimeout(() => checkForUpdate(true), 2500);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
 })();
