@@ -3,7 +3,7 @@
    was cached and never notices a deploy, which is exactly the trap this
    file fell into. Offline still works: the network attempt fails fast and
    falls straight back to the cached copy. */
-const V = 'load-v11';
+const V = 'load-v13';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './data.js',
                './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 

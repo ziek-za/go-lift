@@ -489,14 +489,6 @@ details.addex summary::after { content: ' +'; color: var(--go); }
 .recgrid .v.real { color: var(--p15); }
 .recgrid .d { font-size: 9.5px; color: var(--dust-2); margin-top: 1px; }
 
-/* ── Session clock in the header ─────────────────────────── */
-.sessionclock {
-  display: none; margin-left: auto;
-  font-family: var(--display); font-weight: 600; font-size: 21px;
-  color: var(--go); letter-spacing: .02em;
-}
-.sessionclock.on { display: inline; }
-
 /* ── Mobility and prep, explained ────────────────────────── */
 .movement { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--edge); }
 .movement:last-child { border-bottom: none; padding-bottom: 2px; }
@@ -542,21 +534,22 @@ details.addex summary::after { content: ' +'; color: var(--go); }
 .lstep button { width: 30px; height: 30px; min-height: 0; padding: 0; font-size: 15px; }
 .lstep .lv { min-width: 30px; text-align: center; }
 
-/* ── Session clock, pinned to the nav so it never scrolls away ── */
-nav { position: fixed; }
+/* ── Session clock, in the header beside the cycle label ── */
+header .hright {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 10px;
+}
+header .cycle { margin-left: 0; }
 .sessionclock {
   display: none;
-  position: absolute; right: 12px; top: 0;
-  transform: translateY(-50%);
   background: var(--go); color: #fff;
   font-family: var(--display); font-weight: 600; font-size: 15px;
   letter-spacing: .02em; line-height: 1;
-  padding: 6px 12px 5px; border-radius: 999px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.45);
-  z-index: 2;
+  padding: 6px 11px 5px; border-radius: 999px;
+  white-space: nowrap; flex: 0 0 auto;
 }
 .sessionclock.on { display: block; }
-.sessionclock::before { content: '● '; font-size: 8px; vertical-align: 2px; opacity: .8; }
+.sessionclock::before { content: '● '; font-size: 8px; vertical-align: 2px; opacity: .85; }
 
 /* ── RPE, coloured across the scale ──────────────────────── */
 .rpe { flex-direction: column; align-items: stretch; }
@@ -605,3 +598,36 @@ button.mtick.on { background: var(--good); border-color: var(--good); color: #06
 .card.build .bnew b { display: block; font-size: 13.5px; color: var(--go); margin-bottom: 2px; }
 .card.build .bnew span { display: block; font-size: 12.5px; color: var(--dust); line-height: 1.5; }
 .card.build .bnew button { width: 100%; margin-top: 10px; }
+
+/* ── Wave weeks, expandable ──────────────────────────────── */
+.wavecard { padding: 0; overflow: hidden; }
+.wavecard.now { border-color: var(--go); }
+.wavehead {
+  display: flex; align-items: baseline; gap: 9px;
+  padding: 12px 14px; cursor: pointer; min-height: var(--tap);
+}
+.wavehead .wk { font-size: 11px; color: var(--dust-2); flex: 0 0 22px; }
+.wavehead .wname { font-size: 17px; }
+.wavehead .badge {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--go); border: 1px solid var(--go); border-radius: 999px; padding: 2px 7px;
+}
+.wavehead .pcts { margin-left: auto; font-size: 11px; color: var(--dust); }
+.wavecard.open .wavehead { border-bottom: 1px solid var(--edge); }
+.wavebody { padding: 11px 14px 13px; background: var(--iron); }
+.wlift {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 0; border-top: 1px solid var(--edge);
+}
+.wlift:first-child { border-top: none; }
+.wlift .wln { flex: 1; font-size: 13px; }
+.wlift .wls { font-size: 12px; color: var(--chalk); letter-spacing: -.01em; }
+
+/* ── Day completion ──────────────────────────────────────── */
+.dayrow.done { border-color: rgba(43,162,95,.4); }
+.daytick {
+  width: 20px; height: 20px; border-radius: 50%; flex: 0 0 auto;
+  border: 1.5px solid var(--edge); display: grid; place-items: center;
+  font-size: 11px; color: transparent; margin-left: 8px;
+}
+.daytick.on { background: var(--good); border-color: var(--good); color: #06120A; }

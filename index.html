@@ -17,7 +17,10 @@
 
 <header>
   <h1>Load</h1>
-  <span class="cycle mono" id="cycle"></span>
+  <span class="hright">
+    <span class="sessionclock mono" id="sessionclock" aria-live="off"></span>
+    <span class="cycle mono" id="cycle"></span>
+  </span>
 </header>
 
 <main>
@@ -28,7 +31,6 @@
 </main>
 
 <nav aria-label="Sections">
-  <span class="sessionclock mono" id="sessionclock" aria-live="off"></span>
   <button data-v="today" aria-current="page">
     <svg viewBox="0 0 24 24"><path d="M4 12h3l2-6 3 12 3-9 2 3h3"/></svg>Today</button>
   <button data-v="plan" aria-current="false">

@@ -542,7 +542,13 @@ function rehydrateSwaps() {
 
 /* ═══ views ═════════════════════════════════════════════════ */
 
-let VIEW = 'today', draft = null;
+let VIEW = 'today', draft = null, openWeek = null;
+
+/* Was this day's session completed in the current Monday-to-Sunday week? */
+function doneThisWeek(dayKey) {
+  const start = mondayOf(new Date());
+  return S.sessions.some(x => x.done && x.dayKey === dayKey && parseDay(x.date) >= start);
+}
 
 function sessionFor(ds) {
   const found = S.sessions.find(s => s.date === ds && !s.adhoc);
@@ -976,21 +982,40 @@ function renderPlan() {
   const wk = weekIndex(today());
   $('#v-plan').innerHTML = `
     <p class="eyebrow">Cycle ${cycleNo(today())} · week ${wk + 1} of 4</p>
-    ${WAVE.map((w, i) => `<div class="card" style="padding:11px 14px;${i === wk ? 'border-color:var(--go)' : ''}">
-      <div style="display:flex;gap:10px;align-items:baseline">
-        <span class="mono" style="font-size:11px;color:var(--dust-2)">W${i + 1}</span>
-        <span class="display" style="font-size:17px">${w.name}</span>
-        <span class="mono" style="margin-left:auto;font-size:11px;color:var(--dust)">${w.sets.map(s => Math.round(s[0] * 100) + '%').join(' · ')}</span>
-      </div></div>`).join('')}
+    <p class="hint" style="margin:0 0 10px">Percentages are of your training max, for the three prescribed sets. Tap a week to see the actual weights.</p>
+    ${WAVE.map((w, i) => `<div class="card wavecard ${i === wk ? 'now' : ''} ${openWeek === i ? 'open' : ''}" data-week="${i}">
+      <div class="wavehead">
+        <span class="mono wk">W${i + 1}</span>
+        <span class="display wname">${w.name}</span>
+        ${i === wk ? '<span class="mono badge">this week</span>' : ''}
+        <span class="mono pcts">${w.sets.map(s => Math.round(s[0] * 100) + '%').join(' · ')}</span>
+      </div>
+      ${openWeek === i ? `<div class="wavebody">
+        ${Object.entries(MAINS).map(([k, m]) => `<div class="wlift">
+          <span class="wln">${m.name}</span>
+          <span class="mono wls">${w.sets.map(([pct, reps, open]) =>
+            `${round(S.mains[k].tm * pct)}×${reps}${open ? '+' : ''}`).join('   ')}</span>
+        </div>`).join('')}
+        <p class="hint" style="margin:8px 0 0">${w.name === 'Deload'
+          ? 'Everything light. Nothing is measured and nothing moves — the point is to arrive at the next cycle fresh.'
+          : `Last set is open-ended: at least ${w.floor} reps, as many more as stay clean.`}</p>
+      </div>` : ''}
+    </div>`).join('')}
 
     <p class="eyebrow">The week</p>
-    ${Object.values(DAYS).map(d => `<div class="card" style="padding:12px 14px">
+    ${Object.values(DAYS).map(d => {
+      const hit = doneThisWeek(d.key);
+      return `<div class="card dayrow ${hit ? 'done' : ''}" style="padding:12px 14px">
       <div style="display:flex;align-items:baseline;gap:8px">
-        <span class="display" style="font-size:17px">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.weekday]} — ${d.label}</span>
-        ${d.venue === 'home' ? '<span class="mono" style="font-size:10px;color:var(--warn);margin-left:auto">HOME</span>' : ''}</div>
+        <span class="display" style="font-size:17px">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.weekday]} — ${d.label}</span>
+        ${d.venue === 'home' ? '<span class="mono" style="font-size:10px;color:var(--warn);margin-left:auto">HOME</span>' : ''}
+        <span class="daytick ${hit ? 'on' : ''}" title="${hit ? 'done this week' : 'not yet'}">${hit ? '✓' : ''}</span>
+      </div>
       <div class="mono" style="font-size:11.5px;color:var(--dust);margin-top:4px">
-        ${d.main ? MAINS[d.main].name + ' · ' : ''}${d.work.map(w => ACCESSORIES[w]?.name).filter(Boolean).join(' · ')}${d.core ? ` · ${d.core} core` : ''}${d.mobility ? ' · mobility' : ''}
-      </div></div>`).join('')}
+        ${d.main ? MAINS[d.main].name + ' · ' : ''}${d.work.map(w => ACCESSORIES[w]?.name).filter(Boolean).join(' · ')}${d.core ? ` · ${d.core} core` : ''}${d.prepKey ? ' · warm-up' : ''}
+      </div></div>`;
+    }).join('')}
+
     <p class="hint">Saturday is the long run. Sunday is yours.</p>
 
     <p class="eyebrow">Core starting level</p>
@@ -1312,7 +1337,13 @@ function wire() {
     if (t.closest('#timerbar .skip')) { stopRest(); return; }
 
     const head = t.closest('.card > .head');
-    if (head) { head.parentElement.classList.toggle('open'); return; }
+    if (head) {
+      const card = head.parentElement, wasOpen = card.classList.contains('open');
+      /* One at a time — scrolling past six expanded cards mid-set is miserable */
+      for (const c of document.querySelectorAll('#v-today .card.open')) c.classList.remove('open');
+      if (!wasOpen) card.classList.add('open');
+      return;
+    }
 
     const step = t.closest('.step button[data-act]');
     if (step) {
@@ -1386,6 +1417,9 @@ function wire() {
       S.coreClean[id] = 0;
       await save(); render(); return;
     }
+
+    const wk = t.closest('[data-week]');
+    if (wk) { const i = +wk.dataset.week; openWeek = openWeek === i ? null : i; render(); return; }
 
     /* Warm-up and mobility have no reps to log, so they tick instead */
     const tk = t.closest('[data-tick]');

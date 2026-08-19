@@ -78,9 +78,8 @@ export const ACCESSORIES = {
   'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
-  reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'revpec', 'cablerear'] },
+  reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'cablerear', 'proney'] },
   facepull:       { name: 'Face pull', pattern: 'rear', w: 25, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2.5, machine: true, note: 'To the eyebrows, rotate at the end.' },
-  revpec:         { name: 'Reverse pec deck', pattern: 'rear', w: 30, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2.5, machine: true },
   cablerear:      { name: 'Single-arm cable rear delt', pattern: 'rear', w: 7.5, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1.25, machine: true },
   proney:         { name: 'Prone Y raise on the floor', pattern: 'rear', w: 4, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1, home: true, note: 'Light. Hold a beat at the top.' },
 
@@ -95,7 +94,7 @@ export const ACCESSORIES = {
   bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2.5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
   dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
-  dip:            { name: 'Weighted dip', pattern: 'triceps', w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, variants: ['closebench', 'skullcrusher'] },
+  dip:            { name: 'Weighted dip', pattern: 'hpush', w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
   closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, bar: true },
   skullcrusher:   { name: 'Skull crusher', pattern: 'triceps', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 10, inc: 2.5, bar: true },
   ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
@@ -285,7 +284,7 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
+    work: ['bbrow', 'dip', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
     prepKey: 'bench', prep: 3, core: 0
   },
   lowerB: {
@@ -299,7 +298,7 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'revpec', 'ezpreacher'],
+    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'facepull', 'ezpreacher'],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -580,4 +579,4 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v11', date: '2026-08-17' };
+export const BUILD = { version: 'v13', date: '2026-08-19' };
