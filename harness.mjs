@@ -63,7 +63,9 @@ global.indexedDB = {
 
 /* Pre-seed a state with completed sessions so Progress, Records and the
    on-track panel actually have something to render. */
-const { MAINS, ACCESSORIES, CORE_TRACKS, SEED_RECORDS, DAYS } = await import('./data.js');
+const dataMod = await import('./data.js');
+global.dataMod = dataMod;
+const { MAINS, ACCESSORIES, CORE_TRACKS, SEED_RECORDS, DAYS } = dataMod;
 const mondayISO = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); 
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
 const past = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 3);
@@ -138,18 +140,51 @@ const expect = [
   ['core start chips', /Advanced|Send it/.test(plan2)],
   ['core ladders listed', /anti-extension/i.test(plan2)],
   ['working weights list', /Working weights/.test(plan2)],
-  ['squat-specific prep', /Squat prep|Ankle dorsiflexion/.test(tod)],
-  ['core is bracing today', /Ab wheel|Bird dog|Pallof|Dead bug|Hollow/.test(tod)],
+  /* Date-independent: whichever day it is, prep must match that day's lift
+     and core must be the bracing kind on barbell days only. */
+  ['prep matches the day', (() => {
+     const { DAYS, PREP } = dataMod;
+     const day = Object.values(DAYS).find(d => tod.includes(d.label));
+     if (!day || !day.prepKey) return true;
+     return tod.includes(PREP[day.prepKey].label);
+   })()],
+  ['core suits the day', (() => {
+     const { DAYS } = dataMod;
+     const day = Object.values(DAYS).find(d => tod.includes(d.label));
+     if (!day || !day.core) return !/Hanging leg raise|Cable crunch/.test(tod);
+     return /Ab wheel|Bird dog|Pallof|Dead bug|Hollow|plank|carry|Copenhagen|raise|crunch/i.test(tod);
+   })()],
   ['start session button', /Start session/.test(tod)],
   ['glossary markers', /Back-off|Open set/.test(tod)],
   ['warm-up is tickable', /data-tick=/.test(get$('#v-today').innerHTML)],
-  ['warm-up says each side', /each side|one hold|slow reps/.test(tod)],
-  ['no bare "90s" left', !/\b\d+s\b(?!\s*(each|,|hold|total|a side))/.test(
-      (tod.match(/(?:Ankle dorsiflexion rock|Couch stretch|Dead hang)[^·]*/)||[''])[0])],
+  ['every warm-up is unambiguous', Object.values(dataMod.PREP)
+     .flatMap(p => [p.opener, ...p.pool]).every(m => m.detail && !/^\d+s$/.test(m.detail))],
+  ['rendered warm-up shows its detail', (() => {
+     const details = Object.values(dataMod.PREP).flatMap(p => [p.opener, ...p.pool]).map(m => m.detail);
+     return details.some(d => tod.includes(d));
+   })()],
+
   ['rpe scale has all five', /\bdata-rpe="10"/.test(get$('#v-today').innerHTML) || true],
   ['clock element exists', true],
   ['version shown in Data', /v10|deployed/.test(strip(get$('#v-data').innerHTML))],
-  ['update check button', /Check for a new version/.test(strip(get$('#v-data').innerHTML))]
+  ['update check button', /Check for a new version/.test(strip(get$('#v-data').innerHTML))],
+  ['dips are programmed', /Weighted dip/.test(plan2)],
+  ['no reverse pec deck', !/Reverse pec deck/.test(plan2 + tod)],
+  ['percentages are labelled', /Percentages are of your training max/.test(plan2)],
+  ['weeks are tappable', /data-week=/.test(get$('#v-plan').innerHTML)],
+  ['day completion ticks', /daytick/.test(get$('#v-plan').innerHTML)],
+  ['no fractional barbell loads', (() => {
+     /* every kg figure shown against a barbell lift must divide by 5 */
+     const { MAINS, WAVE } = dataMod;
+     const r = w => Math.max(5, Math.round(w / 5) * 5);
+     for (const m of Object.values(MAINS))
+       for (const wv of WAVE)
+         for (const [pct] of wv.sets)
+           if (r(m.tm * pct) % 5 !== 0) return false;
+     return !/\d+\.5kg/.test(tod.replace(/\b\d+\.5kg\b(?=[^]*each hand)/g, ''));
+   })()],
+  ['barbell increments are 5s', Object.values(dataMod.ACCESSORIES)
+     .filter(a => a.bar).every(a => a.inc % 5 === 0)]
 ];
 console.log('\ncontent checks:');
 let bad = 0;

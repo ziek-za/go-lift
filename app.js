@@ -36,6 +36,11 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 const parseDay = ds => new Date(ds + 'T12:00');
 const today = () => iso(new Date());
 const round = (w, step = 2.5) => Math.max(step, Math.round(w / step) * step);
+/* Barbell loads land on multiples of 5. Anything ending in 2.5 or 7.5 means
+   fishing for the small plates between every set, which is not worth the
+   precision it buys. Dumbbells, cables and machines keep their own steps. */
+const BAR_STEP = 5;
+const barRound = w => round(w, BAR_STEP);
 const e1rm = (w, r) => w * (1 + Math.min(r, 12) / 30);
 const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
@@ -338,7 +343,7 @@ function pickRotating(pool, seen, n, filter) {
 /* Two ramp sets, not three. The prep block already did the general warming;
    these are only about grooving the pattern under load. */
 const warmupRamp = top => top < 60 ? []
-  : [0.5, 0.75].map(p => ({ w: round(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
+  : [0.5, 0.75].map(p => ({ w: barRound(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
 
 function buildPlanned(dateStr, dayKey) {
   const D = DAYS[dayKey], wk = weekIndex(dateStr), wave = WAVE[wk];
@@ -361,12 +366,12 @@ function buildPlanned(dateStr, dayKey) {
 
   if (D.main) {
     const M = MAINS[D.main], tm = S.mains[D.main].tm;
-    const top = round(tm * wave.sets.at(-1)[0]);
+    const top = barRound(tm * wave.sets.at(-1)[0]);
     const sets = warmupRamp(top);
     for (const [pct, reps, isOpen] of wave.sets)
-      sets.push({ w: round(tm * pct), target: reps, open: isOpen, reps: null, rpe: null });
+      sets.push({ w: barRound(tm * pct), target: reps, open: isOpen, reps: null, rpe: null });
     for (let i = 0; i < D.backoff.sets; i++)
-      sets.push({ w: round(tm * D.backoff.pct), target: D.backoff.reps, backoff: true, reps: null });
+      sets.push({ w: barRound(tm * D.backoff.pct), target: D.backoff.reps, backoff: true, reps: null });
     items.push({ kind: 'main', ref: D.main, name: M.name, wave: wave.name, sets });
   }
 
@@ -431,7 +436,11 @@ function makeEasy(sess, on) {
   for (const it of sess.items) {
     if (it.kind === 'mobility') continue;
     for (const s of it.sets) {
-      if (on) { s.full = s.full ?? s.w; s.w = s.w ? round(s.full * 0.85, 1.25) : s.w; }
+      if (on) {
+        s.full = s.full ?? s.w;
+        const step = (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25;
+        s.w = s.w ? round(s.full * 0.85, step) : s.w;
+      }
       else if (s.full != null) { s.w = s.full; delete s.full; }
     }
   }
@@ -463,11 +472,11 @@ function applyProgression(sess) {
            and an easy one at the minimum still earns a small one. */
         if (bump === 2 && rpe >= 9.5) bump = 1;
         if (bump === 0 && rpe != null && rpe <= 7.5) bump = 1;
-        if (bump > 0) { st.tm = round(st.tm + M.inc * bump); st.misses = 0; notes.push(`${M.name} training max → ${st.tm}kg`); }
+        if (bump > 0) { st.tm = barRound(st.tm + M.inc * bump); st.misses = 0; notes.push(`${M.name} training max → ${st.tm}kg`); }
         else if (bump === 0) { st.misses = 0; notes.push(`${M.name} held at ${st.tm}kg`); }
         else {
           st.misses++;
-          if (st.misses >= 2) { st.tm = round(st.tm * 0.9); st.misses = 0; notes.push(`${M.name} reset to ${st.tm}kg — two short cycles`); }
+          if (st.misses >= 2) { st.tm = barRound(st.tm * 0.9); st.misses = 0; notes.push(`${M.name} reset to ${st.tm}kg — two short cycles`); }
           else notes.push(`${M.name} held at ${st.tm}kg`);
         }
       }
@@ -719,7 +728,7 @@ function applyWeightToSession(sess, idx, w) {
   const it = sess?.items?.[idx];
   if (!it) return;
   for (const set of it.sets) if (set.reps == null) { set.w = w; delete set.full; }
-  if (sess.easy) for (const set of it.sets) if (set.reps == null) { set.full = w; set.w = round(w * 0.85, 1.25); }
+  if (sess.easy) for (const set of it.sets) if (set.reps == null) { set.full = w; set.w = round(w * 0.85, (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25); }
 }
 
 function redrawItem(sess, idx) {
@@ -994,7 +1003,7 @@ function renderPlan() {
         ${Object.entries(MAINS).map(([k, m]) => `<div class="wlift">
           <span class="wln">${m.name}</span>
           <span class="mono wls">${w.sets.map(([pct, reps, open]) =>
-            `${round(S.mains[k].tm * pct)}×${reps}${open ? '+' : ''}`).join('   ')}</span>
+            `${barRound(S.mains[k].tm * pct)}×${reps}${open ? '+' : ''}`).join('   ')}</span>
         </div>`).join('')}
         <p class="hint" style="margin:8px 0 0">${w.name === 'Deload'
           ? 'Everything light. Nothing is measured and nothing moves — the point is to arrive at the next cycle fresh.'
@@ -1059,7 +1068,7 @@ function renderPlan() {
     <p class="eyebrow">Training maxes</p>
     ${Object.entries(MAINS).map(([k, m]) => `<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px">
       <span style="flex:1"><span class="display" style="font-size:17px">${m.name}</span>
-        <span class="mono" style="display:block;font-size:11px;color:var(--dust)">top set ${round(S.mains[k].tm * 0.95)}kg this cycle</span></span>
+        <span class="mono" style="display:block;font-size:11px;color:var(--dust)">top set ${barRound(S.mains[k].tm * 0.95)}kg this cycle</span></span>
       <span class="step"><button data-tm="${k}" data-d="-1">−</button>
         <input type="number" value="${S.mains[k].tm}" data-tmv="${k}" style="width:66px">
         <button data-tm="${k}" data-d="1">+</button></span></div>`).join('')}`;
@@ -1488,7 +1497,7 @@ function wire() {
       if (!w) return toast('What did you lift?');
       S.records[lift] = S.records[lift] || {};
       S.records[lift].tested = { w, date: today() };
-      const suggested = round(w * 0.9);
+      const suggested = barRound(w * 0.9);
       await save();
       const box = $('#sheet');
       box.innerHTML = `<h3>${MAINS[lift].name} · ${w}kg</h3>
@@ -1532,7 +1541,7 @@ function wire() {
     }
 
     const tm = t.closest('[data-tm]');
-    if (tm) { const k = tm.dataset.tm; S.mains[k].tm = round(S.mains[k].tm + (+tm.dataset.d) * MAINS[k].inc); await save(); render(); return; }
+    if (tm) { const k = tm.dataset.tm; S.mains[k].tm = barRound(S.mains[k].tm + (+tm.dataset.d) * MAINS[k].inc); await save(); render(); return; }
 
     const opt = t.closest('[data-opt]');
     if (opt) { const id = opt.closest('[data-plateau]').dataset.plateau; applyPlateau(id, plateauFor(id).opts[+opt.dataset.opt]); return; }
@@ -1615,7 +1624,7 @@ function wire() {
       return;
     }
     if (e.target.matches('[data-tmv]')) {
-      S.mains[e.target.dataset.tmv].tm = round(parseFloat(e.target.value) || 0);
+      S.mains[e.target.dataset.tmv].tm = barRound(parseFloat(e.target.value) || 0);
       await save();
     }
   });

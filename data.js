@@ -14,10 +14,10 @@ export const PLATE_COLOUR = {
 export const HOME_MAX = 50;
 
 export const MAINS = {
-  squat: { name: 'Back squat',     tm: 147.5, inc: 5,   bar: true, pattern: 'squat' },
-  dead:  { name: 'Deadlift',       tm: 185,   inc: 5,   bar: true, pattern: 'hinge' },
-  bench: { name: 'Bench press',    tm: 117.5, inc: 2.5, bar: true, pattern: 'hpush' },
-  ohp:   { name: 'Overhead press', tm: 72.5,  inc: 2.5, bar: true, pattern: 'vpush' }
+  squat: { name: 'Back squat',     tm: 145, inc: 5, bar: true, pattern: 'squat' },
+  dead:  { name: 'Deadlift',       tm: 185, inc: 5, bar: true, pattern: 'hinge' },
+  bench: { name: 'Bench press',    tm: 115, inc: 5, bar: true, pattern: 'hpush' },
+  ohp:   { name: 'Overhead press', tm: 70,  inc: 5, bar: true, pattern: 'vpush' }
 };
 
 export const WAVE = [
@@ -31,7 +31,7 @@ export const WAVE = [
    and plate-loaded machines differ between Wembley and Foreshore.
    `home` means it needs nothing beyond what you own. */
 export const ACCESSORIES = {
-  bulgarian:      { name: 'Bulgarian split squat', pattern: 'squat', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, bar: true, note: 'Barbell on back, rear foot up.', variants: ['db-bulgarian', 'walking-lunge'] },
+  bulgarian:      { name: 'Bulgarian split squat', pattern: 'squat', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Barbell on back, rear foot up.', variants: ['db-bulgarian', 'walking-lunge'] },
   'db-bulgarian': { name: 'Bulgarian split squat (dumbbell)', pattern: 'squat', w: 20, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true },
   'walking-lunge':{ name: 'Walking lunge', pattern: 'squat', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true, home: true },
 
@@ -39,12 +39,12 @@ export const ACCESSORIES = {
   hack:           { name: 'Hack squat', pattern: 'squat', w: 85, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
   'sl-legpress':  { name: 'Single-leg press', pattern: 'squat', w: 70, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, machine: true },
 
-  frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, bar: true, variants: ['pausesq', 'hack'] },
+  frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack'] },
   pausesq:        { name: 'Pause squat', pattern: 'squat', w: 100, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, note: '2s in the hole.' },
 
   rdl:            { name: 'Romanian deadlift', pattern: 'hinge', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Stop at the stretch, not the floor.', variants: ['seatedgm', 'standgm'] },
-  seatedgm:       { name: 'Seated good morning', pattern: 'hinge', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, bar: true, note: '~30° torso. Hamstring track — build this one slowly.' },
-  standgm:        { name: 'Standing good morning', pattern: 'hinge', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, bar: true, home: true },
+  seatedgm:       { name: 'Seated good morning', pattern: 'hinge', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 5, bar: true, note: '~30° torso. Hamstring track — build this one slowly.' },
+  standgm:        { name: 'Standing good morning', pattern: 'hinge', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true },
 
   legcurl:        { name: 'Seated leg curl', pattern: 'hinge', w: 45, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['sl-legcurl'] },
   'sl-legcurl':   { name: 'Single-leg lying curl', pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
@@ -52,7 +52,7 @@ export const ACCESSORIES = {
   calf:           { name: 'Standing calf raise', pattern: 'calf', w: 140, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Your log said stack + 80kg, so this is a guess at the total. Set it properly on the first session.' },
   seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
 
-  bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 2.5, bar: true, variants: ['machinerow', 'dbrow'] },
+  bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
   machinerow:     { name: 'Free-weight row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
   seatedrow:      { name: 'Seated row, 45° medium grip', pattern: 'hpull', w: 90, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
@@ -62,7 +62,7 @@ export const ACCESSORIES = {
   fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   strarm:         { name: 'Straight-arm pulldown', pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
 
-  inclinebb:      { name: 'Incline barbell press', pattern: 'hpush', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, bar: true, variants: ['inclinedb', 'smithincline'] },
+  inclinebb:      { name: 'Incline barbell press', pattern: 'hpush', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 5, bar: true, variants: ['inclinedb', 'smithincline'] },
   inclinedb:      { name: 'Incline dumbbell press', pattern: 'hpush', w: 23, dbl: true, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 2 },
   smithincline:   { name: 'Incline smith press', pattern: 'hpush', w: 70, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
   cableflye:      { name: 'Cable flye', pattern: 'hpush', w: 41, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2.5, machine: true, note: 'Foam roller behind your back.' },
@@ -91,17 +91,17 @@ export const ACCESSORIES = {
   seatedhammer:   { name: 'Seated hammer curl', pattern: 'biceps', w: 18, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 1, home: true },
   cablecurl:      { name: 'Single-arm cable curl, facing away', pattern: 'biceps', w: 17.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true },
   assistcurl:     { name: 'Concentration curl', pattern: 'biceps', w: 18, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1, home: true },
-  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2.5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
-  dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
+  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
+  dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
   dip:            { name: 'Weighted dip', pattern: 'hpush', w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
-  closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, bar: true },
-  skullcrusher:   { name: 'Skull crusher', pattern: 'triceps', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 10, inc: 2.5, bar: true },
+  closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true },
+  skullcrusher:   { name: 'Skull crusher', pattern: 'triceps', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true },
   ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
   rollingbar:     { name: 'Rolling bar pushdown', pattern: 'triceps', w: 35, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
   overheadrope:   { name: 'Overhead rope extension', pattern: 'triceps', w: 25, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
   dbohext:        { name: 'Overhead dumbbell extension', pattern: 'triceps', w: 22, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Two hands, one dumbbell.' },
-  floorskull:     { name: 'Floor skull crusher', pattern: 'triceps', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, bar: true, home: true }
+  floorskull:     { name: 'Floor skull crusher', pattern: 'triceps', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true }
 };
 
 /* ── Core ──────────────────────────────────────────────────
@@ -579,4 +579,4 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v13', date: '2026-08-19' };
+export const BUILD = { version: 'v14', date: '2026-08-19' };
