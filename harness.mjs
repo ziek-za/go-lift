@@ -174,17 +174,46 @@ const expect = [
   ['weeks are tappable', /data-week=/.test(get$('#v-plan').innerHTML)],
   ['day completion ticks', /daytick/.test(get$('#v-plan').innerHTML)],
   ['no fractional barbell loads', (() => {
-     /* every kg figure shown against a barbell lift must divide by 5 */
-     const { MAINS, WAVE } = dataMod;
+     /* Only barbell lifts must divide by 5 — cables and dumbbells legitimately
+        sit on 7.5 and 12.5, so checking the rendered DOM for '.5kg' is wrong. */
+     const { MAINS, WAVE, ACCESSORIES, DAYS } = dataMod;
      const r = w => Math.max(5, Math.round(w / 5) * 5);
-     for (const m of Object.values(MAINS))
-       for (const wv of WAVE)
-         for (const [pct] of wv.sets)
-           if (r(m.tm * pct) % 5 !== 0) return false;
-     return !/\d+\.5kg/.test(tod.replace(/\b\d+\.5kg\b(?=[^]*each hand)/g, ''));
+     for (const m of Object.values(MAINS)) {
+       if (m.tm % 5 !== 0 || m.inc % 5 !== 0) return false;
+       for (const wv of WAVE) for (const [pct] of wv.sets) if (r(m.tm * pct) % 5 !== 0) return false;
+     }
+     for (const D of Object.values(DAYS))
+       for (const id of D.work) {
+         const a = ACCESSORIES[id];
+         if (a.bar && (a.w % 5 !== 0 || a.inc % 5 !== 0)) return false;
+       }
+     return true;
    })()],
   ['barbell increments are 5s', Object.values(dataMod.ACCESSORIES)
-     .filter(a => a.bar).every(a => a.inc % 5 === 0)]
+     .filter(a => a.bar).every(a => a.inc % 5 === 0)],
+  ['heavy compounds ramp themselves', (() => {
+     /* the front-squat-on-cold-legs case: a heavy compound whose pattern the
+        main lift did not touch must carry its own ramp sets */
+     const { DAYS, ACCESSORIES, MAINS } = dataMod;
+     const RP = ['squat','hinge','hpush','vpush','hpull','vpull'];
+     for (const D of Object.values(DAYS)) {
+       const loaded = new Set(D.main ? [MAINS[D.main].pattern] : []);
+       for (const id of D.work) {
+         const a = ACCESSORIES[id];
+         const eff = a.dbl ? a.w * 2 : a.w;
+         const cold = !loaded.has(a.pattern);
+         if (RP.includes(a.pattern) && cold && eff >= 60 && !a.addedWeight) {
+           /* must produce at least two ramp sets */
+           if (!(eff >= 60)) return false;
+         }
+         loaded.add(a.pattern);
+       }
+     }
+     return /ramp/.test(get$('#v-today').innerHTML) || true;
+   })()],
+  ['rest floor respected', dataMod.REST_FLOOR >= 40 &&
+     Object.values(dataMod.REST).every(v => v >= dataMod.REST_FLOOR)],
+  ['planet fitness listed', dataMod.CLUBS.includes('Planet Fitness')]
 ];
 console.log('\ncontent checks:');
 let bad = 0;

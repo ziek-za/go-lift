@@ -1,7 +1,7 @@
 import {
   BAR, PLATES, PLATE_COLOUR, MAINS, WAVE, ACCESSORIES, PREP,
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
-  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, RECOVERY_WINDOW_H, CLUBS,
+  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
   GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD
 } from './data.js';
@@ -129,9 +129,10 @@ function restFor(item, set) {
     const compound = ['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'].includes(a.pattern);
     r = set.target > 12 ? REST.highRep : compound ? REST.compound : REST.isolation;
   }
+  if (set.warm) r = REST.warm;
   if (set.reps != null && set.reps < set.target) r += 30;
   if (set.rpe >= 9.5) r += 60;
-  return r;
+  return Math.max(REST_FLOOR, r);
 }
 
 /* Rough clock for a session: work plus prescribed rest, so the estimate
@@ -340,10 +341,37 @@ function pickRotating(pool, seen, n, filter) {
   return src.slice(0, n);
 }
 
-/* Two ramp sets, not three. The prep block already did the general warming;
-   these are only about grooving the pattern under load. */
+/* Two ramp sets, not three. The prep block does the general warming;
+   these groove the pattern under load. */
 const warmupRamp = top => top < 60 ? []
   : [0.5, 0.75].map(p => ({ w: barRound(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
+
+const RAMP_PATTERNS = ['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'];
+
+/* Front squats at 90kg were arriving with no ramp because the main lift that
+   day was a deadlift — a different pattern entirely. Any heavy compound now
+   warms itself up, with two ramp sets if the pattern is cold and one if
+   something earlier in the session already loaded it. */
+function accessoryRamp(a, working, patternsLoaded) {
+  if (!RAMP_PATTERNS.includes(a.pattern)) return [];
+  const cold = !patternsLoaded.has(a.pattern);
+
+  /* Dips and pull-ups carry your bodyweight before any plate goes on, so
+     half the added weight is not half the load. A bodyweight set is. */
+  if (a.addedWeight) {
+    const sets = [{ w: 0, target: 5, warm: true, reps: null, bodyweight: true }];
+    if (cold && working >= 20) sets.push({ w: round(working * 0.5, a.inc), target: 3, warm: true, reps: null });
+    return sets;
+  }
+
+  const effective = a.dbl ? working * 2 : working;
+  if (effective < 20) return [];
+  const step = w => (a.bar ? barRound(w) : round(w, a.inc));
+  /* Two ramps only when the pattern is cold and the load is genuinely heavy;
+     a 45kg leg curl does not need a staircase. */
+  const pcts = effective >= 60 ? (cold ? [0.5, 0.75] : [0.6]) : (cold ? [0.6] : []);
+  return pcts.map(p => ({ w: step(working * p), target: p < 0.7 ? 5 : 3, warm: true, reps: null }));
+}
 
 function buildPlanned(dateStr, dayKey) {
   const D = DAYS[dayKey], wk = weekIndex(dateStr), wave = WAVE[wk];
@@ -377,11 +405,17 @@ function buildPlanned(dateStr, dayKey) {
 
   const work = resolveWork(D.work, atHome);
   if (verdict.trim >= 2) work.pop();
+  const loaded = new Set();
+  if (D.main) loaded.add(MAINS[D.main].pattern);
   for (const id of work) {
     const a = ACCESSORIES[id], s = S.acc[id];
     const n = Math.max(2, s.sets - (verdict.trim ? 1 : 0));
-    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
-      sets: Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null })) });
+    const sets = [
+      ...accessoryRamp(a, s.w, loaded),
+      ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
+    ];
+    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets });
+    loaded.add(a.pattern);
   }
 
   return { id: `${dateStr}·${dayKey}`, date: dateStr, dayKey, week: wk, wave: wave.name,
@@ -483,12 +517,13 @@ function applyProgression(sess) {
     }
     if (it.kind === 'acc') {
       const a = ACCESSORIES[it.ref], st = S.acc[it.ref];
-      const logged = it.sets.filter(s => s.reps != null);
+      const logged = it.sets.filter(s => s.reps != null && !s.warm);
       if (!logged.length) continue;
       st.lastDone = sess.date;
       st.hist.push({ d: sess.date, w: st.w, reps: logged.map(s => s.reps) });
       /* A set trimmed by running load is not a missed set. */
-      const expected = sess.runTrim ? logged.length : st.sets;
+      const working = it.sets.filter(s => !s.warm).length;
+      const expected = sess.runTrim ? logged.length : working;
       if (logged.length >= expected && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
         if (st.reps < a.repMax) { st.reps++; notes.push(`${a.name} → ${st.reps} reps`); }
@@ -787,7 +822,7 @@ function setRow(it, s, i) {
       <div class="line">
         <span class="n mono">${s.warm ? '·' : i + 1}</span>
         <span class="presc">
-          <span class="w mono">${s.w ? s.w + 'kg' : 'bodyweight'}</span>
+          <span class="w mono">${s.bodyweight ? 'bodyweight' : s.w ? s.w + 'kg' : 'bodyweight'}</span>
           <span class="x">×</span>
           <span class="r">${s.open ? s.target + '+' : s.target + u}</span>
           <button class="what" data-what="${kind === 'work' ? 'work' : kind}" aria-label="What this means">?</button>
@@ -834,7 +869,9 @@ function itemCard(it, idx) {
   const cue = CUES[it.ref];
   const sub = it.kind === 'main' ? `${it.wave} · TM ${S.mains[it.ref].tm}kg`
     : it.kind === 'core' ? `${it.quality} · level ${it.level}/${it.levels} · ${it.sets.length} × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''}${it.sets[0].w ? ' · ' + it.sets[0].w + 'kg' : ''}`
-    : `${it.sets.length} × ${it.sets[0].target} · ${it.sets[0].w}kg${it.dbl ? ' each hand' : ''}`;
+    : (() => { const w = it.sets.filter(x => !x.warm);
+        const r = it.sets.length - w.length;
+        return `${w.length} × ${w[0].target} · ${w[0].w}kg${it.dbl ? ' each hand' : ''}${r ? ' · ' + r + ' ramp' : ''}`; })();
 
   return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
     <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
@@ -842,7 +879,7 @@ function itemCard(it, idx) {
         <span class="s mono">${sub}${logged && !done ? ` · ${logged}/${it.sets.length}` : ''}</span></span>
       <span class="tick">✓</span></div>
     <div class="body">
-      ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.at(-1)).w) : ''}
+      ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.filter(s => !s.warm).at(-1) || it.sets.at(-1)).w) : ''}
       <div class="howto">
         <p class="cue">${it.cue || cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
         ${it.kind === 'core' && it.nextName ? `<p class="nextrung mono">Two clean sessions unlocks: ${it.nextName}</p>` : ''}

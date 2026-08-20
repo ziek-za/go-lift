@@ -57,7 +57,7 @@ export const ACCESSORIES = {
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
   seatedrow:      { name: 'Seated row, 45° medium grip', pattern: 'hpull', w: 90, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
 
-  pullup:         { name: 'Weighted pull-up', pattern: 'vpull', w: 15, sets: 3, reps: 4, repMin: 4, repMax: 6, inc: 2.5, note: 'Added weight. Slow on the way down.', variants: ['latpull', 'fixedlat'] },
+  pullup:         { name: 'Weighted pull-up', pattern: 'vpull', addedWeight: true, w: 15, sets: 3, reps: 4, repMin: 4, repMax: 6, inc: 2.5, note: 'Added weight. Slow on the way down.', variants: ['latpull', 'fixedlat'] },
   latpull:        { name: 'Lat pulldown', pattern: 'vpull', w: 95, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
   fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   strarm:         { name: 'Straight-arm pulldown', pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
@@ -94,7 +94,7 @@ export const ACCESSORIES = {
   bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
   dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
-  dip:            { name: 'Weighted dip', pattern: 'hpush', w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
+  dip:            { name: 'Weighted dip', pattern: 'hpush', addedWeight: true, w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
   closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true },
   skullcrusher:   { name: 'Skull crusher', pattern: 'triceps', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true },
   ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
@@ -269,7 +269,7 @@ export const DAYS = {
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bulgarian', 'legpress', 'legcurl', 'calf'],
+    work: ['bulgarian', 'legpress', 'legcurl', 'calf', 'seatedcalf'],
     prepKey: 'squat', prep: 4,
     core: 2, coreQ: ['Anti-extension', 'Anti-rotation']
   },
@@ -284,8 +284,8 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
-    prepKey: 'bench', prep: 3, core: 0
+    work: ['bbrow', 'dip', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
+    prepKey: 'bench', prep: 2, core: 0
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
@@ -298,7 +298,7 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'facepull', 'ezpreacher'],
+    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'facepull', 'ezpreacher', 'ropepush'],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -361,13 +361,19 @@ export const RUN_TYPES = {
 export const RUN_BASELINE = 260;
 
 /* Seconds of rest, before adjustment for a missed set or a high RPE. */
+/* Cut hardest where it costs least. Heavy sets stay above three minutes
+   because short rest there means less weight on the next set, and load is
+   what drives the adaptation; isolation loses a third because it does not. */
 export const REST = {
-  warm: 60, mainHeavy: 240, mainMid: 180, backoff: 150,
-  compound: 150, isolation: 90, highRep: 60, core: 45
+  warm: 45, mainHeavy: 210, mainMid: 150, backoff: 120,
+  compound: 120, isolation: 60, highRep: 45, core: 40
 };
 
+/* Nothing drops below this, whatever the maths says. */
+export const REST_FLOOR = 40;
+
 export const RECOVERY_WINDOW_H = 40;
-export const CLUBS = ['Wembley Square', 'Foreshore', 'Other'];
+export const CLUBS = ['Wembley Square', 'Foreshore', 'Planet Fitness', 'Other'];
 
 /* ── Preparation, matched to the lift ──────────────────────
    A generic stretching block warms you up but prepares nothing. Each day's
@@ -579,4 +585,4 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v14', date: '2026-08-19' };
+export const BUILD = { version: 'v15', date: '2026-08-19' };
