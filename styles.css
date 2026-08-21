@@ -631,3 +631,76 @@ button.mtick.on { background: var(--good); border-color: var(--good); color: #06
   font-size: 11px; color: transparent; margin-left: 8px;
 }
 .daytick.on { background: var(--good); border-color: var(--good); color: #06120A; }
+
+/* ── Sub-tabs ────────────────────────────────────────────── */
+.subtabs {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  background: var(--steel); border: 1px solid var(--edge);
+  border-radius: 999px; padding: 4px; margin: 6px 0 14px;
+}
+.subtabs button {
+  min-height: 36px; padding: 7px 6px; font-size: 12.5px;
+  border: none; background: transparent; border-radius: 999px; color: var(--dust);
+}
+.subtabs button[aria-pressed=true] { background: var(--steel-2); color: var(--chalk); font-weight: 500; }
+
+/* ── History ─────────────────────────────────────────────── */
+.histrow {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  text-align: left; padding: 12px 14px; margin-bottom: 8px; min-height: 60px;
+}
+.hbadge {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: color-mix(in srgb, var(--ec) 20%, transparent);
+  border: 1px solid var(--ec); color: var(--ec);
+  font-family: var(--display); font-weight: 600; font-size: 15px;
+}
+.hmain { flex: 1; min-width: 0; display: block; }
+.hmain .hl { display: block; font-family: var(--display); font-size: 16px; font-weight: 600; }
+.hmain .hm { display: block; font-size: 11px; color: var(--dust); margin-top: 2px; }
+.hton { font-size: 12px; color: var(--dust-2); flex: 0 0 auto; }
+
+.card.readonly { margin-bottom: 8px; }
+.rosets { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.roset {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  padding: 5px 9px; border-radius: 6px; font-size: 12px;
+  background: var(--iron); border: 1px solid var(--edge);
+}
+.roset b { font-weight: 500; }
+.roset em { font-style: normal; font-family: var(--display); font-size: 15px; font-weight: 600; }
+.roset i { font-style: normal; font-size: 9.5px; color: var(--dust-2); }
+.roset.hit { border-color: rgba(43,162,95,.4); } .roset.hit em { color: var(--good); }
+.roset.miss { border-color: rgba(200,32,45,.4); } .roset.miss em { color: var(--stall); }
+.roset.skipped { opacity: .45; }
+
+/* ── Volume rows ─────────────────────────────────────────── */
+.vrow { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.vrow .vn { flex: 1; font-size: 13px; }
+.vrow .vv { font-size: 13px; font-family: var(--display); font-weight: 600; }
+.vrow .vv em { font-style: normal; font-size: 11px; color: var(--dust-2); font-weight: 400; }
+.vrow .vtrack { flex: 0 0 68px; height: 4px; background: var(--iron); border-radius: 2px; overflow: hidden; }
+.vrow .vtrack i { display: block; height: 100%; border-radius: 2px; }
+
+.tbars { display: flex; align-items: flex-end; gap: 6px; height: 108px; }
+.tbar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; }
+.tbar i { display: block; width: 100%; background: var(--go); border-radius: 3px 3px 0 0; opacity: .8; }
+.tbar em { font-style: normal; font-size: 9px; color: var(--dust-2); }
+
+/* ── Search ──────────────────────────────────────────────── */
+.exsearch { width: 100%; font-family: var(--body); font-size: 14px; }
+.addrow.rec { border-color: rgba(59,130,246,.35); }
+.addrow .an i {
+  font-style: normal; font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--go); margin-left: 7px;
+}
+.addrow .an i.warnflag { color: var(--warn); }
+.librow { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--edge); }
+.librow:first-child { border-top: none; }
+.librow .ln2 { flex: 1; font-size: 13.5px; line-height: 1.35; }
+.librow .ln2 em { font-style: normal; font-size: 11px; color: var(--dust-2); }
+.librow .lp { display: block; font-size: 10px; color: var(--dust-2); margin-top: 1px; }
+.librow .lw { text-align: right; font-size: 14px; font-family: var(--display); font-weight: 600; }
+.librow .lw em { font-style: normal; font-size: 12px; color: var(--dust); font-weight: 400; }
+.librow .lr { display: block; font-family: var(--mono); font-size: 9.5px; color: var(--dust-2); font-weight: 400; margin-top: 1px; }

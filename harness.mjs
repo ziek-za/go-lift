@@ -125,7 +125,15 @@ for (const view of ['plan', 'progress', 'data', 'today']) {
 /* Content checks — a view can render without throwing and still be wrong */
 const strip = s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 await handlers.click({ target: global.__target('nav button', { v: 'progress' }) });
-const prog = strip(get$('#v-progress').innerHTML);
+let prog = strip(get$('#v-progress').innerHTML);
+/* Progress is sectioned now — walk every sub-tab and concatenate */
+const progTabs = {};
+for (const pt of ['status', 'lifts', 'volume', 'history']) {
+  await handlers.click({ target: global.__target('[data-ptab]', { ptab: pt }) });
+  progTabs[pt] = strip(get$('#v-progress').innerHTML);
+  if (progTabs[pt].length < 60) console.log('  ✗ progress/' + pt + ' rendered empty');
+}
+prog = Object.values(progTabs).join(' ');
 await handlers.click({ target: global.__target('nav button', { v: 'plan' }) });
 const plan2 = strip(get$('#v-plan').innerHTML);
 await handlers.click({ target: global.__target('nav button', { v: 'data' }) });
@@ -133,10 +141,13 @@ await handlers.click({ target: global.__target('nav button', { v: 'today' }) });
 const tod = strip(get$('#v-today').innerHTML);
 
 const expect = [
-  ['on-track verdict', /On track|Too early|Behind|light on/.test(prog)],
-  ['records: tested 220', /220/.test(prog)],
-  ['records: estimated', /Estimated/.test(prog)],
-  ['stall surfaced', /leg press/i.test(prog)],
+  ['on-track verdict', /On track|Too early|Behind|light on|Just started/.test(progTabs.status)],
+  ['status not falsely behind', !/Behind on sessions/.test(progTabs.status)],
+  ['history groups by week', /Week of|No finished/.test(progTabs.history)],
+  ['volume section has targets', /\/\d+/.test(progTabs.volume)],
+  ['records: tested 220', /220/.test(progTabs.lifts)],
+  ['records: estimated', /Estimated/.test(progTabs.lifts)],
+  ['stall surfaced', /leg press|stalled/i.test(prog)],
   ['core start chips', /Advanced|Send it/.test(plan2)],
   ['core ladders listed', /anti-extension/i.test(plan2)],
   ['working weights list', /Working weights/.test(plan2)],

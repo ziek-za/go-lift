@@ -419,7 +419,7 @@ function buildPlanned(dateStr, dayKey) {
   }
 
   return { id: `${dateStr}·${dayKey}`, date: dateStr, dayKey, week: wk, wave: wave.name,
-    label: D.label, note: D.note, venue: D.venue, adhoc: false, easy: false,
+    label: D.label, note: D.note, venue: D.venue, club: D.venue === 'home' ? 'Home' : S.club, adhoc: false, easy: false,
     runTrim: verdict.trim ? verdict : null, items, done: false };
 }
 
@@ -461,7 +461,7 @@ function buildAdhoc(dateStr, focusKey, minutes, atHome, ignoreRecovery) {
   }
   return { id: `${dateStr}·extra·${Date.now().toString(36)}`, date: dateStr, dayKey: 'adhoc',
     week: weekIndex(dateStr), label: `Extra · ${F.label}${atHome ? ' at home' : ''}`,
-    venue: atHome ? 'home' : 'gym', adhoc: true, easy: false, items, done: false };
+    venue: atHome ? 'home' : 'gym', club: atHome ? 'Home' : S.club, adhoc: true, easy: false, items, done: false };
 }
 
 /* Same movements, less load. Does not count towards progression. */
@@ -584,9 +584,46 @@ function rehydrateSwaps() {
       if (d.work.includes(from)) d.work = d.work.map(x => (x === from ? to : x));
 }
 
+/* ═══ history ═══════════════════════════════════════════════ */
+
+/* Effort out of five. RPE on the main lift is the honest signal when it is
+   there; otherwise how much of what was prescribed actually landed. */
+function effortOf(sess) {
+  if (sess.easy) return 2;
+  const rpes = sess.items.filter(i => i.kind === 'main')
+    .flatMap(i => i.sets).filter(s => s.rpe).map(s => s.rpe);
+  if (rpes.length) {
+    const mean = rpes.reduce((a, b) => a + b, 0) / rpes.length;
+    return Math.max(1, Math.min(5, Math.round(mean - 5)));
+  }
+  const sets = sess.items.flatMap(i => i.sets).filter(s => s.reps != null && !s.warm);
+  if (!sets.length) return 1;
+  const hit = sets.filter(s => s.reps >= s.target).length / sets.length;
+  return Math.max(1, Math.min(5, Math.round(2 + hit * 2)));
+}
+
+const EFFORT_COLOUR = ['#5C6470', '#1E7A46', '#5D9E3A', '#E8B305', '#E07B1F', '#C8202D'];
+
+function sessionTonnage(sess) {
+  return sess.items.reduce((t, it) => t + it.sets.reduce((u, s) =>
+    u + (s.reps != null && s.w ? s.w * s.reps : 0), 0), 0);
+}
+
+/* Monday-keyed buckets, newest week first */
+function sessionsByWeek() {
+  const weeks = new Map();
+  for (const s of S.sessions.filter(x => x.done).sort((a, b) => b.date.localeCompare(a.date))) {
+    const k = iso(mondayOf(parseDay(s.date)));
+    if (!weeks.has(k)) weeks.set(k, []);
+    weeks.get(k).push(s);
+  }
+  return [...weeks.entries()];
+}
+
 /* ═══ views ═════════════════════════════════════════════════ */
 
 let VIEW = 'today', draft = null, openWeek = null;
+let addQuery = '', addOpen = false, progressTab = 'status', openSession = null, libQuery = '';
 
 /* Was this day's session completed in the current Monday-to-Sunday week? */
 function doneThisWeek(dayKey) {
@@ -675,13 +712,26 @@ function setsLast7ByMuscle() {
   return m;
 }
 
+/* How many programmed sessions fell between two moments, inclusive of today */
+function scheduledBetween(fromMs, toMs) {
+  const days = Object.values(DAYS).map(d => d.weekday);
+  let n = 0;
+  const d = new Date(fromMs); d.setHours(12, 0, 0, 0);
+  const end = new Date(toMs); end.setHours(12, 0, 0, 0);
+  while (d <= end) { if (days.includes(d.getDay())) n++; d.setDate(d.getDate() + 1); }
+  return n;
+}
+
 function trackStatus() {
   const done = S.sessions.filter(s => s.done && !s.adhoc);
   const cut = Date.now() - 28 * 864e5;
   const recent = done.filter(s => parseDay(s.date) >= cut).length;
-  const weeksIn = Math.max(1, Math.min(4, Math.ceil((Date.now() - parseDay(S.created)) / 6048e5)));
-  const expected = weeksIn * 5;
-  const adherence = Math.min(1, recent / expected);
+  /* Counting a whole week's sessions as due on Tuesday reads as "behind"
+     when you are in fact bang on schedule. Only days that have already
+     arrived count. */
+  const expected = scheduledBetween(
+    Math.max(parseDay(S.created).getTime(), cut), Date.now());
+  const adherence = expected ? Math.min(1, recent / expected) : 1;
 
   const cycles = Math.max(0, cycleNo(today()) - 1);
   let gained = 0, due = 0;
@@ -698,7 +748,8 @@ function trackStatus() {
   const stalls = Object.keys(S.acc).filter(id => S.acc[id].misses >= 2).length;
 
   let verdict, tone;
-  if (done.length < 4) { verdict = 'Too early to tell — log a couple more sessions'; tone = 'flat'; }
+  if (expected < 3) { verdict = 'Just started — nothing to judge yet'; tone = 'flat'; }
+  else if (done.length < 3) { verdict = 'Too early to tell — log a couple more sessions'; tone = 'flat'; }
   else if (adherence < 0.7) { verdict = 'Behind on sessions. Consistency outranks everything else here'; tone = 'down'; }
   else if (strength !== null && strength < 0.5 && cycles >= 1) { verdict = 'Showing up, but the main lifts are not moving'; tone = 'down'; }
   else if (short.length > 3) { verdict = 'On the lifts, light on volume this week'; tone = 'warn'; }
@@ -762,7 +813,7 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
 function applyWeightToSession(sess, idx, w) {
   const it = sess?.items?.[idx];
   if (!it) return;
-  for (const set of it.sets) if (set.reps == null) { set.w = w; delete set.full; }
+  for (const set of it.sets) if (set.reps == null && !set.warm) { set.w = w; delete set.full; }
   if (sess.easy) for (const set of it.sets) if (set.reps == null) { set.full = w; set.w = round(w * 0.85, (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25); }
 }
 
@@ -891,7 +942,7 @@ function itemCard(it, idx) {
         <span class="wl">Working weight${it.dbl ? ' · each hand' : ''}</span>
         <span class="step">
           <button data-wn="-1" data-wk="${it.kind}" data-wr="${it.ref}" data-wi="${idx}" aria-label="Less">−</button>
-          <input type="number" inputmode="decimal" value="${it.sets[0].w}"
+          <input type="number" inputmode="decimal" value="${(it.sets.find(x => !x.warm) || it.sets[0]).w}"
                  data-wv="${it.ref}" data-wk="${it.kind}" data-wi="${idx}" aria-label="Working weight">
           <button data-wn="1" data-wk="${it.kind}" data-wr="${it.ref}" data-wi="${idx}" aria-label="More">+</button>
         </span></div>` : ''}
@@ -929,14 +980,36 @@ function suggestionsFor(sess) {
 }
 
 function addPanel(sess) {
-  const sug = suggestionsFor(sess);
-  if (!sug.length) return '';
-  return `<details class="addex"><summary>Add an exercise</summary>
-    <p class="hint" style="margin:8px 0 10px">Suggested for a ${sess.label.toLowerCase()} session, least recently trained first. Anything you add progresses like the rest.</p>
-    ${sug.map(([id, a]) => `<button class="addrow" data-add="${id}">
-        <span class="an">${a.name}</span>
-        <span class="aw mono">${S.acc[id].w}kg × ${S.acc[id].reps} · ${S.acc[id].sets} sets</span>
+  const q = (addQuery || '').trim().toLowerCase();
+  const rec = new Set(suggestionsFor(sess).map(([id]) => id));
+  const already = new Set(sess.items.map(i => i.ref));
+  const atHome = sess.venue === 'home';
+
+  let list = Object.entries(ACCESSORIES)
+    .filter(([id]) => !already.has(id))
+    .filter(([id, a]) => !q || (a.name + ' ' + a.pattern + ' ' + (CUES[id] || '')).toLowerCase().includes(q));
+
+  /* Recommended for this session float to the top; a keyword search still
+     reaches anything in the library, home kit or not. */
+  list.sort((a, b) => {
+    const ra = rec.has(a[0]) ? 0 : 1, rb = rec.has(b[0]) ? 0 : 1;
+    if (ra !== rb) return ra - rb;
+    return (S.acc[a[0]].lastDone || '').localeCompare(S.acc[b[0]].lastDone || '');
+  });
+  const shown = q ? list.slice(0, 20) : list.slice(0, 10);
+
+  return `<details class="addex" ${addOpen ? 'open' : ''}>
+    <summary data-addtoggle>Add an exercise</summary>
+    <input type="text" class="exsearch" id="addsearch" placeholder="Search all ${Object.keys(ACCESSORIES).length} exercises"
+           value="${addQuery || ''}" autocomplete="off">
+    <p class="hint" style="margin:8px 0 10px">${q
+      ? shown.length + ' match' + (shown.length === 1 ? '' : 'es')
+      : 'Suggested for this session first. Search to reach anything else.'}</p>
+    ${shown.map(([id, a]) => `<button class="addrow ${rec.has(id) ? 'rec' : ''}" data-add="${id}">
+        <span class="an">${a.name}${rec.has(id) ? '<i>suggested</i>' : ''}${atHome && !a.home ? '<i class="warnflag">needs a gym</i>' : ''}</span>
+        <span class="aw mono">${S.acc[id].w}kg × ${S.acc[id].reps} · ${S.acc[id].sets} sets · ${a.pattern}</span>
       </button>`).join('')}
+    ${!shown.length ? '<p class="hint">Nothing matches that.</p>' : ''}
   </details>`;
 }
 
@@ -966,12 +1039,12 @@ function renderToday() {
     ${sess.easy ? `<div class="flag amber"><div class="why mono">Easy day</div>
       Everything at 85%. This session will not move any weights up or down.</div>` : ''}
 
-    <div class="btn-row" style="margin:0 0 14px">
+    ${sess.done ? '' : `<div class="btn-row" style="margin:0 0 14px">
       ${S.active?.id === sess.id
         ? `<button class="btn-sm" id="endsession">Stop clock</button>`
         : `<button class="btn-go" id="startsession">Start session</button>`}
       <button class="btn-sm ${sess.easy ? 'btn-go' : ''}" id="easy">${sess.easy ? 'Back to full' : 'Not feeling great'}</button>
-    </div>
+    </div>`}
 
     ${sess.items.map(itemCard).join('')}
     ${sess.done ? '' : addPanel(sess)}
@@ -1089,6 +1162,27 @@ function renderPlan() {
       }).join('')}
     </div>`).join('')}
 
+    <p class="eyebrow">Every exercise</p>
+    <div class="card" style="padding:13px 14px">
+      <input type="text" class="exsearch" id="libsearch" placeholder="Search ${Object.keys(ACCESSORIES).length} exercises for your working weight"
+             value="${libQuery || ''}" autocomplete="off">
+      ${libQuery.trim() ? (() => {
+        const q = libQuery.trim().toLowerCase();
+        const hits = Object.entries(ACCESSORIES).filter(([id, a]) =>
+          (a.name + ' ' + a.pattern).toLowerCase().includes(q)).slice(0, 25);
+        if (!hits.length) return '<p class="hint" style="margin-top:10px">Nothing matches that.</p>';
+        return '<div style="margin-top:10px">' + hits.map(([id, a]) => {
+          const st = S.acc[id];
+          return `<div class="librow">
+            <span class="ln2">${a.name}${a.dbl ? ' <em>each hand</em>' : ''}
+              <span class="lp mono">${a.pattern}${a.machine ? ' · machine' : a.bar ? ' · barbell' : ''}</span></span>
+            <span class="lw mono">${st.w}kg<em> × ${st.reps}</em>
+              <span class="lr">range ${a.repMin}–${a.repMax}${st.lastDone ? ' · last ' + st.lastDone : ' · never done'}</span></span>
+          </div>`;
+        }).join('') + '</div>';
+      })() : '<p class="hint" style="margin-top:8px">Type a name or a pattern — biceps, hinge, lat — to see where a lift currently sits.</p>'}
+    </div>
+
     <p class="eyebrow">Working weights</p>
     <p class="hint" style="margin:0 0 10px">Seeded from your log. Machine numbers especially are guesses — correct them here or on the exercise itself, and it sticks.</p>
     ${Object.values(DAYS).map(d => `<div class="card" style="padding:12px 14px">
@@ -1111,27 +1205,68 @@ function renderPlan() {
         <button data-tm="${k}" data-d="1">+</button></span></div>`).join('')}`;
 }
 
-function renderProgress() {
-  const el = $('#v-progress'), done = S.sessions.filter(s => s.done);
-  if (!done.length) { el.innerHTML = `<div class="empty">No finished sessions yet.<br>Log one and the trajectory draws itself.</div>`; return; }
-  const stalls = Object.keys(S.acc).filter(id => S.acc[id].misses >= 2);
-  const vol = done.slice(-8).map(s => s.items.reduce((t, it) =>
-    t + it.sets.reduce((u, x) => u + (x.reps != null && x.w ? x.w * x.reps : 0), 0), 0));
-  const v = runVerdict();
+/* ═══ progress, in sections ═════════════════════════════════ */
 
+const PROGRESS_TABS = [
+  ['status',  'Status'],
+  ['lifts',   'Lifts'],
+  ['volume',  'Volume'],
+  ['history', 'History']
+];
+
+function renderProgress() {
+  const el = $('#v-progress');
+  const done = S.sessions.filter(s => s.done);
+  const tabs = `<div class="subtabs">${PROGRESS_TABS.map(([k, label]) =>
+    `<button data-ptab="${k}" aria-pressed="${progressTab === k}">${label}</button>`).join('')}</div>`;
+
+  if (!done.length && progressTab !== 'status') progressTab = 'status';
+  el.innerHTML = tabs + ({
+    status:  progressStatus,
+    lifts:   progressLifts,
+    volume:  progressVolume,
+    history: progressHistory
+  }[progressTab] || progressStatus)(done);
+}
+
+function progressStatus(done) {
+  if (!done.length) return `<div class="empty">No finished sessions yet.<br>Log one and this fills in.</div>`;
   const tr = trackStatus();
-  el.innerHTML = `
+  const durs = done.filter(s => s.duration).map(s => s.duration);
+  const avg = durs.length ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length / 60) : null;
+  const week = done.filter(s => parseDay(s.date) >= mondayOf(new Date()));
+  const v = runVerdict();
+  const tonnage = week.reduce((t, s) => t + sessionTonnage(s), 0);
+
+  return `
     <div class="status ${tr.tone}">
       <div class="verdict">${tr.verdict}</div>
       <div class="bars">
-        ${statusBar('Sessions', tr.recent + ' of ' + tr.expected, tr.adherence)}
-        ${statusBar('Main lifts', tr.due ? (tr.gained >= 0 ? '+' : '') + tr.gained + 'kg of ' + tr.due + 'kg due' : 'first cycle', tr.strength ?? 0)}
+        ${statusBar('Sessions', tr.recent + ' of ' + tr.expected + ' due', tr.adherence)}
+        ${statusBar('Main lifts', tr.due ? (tr.gained >= 0 ? '+' : '') + tr.gained + 'kg of ' + tr.due + 'kg due' : 'first cycle', tr.strength ?? 1)}
         ${statusBar('Volume this week', tr.short.length ? tr.short.length + ' below target' : 'all groups met', tr.short.length ? 0.45 : 1)}
       </div>
       ${tr.short.length ? `<div class="shortlist mono">light on: ${tr.short.join(', ')}</div>` : ''}
       ${tr.stalls ? `<div class="shortlist mono">${tr.stalls} lift${tr.stalls > 1 ? 's' : ''} stalled — see Today</div>` : ''}
     </div>
+    <div class="stats">
+      <div class="stat"><div class="k">This week</div><div class="v">${week.length}<small> sessions</small></div>
+        <div class="d flat mono">${(tonnage / 1000).toFixed(1)}t moved</div></div>
+      <div class="stat"><div class="k">Cycle</div><div class="v">${cycleNo(today())}<small> · wk ${weekIndex(today()) + 1}</small></div>
+        <div class="d flat mono">${WAVE[weekIndex(today())].name}</div></div>
+      <div class="stat"><div class="k">Typical session</div><div class="v">${avg ?? '—'}<small>${avg ? ' min' : ''}</small></div>
+        <div class="d flat mono">${durs.length} timed</div></div>
+      <div class="stat"><div class="k">Running</div><div class="v">${Math.round(v.ratio * 100)}<small>%</small></div>
+        <div class="d ${v.ratio > 1.25 ? 'down' : 'flat'} mono">of a normal week</div></div>
+      <div class="stat"><div class="k">Total sessions</div><div class="v">${done.length}</div>
+        <div class="d flat mono">since ${S.created}</div></div>
+      <div class="stat"><div class="k">Core ladders</div><div class="v">${CORE_TRACKS.reduce((t, x) => t + coreLevel(x.id) + 1, 0)}<small>/${CORE_TRACKS.reduce((t, x) => t + x.levels.length, 0)}</small></div>
+        <div class="d flat mono">rungs climbed</div></div>
+    </div>`;
+}
 
+function progressLifts(done) {
+  return `
     <p class="eyebrow">Records</p>
     ${Object.entries(MAINS).map(([k, m]) => recordCard(k, m)).join('')}
     <div class="card" style="padding:14px">
@@ -1142,24 +1277,91 @@ function renderProgress() {
         <input type="number" id="prw" placeholder="kg" inputmode="decimal" style="width:88px">
         <button class="btn-go" id="prsave" style="flex:0 0 auto">Save</button>
       </div>
-      <p class="hint">A real single you actually performed. The app keeps it separate from the estimate and will offer to reset that lift's training max.</p>
+      <p class="hint">A real single you actually performed. Kept separate from the estimate.</p>
     </div>
-
-    <p class="eyebrow">Estimated one-rep max · logged and projected</p>
-    ${Object.entries(MAINS).map(([k, m]) => chartFor(k, m)).join('')}
-    <p class="eyebrow">Where you are</p>
-    <div class="stats">
-      <div class="stat"><div class="k">Sessions</div><div class="v">${done.length}</div><div class="d flat mono">since ${S.created}</div></div>
-      <div class="stat"><div class="k">Cycle</div><div class="v">${cycleNo(today())}<small> · wk ${weekIndex(today()) + 1}</small></div><div class="d flat mono">${WAVE[weekIndex(today())].name}</div></div>
-      <div class="stat"><div class="k">Last volume</div><div class="v">${((vol.at(-1) || 0) / 1000).toFixed(1)}<small>t</small></div>
-        <div class="d ${vol.length > 1 ? (vol.at(-1) >= vol.at(-2) ? 'up' : 'down') : 'flat'} mono">${vol.length > 1 ? (vol.at(-1) >= vol.at(-2) ? '▲' : '▼') + ' vs last' : '—'}</div></div>
-      <div class="stat"><div class="k">Running</div><div class="v">${Math.round(v.ratio * 100)}<small>%</small></div><div class="d ${v.ratio > 1.25 ? 'down' : 'flat'} mono">of normal week</div></div>
-    </div>
-    ${stalls.length ? `<p class="eyebrow">Stalled</p>${stalls.map(id => `<div class="card" style="padding:12px 14px">
-      <div class="display" style="font-size:16px">${ACCESSORIES[id].name}</div>
-      <div class="mono" style="font-size:11px;color:var(--dust)">${S.acc[id].misses} short at ${S.acc[id].w}kg × ${S.acc[id].reps}</div></div>`).join('')}` : ''}`;
+    <p class="eyebrow">Estimated one-rep max</p>
+    ${Object.entries(MAINS).map(([k, m]) => chartFor(k, m)).join('')}`;
 }
 
+function progressVolume(done) {
+  const vol = setsLast7ByMuscle();
+  const last8 = done.slice(-8).map(s => ({ d: s.date, t: sessionTonnage(s) }));
+  const max = Math.max(1, ...last8.map(x => x.t));
+  return `
+    <p class="eyebrow">Sets in the last seven days</p>
+    <div class="card" style="padding:13px 14px">
+      ${Object.entries(VOLUME_TARGET).map(([k, target]) => {
+        const n = vol[k] || 0, pct = Math.min(100, Math.round((n / target) * 100));
+        return `<div class="vrow">
+          <span class="vn">${k}</span>
+          <span class="mono vv ${n >= target ? 'up' : n >= target * 0.7 ? 'flat' : 'down'}">${n}<em>/${target}</em></span>
+          <span class="vtrack"><i style="width:${pct}%;background:${n >= target ? 'var(--good)' : n >= target * 0.7 ? 'var(--warn)' : 'var(--stall)'}"></i></span>
+        </div>`;
+      }).join('')}
+    </div>
+    <p class="eyebrow">Tonnage, last eight sessions</p>
+    <div class="card" style="padding:14px">
+      ${last8.length ? `<div class="tbars">${last8.map(x => `<span class="tbar" title="${x.d}">
+        <i style="height:${Math.max(4, Math.round((x.t / max) * 90))}px"></i>
+        <em class="mono">${(x.t / 1000).toFixed(1)}</em></span>`).join('')}</div>
+        <p class="hint" style="margin-top:8px">Tonnes lifted per session, oldest on the left.</p>`
+        : '<p class="hint">Nothing logged yet.</p>'}
+    </div>`;
+}
+
+function progressHistory(done) {
+  if (openSession) {
+    const s = S.sessions.find(x => x.id === openSession);
+    if (s) return sessionDetail(s);
+    openSession = null;
+  }
+  const weeks = sessionsByWeek();
+  if (!weeks.length) return `<div class="empty">No finished sessions yet.</div>`;
+  return weeks.map(([wk, list]) => {
+    const tot = list.reduce((t, s) => t + sessionTonnage(s), 0);
+    return `<p class="eyebrow">Week of ${parseDay(wk).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}
+      · ${list.length} session${list.length > 1 ? 's' : ''} · ${(tot / 1000).toFixed(1)}t</p>
+    ${list.map(s => {
+      const e = effortOf(s);
+      return `<button class="card histrow" data-open="${s.id}">
+        <span class="hbadge" style="--ec:${EFFORT_COLOUR[e]}">${e}</span>
+        <span class="hmain">
+          <span class="hl">${s.label}</span>
+          <span class="hm mono">${parseDay(s.date).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}
+            · ${s.club || (s.venue === 'home' ? 'Home' : '—')}${s.duration ? ' · ' + Math.round(s.duration / 60) + ' min' : ''}${s.easy ? ' · easy' : ''}</span>
+        </span>
+        <span class="hton mono">${(sessionTonnage(s) / 1000).toFixed(1)}t</span>
+      </button>`;
+    }).join('')}`;
+  }).join('');
+}
+
+function sessionDetail(s) {
+  const e = effortOf(s);
+  return `<button class="btn-sm btn-quiet" id="histback">← All sessions</button>
+    <h2 style="font-size:21px;margin:12px 0 2px">${s.label}</h2>
+    <p class="hint" style="margin:0 0 12px">${parseDay(s.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
+      ${s.duration ? ' · ' + Math.round(s.duration / 60) + ' min' : ''}
+      · effort <b style="color:${EFFORT_COLOUR[e]}">${e}/5</b>
+      · ${(sessionTonnage(s) / 1000).toFixed(1)}t</p>
+
+    <div class="card" style="padding:13px 14px">
+      <label class="f">Logged at</label>
+      <div class="chips">${[...CLUBS, 'Home'].map(c =>
+        `<button data-setclub="${s.id}|${c}" aria-pressed="${(s.club || '') === c}">${c}</button>`).join('')}</div>
+      <p class="hint">Correcting this updates the session record and every later session that inherited the same gym.</p>
+    </div>
+
+    ${s.items.filter(it => it.kind !== 'prep' && it.kind !== 'mobility').map(it => `
+      <div class="card readonly" style="padding:12px 14px">
+        <div class="display" style="font-size:16px">${it.name}</div>
+        <div class="rosets">${it.sets.map(x => `<span class="roset ${x.reps == null ? 'skipped' : x.reps >= x.target ? 'hit' : 'miss'}">
+          <b class="mono">${x.w ? x.w + 'kg' : 'bw'}</b>
+          <em class="mono">${x.reps == null ? '—' : x.reps}${it.unit === 'secs' ? 's' : ''}</em>
+          ${x.warm ? '<i>ramp</i>' : x.rpe ? `<i>RPE ${x.rpe}</i>` : ''}
+        </span>`).join('')}</div>
+      </div>`).join('')}`;
+}
 
 function statusBar(label, detail, ratio) {
   const pct = Math.max(3, Math.min(100, Math.round((ratio || 0) * 100)));
@@ -1464,6 +1666,32 @@ function wire() {
       await save(); render(); return;
     }
 
+    const pt = t.closest('[data-ptab]');
+    if (pt) { progressTab = pt.dataset.ptab; openSession = null; render(); return; }
+
+    const oh = t.closest('[data-open]');
+    if (oh) { openSession = oh.dataset.open; render(); scrollTo({ top: 0 }); return; }
+    if (t.id === 'histback') { openSession = null; render(); return; }
+
+    const sc = t.closest('[data-setclub]');
+    if (sc) {
+      const [sid, club] = sc.dataset.setclub.split('|');
+      const target = S.sessions.find(x => x.id === sid);
+      if (target) {
+        const was = target.club;
+        target.club = club;
+        /* Everything logged afterwards that inherited the wrong gym gets the
+           correction too, which is the point of fixing it retroactively. */
+        let also = 0;
+        for (const other of S.sessions)
+          if (other !== target && other.done && other.club === was
+              && other.date >= target.date && other.venue !== 'home') { other.club = club; also++; }
+        await save(); render();
+        toast(also ? `Updated, plus ${also} later session${also > 1 ? 's' : ''}` : 'Updated');
+      }
+      return;
+    }
+
     const wk = t.closest('[data-week]');
     if (wk) { const i = +wk.dataset.week; openWeek = openWeek === i ? null : i; render(); return; }
 
@@ -1551,6 +1779,8 @@ function wire() {
     }
 
     /* Add or remove an exercise mid-session */
+    if (t.closest('[data-addtoggle]')) { addOpen = !addOpen; return; }
+
     const add = t.closest('[data-add]');
     if (add) {
       const sess = $('#v-today')._sess, id = add.dataset.add;
@@ -1648,6 +1878,13 @@ function wire() {
       if (!confirm('Erase everything on this device? Your backup file is untouched.')) return;
       S = seed(); await save(); render(); toast('Erased'); return;
     }
+  });
+
+  document.addEventListener('input', e => {
+    if (e.target.id === 'addsearch') { addQuery = e.target.value; addOpen = true; renderToday();
+      const el = $('#addsearch'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
+    if (e.target.id === 'libsearch') { libQuery = e.target.value; renderPlan();
+      const el = $('#libsearch'); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } return; }
   });
 
   document.addEventListener('change', async e => {
