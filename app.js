@@ -3,7 +3,7 @@ import {
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
   GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE,
-  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -484,7 +484,7 @@ function makeEasy(sess, on) {
 
 function applyProgression(sess) {
   const notes = [];
-  if (sess.easy) { notes.push('Logged as an easy day — nothing moved'); return notes; }
+  if (sess.easy) { notes.push({ type: 'easy', label: 'Easy day', text: 'Nothing moved — that is what an easy day is for.' }); return notes; }
 
   for (const it of sess.items) {
     if (it.kind === 'main') {
@@ -506,12 +506,12 @@ function applyProgression(sess) {
            and an easy one at the minimum still earns a small one. */
         if (bump === 2 && rpe >= 9.5) bump = 1;
         if (bump === 0 && rpe != null && rpe <= 7.5) bump = 1;
-        if (bump > 0) { st.tm = barRound(st.tm + M.inc * bump); st.misses = 0; notes.push(`${M.name} training max → ${st.tm}kg`); }
-        else if (bump === 0) { st.misses = 0; notes.push(`${M.name} held at ${st.tm}kg`); }
+        if (bump > 0) { const from = st.tm; st.tm = barRound(st.tm + M.inc * bump); st.misses = 0; notes.push({ type: 'tm', label: M.name, from, to: st.tm, unit: 'kg' }); }
+        else if (bump === 0) { st.misses = 0; notes.push({ type: 'hold', label: M.name, to: st.tm, unit: 'kg' }); }
         else {
           st.misses++;
-          if (st.misses >= 2) { st.tm = barRound(st.tm * 0.9); st.misses = 0; notes.push(`${M.name} reset to ${st.tm}kg — two short cycles`); }
-          else notes.push(`${M.name} held at ${st.tm}kg`);
+          if (st.misses >= 2) { const from = st.tm; st.tm = barRound(st.tm * 0.9); st.misses = 0; notes.push({ type: 'reset', label: M.name, from, to: st.tm, unit: 'kg' }); }
+          else notes.push({ type: 'hold', label: M.name, to: st.tm, unit: 'kg' });
         }
       }
     }
@@ -526,8 +526,8 @@ function applyProgression(sess) {
       const expected = sess.runTrim ? logged.length : working;
       if (logged.length >= expected && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
-        if (st.reps < a.repMax) { st.reps++; notes.push(`${a.name} → ${st.reps} reps`); }
-        else { st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push(`${a.name} → ${st.w}kg`); }
+        if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
+        else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
       } else st.misses++;
     }
     if (it.kind === 'core') {
@@ -544,7 +544,7 @@ function applyProgression(sess) {
         S.coreLevel = S.coreLevel || {};
         S.coreLevel[it.ref] = lv + 1;
         S.coreClean[it.ref] = 0;
-        notes.push(`Core levelled up → ${t.levels[lv + 1].name}`);
+        notes.push({ type: 'core', label: t.quality, from: t.levels[lv].name, to: t.levels[lv + 1].name });
       }
     }
     if (it.kind === 'mobility' || it.kind === 'prep') for (const m of it.list) S.mobSeen = [m.id, ...S.mobSeen.filter(x => x !== m.id)].slice(0, 8);
@@ -584,25 +584,97 @@ function rehydrateSwaps() {
       if (d.work.includes(from)) d.work = d.work.map(x => (x === from ? to : x));
 }
 
+/* Renders one progression change. Sessions logged before this existed stored
+   plain sentences, so those pass straight through. */
+function changeRow(n) {
+  if (typeof n === 'string') return `<li>${n}</li>`;
+  const delta = (n.to != null && n.from != null && typeof n.to === 'number')
+    ? (n.to - n.from > 0 ? '+' : '') + +(n.to - n.from).toFixed(2) + (n.unit === 'kg' ? 'kg' : '') : '';
+  const cls = ['tm', 'load', 'reps', 'core'].includes(n.type) ? 'up' : n.type === 'reset' ? 'down' : '';
+  const detail = {
+    tm:    () => `training max ${n.from} → <b>${n.to}kg</b>`,
+    load:  () => `${n.from} → <b>${n.to}kg</b> · back to ${n.reps} reps`,
+    reps:  () => `${n.from} → <b>${n.to} reps</b> at ${n.w}kg`,
+    core:  () => `${n.from} → <b>${n.to}</b>`,
+    hold:  () => `held at ${n.to}kg`,
+    reset: () => `training max ${n.from} → <b>${n.to}kg</b>, two short cycles`,
+    easy:  () => n.text
+  }[n.type] || (() => '');
+  return `<li class="${cls}">
+    <span class="cl">${n.label}</span>
+    <span class="cd">${detail()}</span>
+    ${delta && cls ? `<span class="cx mono">${delta}</span>` : ''}
+  </li>`;
+}
+
+const isGain = n => typeof n === 'string' ? /→/.test(n) : ['tm', 'load', 'reps', 'core'].includes(n.type);
+
+/* Everything that moved, not just the first thing. A session usually
+   progresses half a dozen lifts at once and a toast showed one of them. */
+function showSummary(sess, notes) {
+  const e = effortOf(sess);
+  const gains = notes.filter(isGain).length;
+  const pool = sess.easy ? FINISH_LINES.easy
+    : e >= 4 ? FINISH_LINES.hard : e === 3 ? FINISH_LINES.solid : FINISH_LINES.light;
+  const line = pool[Math.floor(Math.random() * pool.length)];
+  const mins = sess.duration ? Math.round(sess.duration / 60) : null;
+
+  const box = $('#sheet');
+  box.innerHTML = `<div class="summary">
+    <div class="finishline">${line}</div>
+    <div class="sumstats mono">
+      <span><b style="color:${EFFORT_COLOUR[e]}">${e}/5</b> session</span>
+      <span><b>${(sessionTonnage(sess) / 1000).toFixed(1)}</b>t moved</span>
+      ${mins ? `<span><b>${mins}</b> min</span>` : ''}
+    </div>
+    ${gains ? `<p class="hint">${gains} lift${gains > 1 ? 's' : ''} moved up. The detail is in History.</p>` : ''}
+    <button class="btn-go" id="sheetclose">Done</button>
+  </div>`;
+  box.classList.add('on');
+}
+
+/* A destructive action deserves a sentence about what it destroys, not a
+   native dialog people dismiss by reflex. */
+function askConfirm({ title, body, label, act, danger }) {
+  const box = $('#sheet');
+  box.innerHTML = `<div class="summary">
+    <h3>${title}</h3>
+    <p>${body}</p>
+    <button class="btn-go ${danger ? 'danger' : ''}" data-confirm="${act}">${label}</button>
+    <button id="sheetclose" style="margin-top:8px">Cancel</button>
+  </div>`;
+  box.classList.add('on');
+}
+
 /* ═══ history ═══════════════════════════════════════════════ */
 
 /* Effort out of five. RPE on the main lift is the honest signal when it is
    there; otherwise how much of what was prescribed actually landed. */
+/* Session score out of five, where five is a good session. Completion is the
+   backbone — did you do what was asked — and effort only sharpens it, so a
+   session where everything landed comfortably still scores well rather than
+   being punished for not hurting. */
 function effortOf(sess) {
-  if (sess.easy) return 2;
+  const working = sess.items.flatMap(i => i.sets).filter(s => !s.warm && s.target != null);
+  const logged = working.filter(s => s.reps != null);
+  if (!logged.length) return 1;
+
+  const hit = logged.filter(s => s.reps >= s.target).length;
+  const completion = hit / Math.max(1, working.length);
+  let score = 1 + completion * 4;
+
   const rpes = sess.items.filter(i => i.kind === 'main')
     .flatMap(i => i.sets).filter(s => s.rpe).map(s => s.rpe);
   if (rpes.length) {
     const mean = rpes.reduce((a, b) => a + b, 0) / rpes.length;
-    return Math.max(1, Math.min(5, Math.round(mean - 5)));
+    if (mean >= 9 && completion >= 0.95) score = 5;
+    else if (mean <= 6.5) score = Math.min(score, 3.5);
   }
-  const sets = sess.items.flatMap(i => i.sets).filter(s => s.reps != null && !s.warm);
-  if (!sets.length) return 1;
-  const hit = sets.filter(s => s.reps >= s.target).length / sets.length;
-  return Math.max(1, Math.min(5, Math.round(2 + hit * 2)));
+  if (sess.easy) score = Math.min(score, 3);
+  return Math.max(1, Math.min(5, Math.round(score)));
 }
 
-const EFFORT_COLOUR = ['#5C6470', '#1E7A46', '#5D9E3A', '#E8B305', '#E07B1F', '#C8202D'];
+const EFFORT_COLOUR = ['#5C6470', '#C8202D', '#E07B1F', '#E8B305', '#5D9E3A', '#1E7A46'];
 
 function sessionTonnage(sess) {
   return sess.items.reduce((t, it) => t + it.sets.reduce((u, s) =>
@@ -612,12 +684,16 @@ function sessionTonnage(sess) {
 /* Monday-keyed buckets, newest week first */
 function sessionsByWeek() {
   const weeks = new Map();
-  for (const s of S.sessions.filter(x => x.done).sort((a, b) => b.date.localeCompare(a.date))) {
+  for (const s of S.sessions.filter(x => x.done)) {
     const k = iso(mondayOf(parseDay(s.date)));
     if (!weeks.has(k)) weeks.set(k, []);
     weeks.get(k).push(s);
   }
-  return [...weeks.entries()];
+  /* Newest week at the top, but the week itself reads Monday to Sunday —
+     a week reversed inside is harder to recognise than one in order. */
+  for (const list of weeks.values())
+    list.sort((a, b) => a.date.localeCompare(b.date) || (a.completedAt || '').localeCompare(b.completedAt || ''));
+  return [...weeks.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 }
 
 /* ═══ views ═════════════════════════════════════════════════ */
@@ -729,8 +805,17 @@ function trackStatus() {
   /* Counting a whole week's sessions as due on Tuesday reads as "behind"
      when you are in fact bang on schedule. Only days that have already
      arrived count. */
-  const expected = scheduledBetween(
+  let expected = scheduledBetween(
     Math.max(parseDay(S.created).getTime(), cut), Date.now());
+  /* The day you installed the app is only fairly counted as due if you
+     actually trained it — otherwise a Friday install reports a missed Friday
+     before the thing was even on your phone. */
+  const born = parseDay(S.created);
+  const scheduledDays = Object.values(DAYS).map(d => d.weekday);
+  if (scheduledDays.includes(born.getDay())
+      && born.getTime() >= cut
+      && !S.sessions.some(x => x.done && x.date === S.created)) expected--;
+  expected = Math.max(0, expected);
   const adherence = expected ? Math.min(1, recent / expected) : 1;
 
   const cycles = Math.max(0, cycleNo(today()) - 1);
@@ -1330,7 +1415,8 @@ function progressHistory(done) {
           <span class="hm mono">${parseDay(s.date).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}
             · ${s.club || (s.venue === 'home' ? 'Home' : '—')}${s.duration ? ' · ' + Math.round(s.duration / 60) + ' min' : ''}${s.easy ? ' · easy' : ''}</span>
         </span>
-        <span class="hton mono">${(sessionTonnage(s) / 1000).toFixed(1)}t</span>
+        <span class="hton mono">${(() => { const g = (s.notes || []).filter(isGain).length;
+          return (g ? `<i class="gain">+${g}</i>` : '') + (sessionTonnage(s) / 1000).toFixed(1) + 't'; })()}</span>
       </button>`;
     }).join('')}`;
   }).join('');
@@ -1342,7 +1428,7 @@ function sessionDetail(s) {
     <h2 style="font-size:21px;margin:12px 0 2px">${s.label}</h2>
     <p class="hint" style="margin:0 0 12px">${parseDay(s.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
       ${s.duration ? ' · ' + Math.round(s.duration / 60) + ' min' : ''}
-      · effort <b style="color:${EFFORT_COLOUR[e]}">${e}/5</b>
+      · session score <b style="color:${EFFORT_COLOUR[e]}">${e}/5</b>
       · ${(sessionTonnage(s) / 1000).toFixed(1)}t</p>
 
     <div class="card" style="padding:13px 14px">
@@ -1351,6 +1437,11 @@ function sessionDetail(s) {
         `<button data-setclub="${s.id}|${c}" aria-pressed="${(s.club || '') === c}">${c}</button>`).join('')}</div>
       <p class="hint">Correcting this updates the session record and every later session that inherited the same gym.</p>
     </div>
+
+    ${s.notes && s.notes.length ? `<div class="card" style="padding:13px 14px">
+      <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:8px">WHAT THIS SESSION CHANGED</div>
+      <ul class="changes">${s.notes.map(changeRow).join('')}</ul>
+    </div>` : ''}
 
     ${s.items.filter(it => it.kind !== 'prep' && it.kind !== 'mobility').map(it => `
       <div class="card readonly" style="padding:12px 14px">
@@ -1857,10 +1948,11 @@ function wire() {
       sess.done = true; sess.completedAt = new Date().toISOString();
       if (S.active?.id === sess.id) { sess.duration = Math.round((Date.now() - S.active.t0) / 1000); endSession(); }
       const notes = applyProgression(sess);
+      sess.notes = notes;
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
       draft = null; stopRest(); stopSetClock();
       await save(); await syncNow(true); render();
-      toast(notes[0] || 'Session saved'); return;
+      showSummary(sess, notes); return;
     }
 
     if (t.id === 'lang-gym' || t.id === 'lang-clean') {
@@ -1873,10 +1965,41 @@ function wire() {
     if (t.id === 'sync') return syncNow(false);
     if (t.id === 'export') return exportCopy();
     if (t.id === 'import') return importFile();
-    if (t.id === 'restart') { S.cycleStart = iso(mondayOf(new Date())); await save(); render(); toast('Cycle restarted'); return; }
+    if (t.id === 'restart') {
+      const wk = weekIndex(today()) + 1;
+      askConfirm({
+        title: 'Restart the cycle?',
+        body: `You are on week ${wk} of 4${wk === 4 ? ' — the deload' : ''}. Restarting sets this Monday as week 1,
+               so the wave begins again at the 5s and you skip whatever is left of the current cycle.
+               Training maxes, logged sessions and working weights are all untouched.`,
+        label: 'Restart from this Monday', act: 'restart'
+      });
+      return;
+    }
     if (t.id === 'wipe') {
-      if (!confirm('Erase everything on this device? Your backup file is untouched.')) return;
-      S = seed(); await save(); render(); toast('Erased'); return;
+      const n = S.sessions.filter(x => x.done).length;
+      askConfirm({
+        title: 'Erase everything?',
+        body: `This deletes ${n} logged session${n === 1 ? '' : 's'}, every training max, every working weight,
+               your records and your core levels, and puts the app back to the day you installed it.
+               ${S.lastSync ? `Your backup file is untouched — last saved ${new Date(S.lastSync).toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} — so you could restore from it afterwards.`
+                 : 'You have never saved a backup, so there is nothing to restore from. This cannot be undone.'}`,
+        label: `Erase ${n} session${n === 1 ? '' : 's'} and all progress`, act: 'wipe', danger: true
+      });
+      return;
+    }
+
+    const cf = t.closest('[data-confirm]');
+    if (cf) {
+      $('#sheet').classList.remove('on');
+      if (cf.dataset.confirm === 'restart') {
+        S.cycleStart = iso(mondayOf(new Date()));
+        await save(); render(); toast('Cycle restarted at week 1');
+      }
+      if (cf.dataset.confirm === 'wipe') {
+        S = seed(); await save(); render(); toast('Erased');
+      }
+      return;
     }
   });
 

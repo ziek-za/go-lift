@@ -124,6 +124,7 @@ for (const view of ['plan', 'progress', 'data', 'today']) {
 }
 /* Content checks — a view can render without throwing and still be wrong */
 const strip = s => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+const require$src = (await import('fs')).readFileSync('./app.js', 'utf8');
 await handlers.click({ target: global.__target('nav button', { v: 'progress' }) });
 let prog = strip(get$('#v-progress').innerHTML);
 /* Progress is sectioned now — walk every sub-tab and concatenate */
@@ -224,7 +225,33 @@ const expect = [
    })()],
   ['rest floor respected', dataMod.REST_FLOOR >= 40 &&
      Object.values(dataMod.REST).every(v => v >= dataMod.REST_FLOOR)],
-  ['planet fitness listed', dataMod.CLUBS.includes('Planet Fitness')]
+  ['planet fitness listed', dataMod.CLUBS.includes('Planet Fitness')],
+  ['finishing reports every change', /showSummary\(sess, notes\)/.test(
+     require$src) && !/toast\(notes\[0\]/.test(require$src)],
+  ['completion shows a line, not a ledger',
+     /FINISH_LINES/.test(require$src) && !/sumhead/.test(require$src.slice(
+       require$src.indexOf('function showSummary'), require$src.indexOf('/* ═══ history')))],
+  ['history renders structured changes', /changeRow/.test(require$src)],
+  ['score runs low-bad to high-good', (() => {
+     const m = require$src.match(/EFFORT_COLOUR = \[([^\]]+)\]/);
+     if (!m) return false;
+     const cols = m[1].split(',').map(x => x.trim().replace(/'/g, ''));
+     return cols[1] === '#C8202D' && cols[5] === '#1E7A46';
+   })()],
+  ['weeks newest first, days ascending', (() => {
+     const fn = require$src.slice(require$src.indexOf('function sessionsByWeek'),
+                                  require$src.indexOf('function sessionsByWeek') + 900);
+     return /a\.date\.localeCompare\(b\.date\)/.test(fn) && /b\[0\]\.localeCompare\(a\[0\]\)/.test(fn);
+   })()],
+  ['install day is not counted as missed', /born\.getDay\(\)/.test(require$src)],
+  ['destructive actions confirm first', (() => {
+     /* neither may act on the first tap */
+     const restart = require$src.slice(require$src.indexOf("t.id === 'restart'"), require$src.indexOf("t.id === 'wipe'"));
+     const wipe = require$src.slice(require$src.indexOf("t.id === 'wipe'"), require$src.indexOf("t.id === 'wipe'") + 900);
+     return /askConfirm/.test(restart) && !/S\.cycleStart =/.test(restart)
+         && /askConfirm/.test(wipe) && !/S = seed\(\)/.test(wipe);
+   })()],
+  ['no native confirm dialogs', !/\bconfirm\(/.test(require$src.replace(/askConfirm/g, ''))]
 ];
 console.log('\ncontent checks:');
 let bad = 0;

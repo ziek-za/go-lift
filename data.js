@@ -585,4 +585,34 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v16', date: '2026-08-21' };
+export const BUILD = { version: 'v20', date: '2026-08-21' };
+
+/* Shown when a session is finished. Kept plain — the detail lives in History,
+   this is just the door closing behind you. */
+export const FINISH_LINES = {
+  hard: [
+    'That was a hard one. Banked.',
+    'Nothing left on the table.',
+    'Heavy day, done properly.',
+    'You earned the rest of today.',
+    'That is how the numbers move.'
+  ],
+  solid: [
+    'Clean session. Filed.',
+    'Exactly what was asked for.',
+    'Good work. Consistent beats spectacular.',
+    'Logged and moving.',
+    'That is another brick in the wall.'
+  ],
+  light: [
+    'In and out. Still counts.',
+    'Showed up. That is most of it.',
+    'Done is done.',
+    'Logged. Onwards.'
+  ],
+  easy: [
+    'Easy day, taken properly. Nothing moved, and that is the point.',
+    'Backed off on purpose. Good judgement.',
+    'Recovery is training too.'
+  ]
+};
