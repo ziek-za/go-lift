@@ -251,7 +251,14 @@ const expect = [
      return /askConfirm/.test(restart) && !/S\.cycleStart =/.test(restart)
          && /askConfirm/.test(wipe) && !/S = seed\(\)/.test(wipe);
    })()],
-  ['no native confirm dialogs', !/\bconfirm\(/.test(require$src.replace(/askConfirm/g, ''))]
+  ['no native confirm dialogs', !/\bconfirm\(/.test(require$src.replace(/askConfirm/g, ''))],
+  ['every ledger state is handled', (() => {
+     /* undefined, empty and populated must each render something */
+     const d = require$src.slice(require$src.indexOf('function sessionDetail'),
+                                 require$src.indexOf('function sessionDetail') + 3000);
+     return /!s\.notes \?/.test(d) && /s\.notes && !s\.notes\.length/.test(d)
+         && /s\.notes && s\.notes\.length/.test(d);
+   })()]
 ];
 console.log('\ncontent checks:');
 let bad = 0;

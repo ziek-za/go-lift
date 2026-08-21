@@ -528,7 +528,14 @@ function applyProgression(sess) {
         st.misses = 0;
         if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
         else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
-      } else st.misses++;
+      } else {
+        st.misses++;
+        const short = logged.filter(x => x.reps < x.target).length;
+        notes.push({ type: 'hold', label: a.name, to: st.w, unit: 'kg', reps: st.reps,
+          why: logged.length < working
+            ? `only ${logged.length} of ${working} sets logged`
+            : `${short} set${short > 1 ? 's' : ''} short of ${st.reps}` });
+      }
     }
     if (it.kind === 'core') {
       S.coreSeen = [it.ref, ...(S.coreSeen || []).filter(x => x !== it.ref)].slice(0, 12);
@@ -596,7 +603,7 @@ function changeRow(n) {
     load:  () => `${n.from} → <b>${n.to}kg</b> · back to ${n.reps} reps`,
     reps:  () => `${n.from} → <b>${n.to} reps</b> at ${n.w}kg`,
     core:  () => `${n.from} → <b>${n.to}</b>`,
-    hold:  () => `held at ${n.to}kg`,
+    hold:  () => `held at ${n.to}kg${n.reps ? ' × ' + n.reps : ''}${n.why ? ' · ' + n.why : ''}`,
     reset: () => `training max ${n.from} → <b>${n.to}kg</b>, two short cycles`,
     easy:  () => n.text
   }[n.type] || (() => '');
@@ -1438,6 +1445,27 @@ function sessionDetail(s) {
       <p class="hint">Correcting this updates the session record and every later session that inherited the same gym.</p>
     </div>
 
+    ${!s.notes ? `<div class="card" style="padding:13px 14px">
+      <p class="hint" style="margin:0">Finished before the app started recording changes, so there is no
+      breakdown for it. Your weights and rep targets did move — the record just was not kept.</p>
+    </div>` : ''}
+    ${s.notes && !s.notes.length ? (() => {
+        /* An empty ledger is not the same as a missing one. Work out why it
+           is empty rather than showing a blank space. */
+        const acc = s.items.filter(i => i.kind === 'acc');
+        const partial = acc.filter(i => {
+          const w = i.sets.filter(x => !x.warm);
+          return w.some(x => x.reps == null);
+        }).length;
+        const missed = acc.filter(i => i.sets.some(x => x.reps != null && !x.warm && x.reps < x.target)).length;
+        return `<div class="card" style="padding:13px 14px">
+          <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:6px">NOTHING MOVED</div>
+          <p class="hint" style="margin:0">${
+            partial ? `${partial} exercise${partial > 1 ? 's had' : ' had'} sets left unlogged — a lift only progresses when every working set is marked done.`
+            : missed ? `${missed} exercise${missed > 1 ? 's fell' : ' fell'} short of target, so ${missed > 1 ? 'they held' : 'it held'} at the same weight.`
+            : 'No exercise met its target across every set. The main lifts only move on the 5/3/1 week, so a week 1 or 2 session will not shift them.'}</p>
+        </div>`;
+      })() : ''}
     ${s.notes && s.notes.length ? `<div class="card" style="padding:13px 14px">
       <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:8px">WHAT THIS SESSION CHANGED</div>
       <ul class="changes">${s.notes.map(changeRow).join('')}</ul>
