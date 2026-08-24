@@ -234,6 +234,12 @@ const expect = [
   ['history renders structured changes', /changeRow/.test(require$src)],
   ['previous attempt indicator present', /data-hist=/.test(get$('#v-today').innerHTML)],
   ['old history is not judged as a miss', /p\.target == null\) return \{ k: 'new'/.test(require$src)],
+  ['version regex cannot match itself', (() => {
+     /* the pattern must not appear literally in the file it searches */
+     const needle = new RegExp('APP_' + "BUILD\\s*=\\s*'([^']+)'", 'g');
+     let last = null, h; while ((h = needle.exec(require$src)) !== null) last = h;
+     return !!last && /^v[\d.]+$/.test(last[1]);
+   })()],
   ['score runs low-bad to high-good', (() => {
      const m = require$src.match(/EFFORT_COLOUR = \[([^\]]+)\]/);
      if (!m) return false;

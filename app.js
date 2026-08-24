@@ -1736,13 +1736,21 @@ async function checkForUpdate(quiet) {
   try {
     const res = await fetch('./data.js?t=' + Date.now(), { cache: 'no-store' });
     const txt = await res.text();
-    const m = txt.match(/BUILD\s*=\s*\{\s*version:\s*'([^']+)',\s*date:\s*'([^']+)'/);
-    updateState.latest = m ? { version: m[1], date: m[2] } : null;
-    /* Check app.js separately — it is the file that actually behaves. */
+    const dneedle = new RegExp('BUILD' + "\\s*=\\s*\\{\\s*version:\\s*'([^']+)',\\s*date:\\s*'([^']+)'", 'g');
+    let m = null, dhit;
+    while ((dhit = dneedle.exec(txt)) !== null) m = dhit;
+    updateState.latest = (m && /^v[\d.]+$/.test(m[1])) ? { version: m[1], date: m[2] } : null;
+    /* Check app.js separately — it is the file that actually behaves.
+       The needle is assembled at runtime and the LAST match is taken, because
+       a literal pattern would find its own source in this very file and
+       report the regex fragment as the version number. */
     try {
       const a = await (await fetch('./app.js?t=' + Date.now(), { cache: 'no-store' })).text();
-      const am = a.match(/APP_BUILD = '([^']+)'/);
-      if (am && am[1] !== APP_BUILD) updateState.latest = { version: am[1], date: m ? m[2] : '' };
+      const needle = new RegExp('APP_' + "BUILD\\s*=\\s*'([^']+)'", 'g');
+      let am = null, hit;
+      while ((hit = needle.exec(a)) !== null) am = hit;
+      if (am && /^v[\d.]+$/.test(am[1]) && am[1] !== APP_BUILD)
+        updateState.latest = { version: am[1], date: m ? m[2] : '' };
     } catch (e) { /* offline; the data.js result stands */ }
     updateState.checked = Date.now();
     if ('serviceWorker' in navigator) {
@@ -2205,7 +2213,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v29';
+const APP_BUILD = 'v30';
 
 let lastError = null;
 
