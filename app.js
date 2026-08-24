@@ -491,7 +491,10 @@ function applyProgression(sess) {
       const st = S.mains[it.ref], M = MAINS[it.ref];
       const logged = it.sets.filter(s => s.reps != null && !s.warm);
       if (logged.length) {
-        st.hist.push({ d: sess.date, e1rm: Math.round(Math.max(...logged.map(s => e1rm(s.w, s.reps)))), tm: st.tm });
+        st.hist.push({ d: sess.date, e1rm: Math.round(Math.max(...logged.map(s => e1rm(s.w, s.reps)))), tm: st.tm,
+          label: sess.label, club: sess.club,
+          sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null, open: !!x.open })) });
+        st.hist = st.hist.slice(-12);
         for (const l of logged) noteRecord(it.ref, l.w, l.reps, sess.date);
       }
       const openSet = it.sets.find(s => s.open);
@@ -520,7 +523,10 @@ function applyProgression(sess) {
       const logged = it.sets.filter(s => s.reps != null && !s.warm);
       if (!logged.length) continue;
       st.lastDone = sess.date;
-      st.hist.push({ d: sess.date, w: st.w, reps: logged.map(s => s.reps) });
+      st.hist.push({ d: sess.date, w: st.w, target: st.reps, label: sess.label, club: sess.club,
+        reps: logged.map(x => x.reps),
+        sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null })) });
+      st.hist = st.hist.slice(-12);
       /* A set trimmed by running load is not a missed set. */
       const working = it.sets.filter(s => !s.warm).length;
       const expected = sess.runTrim ? logged.length : working;
@@ -707,6 +713,7 @@ function sessionsByWeek() {
 
 let VIEW = 'today', draft = null, openWeek = null;
 let addQuery = '', addOpen = false, progressTab = 'status', openSession = null, libQuery = '';
+let openHist = null;
 
 /* Was this day's session completed in the current Monday-to-Sunday week? */
 function doneThisWeek(dayKey) {
@@ -850,6 +857,32 @@ function trackStatus() {
   return { verdict, tone, adherence, recent, expected, strength, gained, due, short, stalls, vol, cycles };
 }
 
+/* ═══ previous attempts ═════════════════════════════════════
+   The useful question mid-set is not "what does the plan say" but "what did
+   I do last time". Older history entries stored only a reps array, so those
+   are read back as best they can be. */
+
+function lastAttempt(kind, ref) {
+  const st = kind === 'main' ? S.mains[ref] : S.acc[ref];
+  const h = st && st.hist && st.hist.length ? st.hist[st.hist.length - 1] : null;
+  if (!h) return null;
+  const sets = h.sets || (h.reps || []).map(r => ({ w: h.w, reps: r, target: h.target ?? null, rpe: null }));
+  return { date: h.d, label: h.label || null, club: h.club || null, sets };
+}
+
+/* green hit, amber short, grey when the prescription has changed since */
+function setStatus(it, s, i) {
+  const prev = lastAttempt(it.kind, it.ref);
+  const p = prev && prev.sets[i];
+  if (!p || p.reps == null) return { k: 'new', prev, p: null };
+  /* History written before targets were stored cannot be judged — comparing
+     it against today's target marks work you actually completed as a miss,
+     because the target went up precisely because you hit it. */
+  if (p.target == null) return { k: 'new', prev, p, unknown: true };
+  if (p.w !== s.w || p.target !== s.target) return { k: 'new', prev, p };
+  return { k: p.reps >= p.target ? 'hit' : 'miss', prev, p };
+}
+
 /* ═══ set completion ════════════════════════════════════════ */
 
 let setClock = null;   // one running set at a time
@@ -964,6 +997,13 @@ function setRow(it, s, i) {
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
       <div class="line">
         <span class="n mono">${s.warm ? '·' : i + 1}</span>
+        ${s.warm || it.kind === 'core' ? '' : (() => {
+          const st = setStatus(it, s, i);
+          const open = openHist === `${it._idx}:${i}`;
+          const title = { hit: 'Hit it last time', miss: 'Fell short last time', new: 'First go at this' }[st.k];
+          return `<button class="hdot ${st.k} ${open ? 'on' : ''}" data-hist="${it._idx}|${i}"
+                    aria-label="${title}" title="${title}"></button>`;
+        })()}
         <span class="presc">
           <span class="w mono">${s.bodyweight ? 'bodyweight' : s.w ? s.w + 'kg' : 'bodyweight'}</span>
           <span class="x">×</span>
@@ -973,6 +1013,25 @@ function setRow(it, s, i) {
         ${label ? `<span class="kindlabel mono">${label}</span>` : ''}
       </div>
       <div class="acts">${actions}</div>
+      ${openHist === `${it._idx}:${i}` && !s.warm && it.kind !== 'core' ? (() => {
+        const st = setStatus(it, s, i);
+        if (!st.prev) return `<div class="hprev"><span class="hp-none">No record of this one yet — this is your first logged attempt.</span></div>`;
+        const p = st.p;
+        const when = parseDay(st.prev.date).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' });
+        return `<div class="hprev ${st.k}">
+          <div class="hp-when mono">${when}${st.prev.label ? ' · ' + st.prev.label : ''}${st.prev.club ? ' · ' + st.prev.club : ''}</div>
+          ${!p ? '' : p.target == null ? '' : ''}
+          ${p ? `<div class="hp-row">
+            <span class="hp-w mono">${p.w ? p.w + 'kg' : 'bodyweight'}</span>
+            <span class="hp-r"><b>${p.reps}</b>${p.target != null ? ` of ${p.target}` : ''}</span>
+            ${p.rpe ? `<span class="hp-rpe mono" style="--rc:${RPE_SCALE[p.rpe] ? RPE_SCALE[p.rpe].colour : 'var(--dust)'}">RPE ${p.rpe}</span>` : ''}
+            <span class="hp-v">${st.k === 'hit' ? 'hit' : st.k === 'miss' ? 'short'
+              : st.unknown ? 'target not recorded then' : 'prescription has changed since'}</span>
+          </div>` : '<div class="hp-row"><span class="hp-none">Set not logged last time.</span></div>'}
+          ${st.prev.sets.length > 1 ? `<div class="hp-all mono">whole exercise: ${st.prev.sets.map(x =>
+            (x.reps == null ? '—' : x.reps) + (x.target != null && x.reps != null && x.reps < x.target ? '*' : '')).join(' · ')}</div>` : ''}
+        </div>`;
+      })() : ''}
       ${editor}${rpe}
     </div>`;
 }
@@ -1537,12 +1596,29 @@ function renderData() {
   const last = S.lastSync ? new Date(S.lastSync) : null;
   const ok = 'showSaveFilePicker' in window;
   $('#v-data').innerHTML = `
+    ${lastError ? `<p class="eyebrow">Last error</p>
+    <div class="card crash" style="margin-bottom:12px">
+      <div class="ch" style="font-size:16px">${lastError.where}</div>
+      <pre>${lastError.message.replace(/[<>]/g, '')}
+${lastError.stack.replace(/[<>]/g, '')}</pre>
+      <div class="btn-row">
+        <button class="btn-sm" id="copyerr">Copy</button>
+        <button class="btn-sm" id="clearerr">Clear</button>
+      </div>
+    </div>` : ''}
+
     <p class="eyebrow">Version</p>
     <div class="card build">
       <div class="brow">
-        <span class="bv">${BUILD.version}</span>
+        <span class="bv">${APP_BUILD === BUILD.version ? APP_BUILD : APP_BUILD + ' / ' + BUILD.version}</span>
         <span class="bd mono">deployed ${BUILD.date}</span>
       </div>
+      ${APP_BUILD !== BUILD.version ? `<div class="bnew" style="border-left-color:var(--stall);background:rgba(200,32,45,.07)">
+        <b style="color:var(--stall)">Mismatched files</b>
+        <span>app.js is ${APP_BUILD}, data.js is ${BUILD.version}. The cache has handed back one new file and
+        one old one, so the app is running code that does not match what it reports. Reload to fix it.</span>
+        <button class="btn-go" id="applyupdate">Force reload</button>
+      </div>` : ''}
       ${updateState.latest && updateState.latest.version !== BUILD.version
         ? `<div class="bnew">
              <b>${updateState.latest.version} is live on the server</b>
@@ -1603,10 +1679,48 @@ function renderData() {
 }
 
 function render() {
-  ({ today: renderToday, plan: renderPlan, progress: renderProgress, data: renderData })[VIEW]();
+  try {
+    ({ today: renderToday, plan: renderPlan, progress: renderProgress, data: renderData })[VIEW]();
+  } catch (err) {
+    /* A thrown render left the tab blank with no way to tell why. Showing the
+       failure is the difference between "the app is broken" and a line you can
+       act on. */
+    noteError('render:' + VIEW, err);
+    $('#v-' + VIEW).innerHTML = `<div class="crash">
+      <div class="ch">This tab failed to draw</div>
+      <p>Your data is safe — this is a display fault, not a data one.</p>
+      <pre>${String((err && err.message) || err).replace(/[<>]/g, '')}</pre>
+      <div class="btn-row">
+        <button class="btn-go" id="repair">Repair data and reload</button>
+        <button id="export">Export a copy</button>
+      </div>
+      <p class="hint">app ${APP_BUILD} · data ${BUILD.version}. If it persists, export and send that file on.</p>
+    </div>`;
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + VIEW));
   document.querySelectorAll('nav button').forEach(b => b.setAttribute('aria-current', b.dataset.v === VIEW ? 'page' : 'false'));
-  $('#cycle').innerHTML = `<b>Cycle ${cycleNo(today())}</b>wk ${weekIndex(today()) + 1} · ${WAVE[weekIndex(today())].name}`;
+  try {
+    $('#cycle').innerHTML = `<b>Cycle ${cycleNo(today())}</b>wk ${weekIndex(today()) + 1} · ${WAVE[weekIndex(today())].name}`;
+  } catch (e) { /* the header is decoration; never let it take the app down */ }
+}
+
+/* Backfill everything the library expects and drop what it no longer knows
+   about. Runs at boot and from the Repair button. */
+function repairState() {
+  S.acc = S.acc || {}; S.mains = S.mains || {}; S.records = S.records || {};
+  S.coreLevel = S.coreLevel || {}; S.settings = S.settings || {};
+  for (const [k, a] of Object.entries(ACCESSORIES))
+    if (!S.acc[k]) S.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
+  for (const [k, m] of Object.entries(MAINS))
+    if (!S.mains[k]) S.mains[k] = { tm: m.tm, misses: 0, hist: [] };
+  for (const [k, r] of Object.entries(SEED_RECORDS))
+    if (!S.records[k]) S.records[k] = JSON.parse(JSON.stringify(r));
+  const rung = (CORE_START[S.settings.coreStart] || CORE_START.advanced).rung;
+  for (const t of CORE_TRACKS)
+    if (S.coreLevel[t.id] == null) S.coreLevel[t.id] = Math.min(rung, t.levels.length - 1);
+  for (const D of Object.values(DAYS)) D.work = D.work.filter(id => ACCESSORIES[id]);
+  S.settings.swaps = Object.fromEntries(
+    Object.entries(S.settings.swaps || {}).filter(([a, b]) => ACCESSORIES[a] && ACCESSORIES[b]));
 }
 
 /* ═══ build ═════════════════════════════════════════════════
@@ -1624,6 +1738,12 @@ async function checkForUpdate(quiet) {
     const txt = await res.text();
     const m = txt.match(/BUILD\s*=\s*\{\s*version:\s*'([^']+)',\s*date:\s*'([^']+)'/);
     updateState.latest = m ? { version: m[1], date: m[2] } : null;
+    /* Check app.js separately — it is the file that actually behaves. */
+    try {
+      const a = await (await fetch('./app.js?t=' + Date.now(), { cache: 'no-store' })).text();
+      const am = a.match(/APP_BUILD = '([^']+)'/);
+      if (am && am[1] !== APP_BUILD) updateState.latest = { version: am[1], date: m ? m[2] : '' };
+    } catch (e) { /* offline; the data.js result stands */ }
     updateState.checked = Date.now();
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
@@ -1729,6 +1849,15 @@ function wire() {
       box.classList.add('on'); return;
     }
     if (t.id === 'sheetclose' || t.id === 'sheet') { $('#sheet').classList.remove('on'); return; }
+
+    const hd = t.closest('[data-hist]');
+    if (hd) {
+      const key = hd.dataset.hist.replace('|', ':');
+      openHist = openHist === key ? null : key;
+      const sess = $('#v-today')._sess;
+      if (sess) redrawItem(sess, +hd.dataset.hist.split('|')[0]);
+      return;
+    }
 
     /* Set actions */
     const act = t.closest('[data-do]');
@@ -1988,6 +2117,14 @@ function wire() {
       pop(phraseFor(true)); return;
     }
     if (t.id === 'ra-on' || t.id === 'ra-off') { S.settings.runAdjust = t.id === 'ra-on'; await save(); render(); return; }
+    if (t.id === 'clearerr') { lastError = null; render(); return; }
+    if (t.id === 'copyerr') {
+      const txt = `${lastError.where}: ${lastError.message}\n${lastError.stack}\napp ${APP_BUILD} data ${BUILD.version}`;
+      try { await navigator.clipboard.writeText(txt); toast('Copied'); }
+      catch (e) { toast('Could not copy — read it off the screen'); }
+      return;
+    }
+    if (t.id === 'repair') { repairState(); await save(); render(); toast('Repaired'); return; }
     if (t.id === 'checkupdate') return checkForUpdate(false);
     if (t.id === 'applyupdate') return applyUpdate();
     if (t.id === 'sync') return syncNow(false);
@@ -2064,6 +2201,30 @@ function wire() {
 
 /* ═══ boot ══════════════════════════════════════════════════ */
 
+/* Stamped separately from data.js. The two files update independently, so a
+   single version number can report fresh while stale code is running — which
+   is exactly how a v24 bug hid behind a v25 label. If these disagree, the
+   cache handed back a mismatched pair. */
+const APP_BUILD = 'v29';
+
+let lastError = null;
+
+function noteError(where, err) {
+  lastError = {
+    where,
+    message: String((err && err.message) || err),
+    stack: String((err && err.stack) || '').split('\n').slice(1, 4).join('\n'),
+    when: new Date().toISOString()
+  };
+  console.error(where, err);
+  try { if (VIEW === 'data') renderData(); } catch (e) {}
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', e => noteError('window', e.error || e.message));
+  window.addEventListener('unhandledrejection', e => noteError('promise', e.reason));
+}
+
 (async function init() {
   db = await open();
   S = await get('state') || seed();
@@ -2073,37 +2234,11 @@ function wire() {
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
   S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
 
-  /* Any exercise added to the programme after this device last saved has no
-     stored state, and the first thing that reads S.acc[id].w throws — which
-     took out the whole Plan tab. Backfill anything missing, every launch. */
-  S.acc = S.acc || {};
-  for (const [k, a] of Object.entries(ACCESSORIES))
-    if (!S.acc[k]) S.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
-  S.mains = S.mains || {};
-  for (const [k, m] of Object.entries(MAINS))
-    if (!S.mains[k]) S.mains[k] = { tm: m.tm, misses: 0, hist: [] };
-  S.records = S.records || {};
-  for (const [k, r] of Object.entries(SEED_RECORDS))
-    if (!S.records[k]) S.records[k] = JSON.parse(JSON.stringify(r));
-  const startRung = CORE_START[S.settings.coreStart || 'advanced'].rung;
-  for (const t of CORE_TRACKS)
-    if (S.coreLevel[t.id] == null) S.coreLevel[t.id] = Math.min(startRung, t.levels.length - 1);
-
-  /* A programmed exercise that has since been removed from the library would
-     break session building the same way. */
-  for (const D of Object.values(DAYS)) D.work = D.work.filter(id => ACCESSORIES[id]);
-  if (!S.coreLevel || !Object.keys(S.coreLevel).length) {
-    S.coreLevel = {};
-    const rung = CORE_START[S.settings.coreStart || 'advanced'].rung;
-    for (const t of CORE_TRACKS) S.coreLevel[t.id] = Math.min(rung, t.levels.length - 1);
-  }
   S.settings.coreStart = S.settings.coreStart || 'advanced';
   /* Old builds stored flat core exercise ids; only track ids mean anything now. */
   S.coreSeen = (S.coreSeen || []).filter(id => CORE_TRACKS.some(t => t.id === id));
-  if (!S.records) {
-    S.records = {};
-    for (const [k, r] of Object.entries(SEED_RECORDS)) S.records[k] = JSON.parse(JSON.stringify(r));
-  }
+  repairState();
+
   /* Repair a cycle start written before dates were handled in local time.
      Safe while nothing has been logged; after that, use Restart in Data. */
   const anchor = iso(mondayOf(parseDay(S.cycleStart)));

@@ -232,6 +232,8 @@ const expect = [
      /FINISH_LINES/.test(require$src) && !/sumhead/.test(require$src.slice(
        require$src.indexOf('function showSummary'), require$src.indexOf('/* ═══ history')))],
   ['history renders structured changes', /changeRow/.test(require$src)],
+  ['previous attempt indicator present', /data-hist=/.test(get$('#v-today').innerHTML)],
+  ['old history is not judged as a miss', /p\.target == null\) return \{ k: 'new'/.test(require$src)],
   ['score runs low-bad to high-good', (() => {
      const m = require$src.match(/EFFORT_COLOUR = \[([^\]]+)\]/);
      if (!m) return false;
