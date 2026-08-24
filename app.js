@@ -1279,13 +1279,13 @@ function renderPlan() {
     <p class="hint" style="margin:0 0 10px">Seeded from your log. Machine numbers especially are guesses — correct them here or on the exercise itself, and it sticks.</p>
     ${Object.values(DAYS).map(d => `<div class="card" style="padding:12px 14px">
       <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:4px">${d.label.toUpperCase()}</div>
-      ${d.work.map(id => ACCESSORIES[id] ? `<div class="wrow">
+      ${d.work.filter(id => ACCESSORIES[id] && S.acc[id]).map(id => `<div class="wrow">
         <span class="wn">${ACCESSORIES[id].name}${ACCESSORIES[id].dbl ? ' <em>each hand</em>' : ''}</span>
         <span class="step">
           <button data-wn="-1" data-wk="acc" data-wr="${id}">−</button>
           <input type="number" inputmode="decimal" value="${S.acc[id].w}" data-wv="${id}" data-wk="acc">
           <button data-wn="1" data-wk="acc" data-wr="${id}">+</button>
-        </span></div>` : '').join('')}
+        </span></div>`).join('')}
     </div>`).join('')}
 
     <p class="eyebrow">Training maxes</p>
@@ -2072,6 +2072,26 @@ function wire() {
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
   S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
+
+  /* Any exercise added to the programme after this device last saved has no
+     stored state, and the first thing that reads S.acc[id].w throws — which
+     took out the whole Plan tab. Backfill anything missing, every launch. */
+  S.acc = S.acc || {};
+  for (const [k, a] of Object.entries(ACCESSORIES))
+    if (!S.acc[k]) S.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
+  S.mains = S.mains || {};
+  for (const [k, m] of Object.entries(MAINS))
+    if (!S.mains[k]) S.mains[k] = { tm: m.tm, misses: 0, hist: [] };
+  S.records = S.records || {};
+  for (const [k, r] of Object.entries(SEED_RECORDS))
+    if (!S.records[k]) S.records[k] = JSON.parse(JSON.stringify(r));
+  const startRung = CORE_START[S.settings.coreStart || 'advanced'].rung;
+  for (const t of CORE_TRACKS)
+    if (S.coreLevel[t.id] == null) S.coreLevel[t.id] = Math.min(startRung, t.levels.length - 1);
+
+  /* A programmed exercise that has since been removed from the library would
+     break session building the same way. */
+  for (const D of Object.values(DAYS)) D.work = D.work.filter(id => ACCESSORIES[id]);
   if (!S.coreLevel || !Object.keys(S.coreLevel).length) {
     S.coreLevel = {};
     const rung = CORE_START[S.settings.coreStart || 'advanced'].rung;
