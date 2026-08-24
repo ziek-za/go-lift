@@ -1764,16 +1764,35 @@ async function checkForUpdate(quiet) {
   if (VIEW === 'data') render();
 }
 
+/* Updating a PWA properly means getting out from under the worker that is
+   serving the stale files, not asking it nicely. reload(true) has been a
+   no-op in browsers for years, and reloading straight after update() lands
+   back on the old worker because the new one has not installed yet. So:
+   unregister everything, empty every cache, then navigate to a URL the HTTP
+   cache has never seen. */
 async function applyUpdate() {
+  const box = $('#sheet');
+  box.innerHTML = `<div class="summary"><div class="finishline">Updating…</div>
+    <p class="hint">Clearing the cache and fetching a fresh copy.</p></div>`;
+  box.classList.add('on');
+
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg?.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      if (reg) await reg.update();
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister().catch(() => {})));
     }
-    if ('caches' in window) for (const k of await caches.keys()) await caches.delete(k);
-  } catch (e) { /* carry on and reload anyway */ }
-  location.reload(true);
+  } catch (e) { noteError('update:unregister', e); }
+
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (e) { noteError('update:caches', e); }
+
+  /* Your training data lives in IndexedDB and is untouched by any of the above. */
+  const base = location.href.split('#')[0].split('?')[0];
+  location.replace(base + '?u=' + Date.now());
 }
 
 /* ═══ sync ══════════════════════════════════════════════════ */
@@ -2213,7 +2232,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v30';
+const APP_BUILD = 'v31';
 
 let lastError = null;
 
@@ -2255,14 +2274,21 @@ if (typeof window !== 'undefined') {
   }
   rehydrateSwaps();
   await save(); wire(); render(); resumeRest(); paintSession();
+  if ((location.search || '').includes('u=')) {
+    try { history.replaceState({}, '', location.pathname); } catch (e) {}
+    toast('Updated to ' + APP_BUILD);
+  }
   setTimeout(() => checkForUpdate(true), 2500);
   if ('serviceWorker' in navigator) {
     /* updateViaCache 'none' stops the browser handing back a cached sw.js */
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
-    /* When a new worker takes control, reload once so the running code matches it */
+    /* Reload once when a new worker replaces an existing one. Guarded on
+       there having been a controller already, otherwise the first install
+       triggers a pointless reload — and after an unregister, a loop. */
+    const hadController = !!navigator.serviceWorker.controller;
     let reloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloaded) return;
+      if (!hadController || reloaded) return;
       reloaded = true;
       location.reload();
     });
