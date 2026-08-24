@@ -31,18 +31,18 @@ export const WAVE = [
    and plate-loaded machines differ between Wembley and Foreshore.
    `home` means it needs nothing beyond what you own. */
 export const ACCESSORIES = {
-  bulgarian:      { name: 'Bulgarian split squat', pattern: 'squat', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Barbell on back, rear foot up.', variants: ['db-bulgarian', 'walking-lunge'] },
+  bulgarian:      { name: 'Bulgarian split squat', pattern: 'squat', w: 35, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Barbell on back, rear foot up.', variants: ['db-bulgarian', 'walking-lunge'] },
   'db-bulgarian': { name: 'Bulgarian split squat (dumbbell)', pattern: 'squat', w: 20, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true },
   'walking-lunge':{ name: 'Walking lunge', pattern: 'squat', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true, home: true },
 
-  legpress:       { name: '45° leg press', pattern: 'squat', w: 200, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 10, machine: true, variants: ['hack', 'sl-legpress'] },
+  legpress:       { name: '45° leg press', pattern: 'squat', w: 200, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 10, machine: true, variants: ['hack', 'sl-legpress'] },
   hack:           { name: 'Hack squat', pattern: 'squat', w: 85, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
   'sl-legpress':  { name: 'Single-leg press', pattern: 'squat', w: 70, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, machine: true },
 
   frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack'] },
   pausesq:        { name: 'Pause squat', pattern: 'squat', w: 100, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, note: '2s in the hole.' },
 
-  rdl:            { name: 'Romanian deadlift', pattern: 'hinge', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Stop at the stretch, not the floor.', variants: ['seatedgm', 'standgm'] },
+  rdl:            { name: 'Romanian deadlift', pattern: 'hinge', w: 90, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Stop at the stretch, not the floor.', variants: ['seatedgm', 'standgm'] },
   seatedgm:       { name: 'Seated good morning', pattern: 'hinge', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 5, bar: true, note: '~30° torso. Hamstring track — build this one slowly.' },
   standgm:        { name: 'Standing good morning', pattern: 'hinge', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true },
 
@@ -50,8 +50,24 @@ export const ACCESSORIES = {
   'sl-legcurl':   { name: 'Single-leg lying curl', pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
 
   calf:           { name: 'Standing calf raise', pattern: 'calf', w: 140, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Your log said stack + 80kg, so this is a guess at the total. Set it properly on the first session.' },
-  seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
+  seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 2, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
 
+
+  /* Traps — you had shrugs in your log and I dropped them. For traps that
+     pop at the top, heavy and high-rep both work; the mistake is rolling
+     the shoulders instead of driving them straight up. */
+  'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 6, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
+  'shrug-db':     { name: 'Dumbbell shrug', pattern: 'traps', w: 40, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2, note: 'Arms hang, shoulders to ears. No rolling.' },
+  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 3, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true },
+  'shrug-hold':   { name: 'Shrug with a hold', pattern: 'traps', w: 80, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Three seconds at the top of every rep.' },
+
+  /* Forearms — nothing was training them directly, and they are the one
+     part of an aesthetic upper body you cannot hide under a sleeve. */
+  revcurl:        { name: 'Reverse curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 16, inc: 5, bar: true, home: true, note: 'Overhand, elbows pinned. Builds the brachioradialis, which is what makes the forearm look thick from the front.', variants: ['hammerrope', 'wristcurl'] },
+  wristcurl:      { name: 'Wrist curl', pattern: 'forearms', w: 25, sets: 3, reps: 15, repMin: 12, repMax: 22, inc: 5, bar: true, home: true, note: 'Forearms on a bench or your thighs, let the bar roll to the fingertips, then curl it back.' },
+  revwrist:       { name: 'Reverse wrist curl', pattern: 'forearms', w: 8, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 1, home: true, note: 'Dumbbells, deliberately — a 5kg jump on a lift this light is 40 percent. The extensors balance all the gripping and keep the elbow happy.' },
+  hammerrope:     { name: 'Rope hammer curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true },
+  farmerhold:     { name: "Farmer's hold", pattern: 'forearms', w: 40, dbl: true, sets: 3, reps: 40, repMin: 30, repMax: 60, inc: 2, home: true, note: 'Seconds, not reps. Heaviest you can hold with a full grip, stood tall.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
   machinerow:     { name: 'Free-weight row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
@@ -59,7 +75,7 @@ export const ACCESSORIES = {
 
   pullup:         { name: 'Weighted pull-up', pattern: 'vpull', addedWeight: true, w: 15, sets: 3, reps: 4, repMin: 4, repMax: 6, inc: 2.5, note: 'Added weight. Slow on the way down.', variants: ['latpull', 'fixedlat'] },
   latpull:        { name: 'Lat pulldown', pattern: 'vpull', w: 95, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
-  fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
+  fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 4, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   strarm:         { name: 'Straight-arm pulldown', pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
 
   inclinebb:      { name: 'Incline barbell press', pattern: 'hpush', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 5, bar: true, variants: ['inclinedb', 'smithincline'] },
@@ -73,9 +89,10 @@ export const ACCESSORIES = {
   machinepress:   { name: 'Shoulder press machine', pattern: 'vpush', w: 110, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
   stdbpress:      { name: 'Standing dumbbell press', pattern: 'vpush', w: 18, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, home: true },
 
-  leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true, note: 'Warm the cuff first. This one bites cold.', variants: ['dblat', 'cablelat-light'] },
-  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, home: true },
-  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true },
+  leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 5, reps: 8, repMin: 8, repMax: 12, inc: 1.25, machine: true, note: 'Lean away from the stack, arm crossing the body at the bottom. That bottom position is why this one carries the most sets. Warm the cuff first — it bites cold.', variants: ['dblat', 'cablelat-light'] },
+  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 5, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Elbows lead, stop at shoulder height. If the traps take over or you start swinging, halve the weight — this is the exercise people most often turn into a shrug.' },
+  leandb:         { name: 'Leaning dumbbell lateral raise', pattern: 'lat', w: 8, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1, home: true, note: 'Hold a rack upright and lean away. The lean loads the bottom of the range, which the standing version misses entirely.' },
+  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
   reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'cablerear', 'proney'] },
@@ -88,19 +105,19 @@ export const ACCESSORIES = {
   ezpreacher:     { name: 'EZ-bar preacher curl', pattern: 'biceps', w: 30, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, variants: ['dbpreacher', 'inclinehammer'] },
   dbpreacher:     { name: 'Dumbbell preacher curl', pattern: 'biceps', w: 16, dbl: true, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 1 },
   inclinehammer:  { name: 'Incline hammer curl', pattern: 'biceps', w: 16, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 10, inc: 1 },
-  seatedhammer:   { name: 'Seated hammer curl', pattern: 'biceps', w: 18, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 1, home: true },
+  seatedhammer:   { name: 'Seated hammer curl', pattern: 'biceps', w: 18, dbl: true, sets: 4, reps: 12, repMin: 12, repMax: 14, inc: 1, home: true },
   cablecurl:      { name: 'Single-arm cable curl, facing away', pattern: 'biceps', w: 17.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true },
   assistcurl:     { name: 'Concentration curl', pattern: 'biceps', w: 18, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1, home: true },
-  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
+  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 4, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
   dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
   dip:            { name: 'Weighted dip', pattern: 'hpush', addedWeight: true, w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
   closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true },
   skullcrusher:   { name: 'Skull crusher', pattern: 'triceps', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true },
-  ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
+  ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 2, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
   rollingbar:     { name: 'Rolling bar pushdown', pattern: 'triceps', w: 35, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
   overheadrope:   { name: 'Overhead rope extension', pattern: 'triceps', w: 25, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
-  dbohext:        { name: 'Overhead dumbbell extension', pattern: 'triceps', w: 22, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Two hands, one dumbbell.' },
+  dbohext:        { name: 'Overhead dumbbell extension', pattern: 'triceps', w: 22, sets: 4, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Two hands, one dumbbell.' },
   floorskull:     { name: 'Floor skull crusher', pattern: 'triceps', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true }
 };
 
@@ -269,14 +286,14 @@ export const DAYS = {
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bulgarian', 'legpress', 'legcurl', 'calf', 'seatedcalf'],
+    work: ['bulgarian', 'legpress', 'calf', 'shrug-bb', 'farmerhold', 'hammerrope'],
     prepKey: 'squat', prep: 4,
     core: 2, coreQ: ['Anti-extension', 'Anti-rotation']
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull'],
+    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull', 'revcurl', 'wristcurl'],
     prepKey: 'home', prep: 3,
     core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
@@ -284,13 +301,13 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
+    work: ['bbrow', 'dip', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
     prepKey: 'bench', prep: 2, core: 0
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: ['frontsq', 'rdl', 'sl-legcurl', 'seatedcalf'],
+    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine', 'revwrist'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
@@ -298,7 +315,7 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['dbrow', 'dbpress', 'fixedlat', 'cablelat-light', 'facepull', 'ezpreacher', 'ropepush'],
+    work: ['dbrow', 'fixedlat', 'strarm', 'cablelat-light', 'facepull', 'ezpreacher', 'ropepush'],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -316,16 +333,21 @@ export const CORE_START = {
    range the hypertrophy literature converges on, adjusted for your stated
    priorities: shoulders, arms and core high, chest and back at solid
    maintenance because 75 minutes and 40km of running will not carry more. */
+/* Reweighted for the stated goal: an aesthetic upper body. Shoulders, lats,
+   arms, forearms, traps and abs carry the volume. Legs sit at a genuine
+   maintenance level, which is also about what 40km of running a week leaves
+   room to recover from — this is a deliberate trade, not an oversight. */
 export const VOLUME_TARGET = {
-  quads: 12, 'hams/glutes': 12, calves: 6, chest: 8, 'front delts': 8,
-  'back horizontal': 6, 'back vertical': 6, 'side delts': 9,
-  'rear delts': 9, biceps: 12, triceps: 6, core: 12
+  quads: 10, 'hams/glutes': 10, calves: 3, chest: 8, 'front delts': 5,
+  'back horizontal': 6, 'back vertical': 10, 'side delts': 16,
+  'rear delts': 9, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
 };
 
 export const MUSCLE_OF = {
   squat: 'quads', hinge: 'hams/glutes', calf: 'calves', hpush: 'chest',
   vpush: 'front delts', hpull: 'back horizontal', vpull: 'back vertical',
-  lat: 'side delts', rear: 'rear delts', biceps: 'biceps', triceps: 'triceps'
+  lat: 'side delts', rear: 'rear delts', biceps: 'biceps', triceps: 'triceps',
+  traps: 'traps', forearms: 'forearms'
 };
 
 /* Known bests from the log, so Records is populated before you log anything.
@@ -520,8 +542,8 @@ export const CUES = {
   fixedlat:   'Pull the elbows down and back, not the hands. Let the shoulders rise fully at the top.',
   inclinebb:  'Bench around 30°. Higher than that and it becomes a shoulder press.',
   machinepress: 'Do not let the lower back arch off the pad. Stop just short of lockout to keep tension.',
-  dblat:      'Lead with the elbows, thumbs slightly down, stop at shoulder height. If you swing, halve the weight.',
-  leancable:  'Lean away from the stack, arm across the body at the bottom for a longer range.',
+  dblat:      'Elbows lead, thumbs slightly down, stop at shoulder height. If you swing, halve the weight.',
+  leancable:  'Lean away, arm crossing the body at the bottom. Elbow leads, stop at shoulder height, no shrug.',
   facepull:   'Pull to the eyebrows and rotate the knuckles up at the end. High reps, light load.',
   revpec:     'Chest stays on the pad. Squeeze the shoulder blades, do not shrug.',
   reardb:     'Chest supported if you can. Thumbs down, small controlled arc, no momentum.',
@@ -585,7 +607,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v22', date: '2026-08-21' };
+export const BUILD = { version: 'v24', date: '2026-08-21' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
