@@ -2318,7 +2318,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v35';
+const APP_BUILD = 'v36';
 
 let lastError = null;
 

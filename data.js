@@ -176,8 +176,16 @@ export const CORE_TRACKS = [
         cue: 'Knees down, roll out only as far as you can return from without the hips sagging. Ribs pulled down, glutes squeezed.' },
       { name: 'Ab wheel, kneeling full', unit: 'reps', target: 10, sets: 3, w: 0,
         cue: 'Full extension until you are almost flat, then pull back with the abs rather than the hips. Never let the lower back arch.' },
+      { name: 'Ab wheel, kneeling with a pause', unit: 'reps', target: 8, sets: 3, w: 0,
+        cue: 'Three seconds held at full extension on every rep. This is where the strength for a standing rollout actually gets built.' },
+      { name: 'Band-assisted standing rollout', unit: 'reps', target: 8, sets: 3, w: 0,
+        cue: 'Band anchored high behind you, looped round the wheel handles so it helps you back up. Feet stay planted. Move further from the anchor to make it harder.' },
+      { name: 'Standing rollout to a raised stop', unit: 'reps', target: 8, sets: 3, w: 0,
+        cue: 'Roll out until the wheel meets a bench or a box, then return. Lower the stop over the weeks and the range grows with you.' },
       { name: 'Ab wheel, standing to knees', unit: 'reps', target: 6, sets: 3, w: 0,
-        cue: 'From standing, roll out, drop to the knees at the bottom and return. A serious exercise — only once the kneeling version is genuinely easy.' }
+        cue: 'From standing, roll out, drop to the knees at the bottom and return from there.' },
+      { name: 'Full standing rollout', unit: 'reps', target: 5, sets: 3, w: 0,
+        cue: 'Out and back without the knees touching. Very few people get here. If the lower back arches at any point, drop a rung.' }
     ]
   },
   {
@@ -674,7 +682,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v35', date: '2026-09-14' };
+export const BUILD = { version: 'v36', date: '2026-09-14' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
