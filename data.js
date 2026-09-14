@@ -39,6 +39,15 @@ export const ACCESSORIES = {
   hack:           { name: 'Hack squat', pattern: 'squat', w: 85, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
   'sl-legpress':  { name: 'Single-leg press', pattern: 'squat', w: 70, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, machine: true },
 
+
+  /* Knee extension. You cannot isolate the vastus medialis — it is one head
+     of the quadriceps and grows when the quads grow — but the last 30° of
+     lockout recruits it hardest, and that is the range squats give you least
+     of. Hence a hard, paused lockout on every rep. */
+  legext:         { name: 'Leg extension', pattern: 'squat', w: 60, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 5, machine: true, note: 'Squeeze hard at full lockout and hold a second there. Toes pointed slightly out. Three seconds on the way down — the lowering builds as much as the lifting.', variants: ['legext-sl', 'sissy'] },
+  'legext-sl':    { name: 'Single-leg extension', pattern: 'squat', w: 57.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true, note: 'One leg at a time finds the side that is lagging, which is usually the one you cannot see.' },
+  sissy:          { name: 'Sissy squat', pattern: 'squat', w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Hold something for balance, knees travel forward, hips stay extended. Brutal on the quads through the deepest knee flexion — the other end of the range from a leg extension.' },
+  'goblet-heel':  { name: 'Heel-elevated goblet squat', pattern: 'squat', w: 24, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, home: true, note: 'Heels on a plate, upright torso, all the way down. The elevation shifts the work onto the quads and off the hips.' },
   frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack'] },
   pausesq:        { name: 'Pause squat', pattern: 'squat', w: 100, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, note: '2s in the hole.' },
 
@@ -56,16 +65,16 @@ export const ACCESSORIES = {
   /* Traps — you had shrugs in your log and I dropped them. For traps that
      pop at the top, heavy and high-rep both work; the mistake is rolling
      the shoulders instead of driving them straight up. */
-  'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 6, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
+  'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 5, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
   'shrug-db':     { name: 'Dumbbell shrug', pattern: 'traps', w: 40, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2, note: 'Arms hang, shoulders to ears. No rolling.' },
-  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 3, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true },
+  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 4, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true },
   'shrug-hold':   { name: 'Shrug with a hold', pattern: 'traps', w: 80, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Three seconds at the top of every rep.' },
 
   /* Forearms — nothing was training them directly, and they are the one
      part of an aesthetic upper body you cannot hide under a sleeve. */
   revcurl:        { name: 'Reverse curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 16, inc: 5, bar: true, home: true, note: 'Overhand, elbows pinned. Builds the brachioradialis, which is what makes the forearm look thick from the front.', variants: ['hammerrope', 'wristcurl'] },
   wristcurl:      { name: 'Wrist curl', pattern: 'forearms', w: 25, sets: 3, reps: 15, repMin: 12, repMax: 22, inc: 5, bar: true, home: true, note: 'Forearms on a bench or your thighs, let the bar roll to the fingertips, then curl it back.' },
-  revwrist:       { name: 'Reverse wrist curl', pattern: 'forearms', w: 8, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 1, home: true, note: 'Dumbbells, deliberately — a 5kg jump on a lift this light is 40 percent. The extensors balance all the gripping and keep the elbow happy.' },
+  revwrist:       { name: 'Reverse wrist curl', pattern: 'forearms', w: 8, dbl: true, sets: 2, reps: 15, repMin: 12, repMax: 20, inc: 1, home: true, note: 'Dumbbells, deliberately — a 5kg jump on a lift this light is 40 percent. The extensors balance all the gripping and keep the elbow happy.' },
   hammerrope:     { name: 'Rope hammer curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true },
   farmerhold:     { name: "Farmer's hold", pattern: 'forearms', w: 40, dbl: true, sets: 3, reps: 40, repMin: 30, repMax: 60, inc: 2, home: true, note: 'Seconds, not reps. Heaviest you can hold with a full grip, stood tall.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
@@ -231,6 +240,45 @@ export const CORE_TRACKS = [
     ]
   },
   {
+    id: 'ext-plank', quality: 'Anti-extension', home: true,
+    levels: [
+      { name: 'Plank, elbows under shoulders', unit: 'secs', target: 45, sets: 3, w: 0,
+        cue: 'Ribs down, glutes squeezed, straight line from heel to head. If your hips sag you are resting on your back.' },
+      { name: 'Long-lever plank', unit: 'secs', target: 30, sets: 3, w: 0,
+        cue: 'Walk the elbows forward past your head. Small move, enormous difference.' },
+      { name: 'Body saw', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'Feet on sliders or a towel, rock the whole body back and forth from the plank. Nothing bends.' },
+      { name: 'Weighted long-lever plank', unit: 'secs', target: 30, sets: 3, w: 10,
+        cue: 'Plate on the upper back. Add load rather than minutes.' }
+    ]
+  },
+  {
+    id: 'rot-landmine', quality: 'Anti-rotation',
+    levels: [
+      { name: 'Half-kneeling landmine press', unit: 'reps', target: 10, sets: 3, w: 20,
+        cue: 'Bar in the corner, press across your body from half kneeling. The trunk resists the twist the press wants to create.' },
+      { name: 'Standing landmine press', unit: 'reps', target: 10, sets: 3, w: 25,
+        cue: 'Same, standing. Less base, more anti-rotation.' },
+      { name: 'Landmine rainbow', unit: 'reps', target: 10, sets: 3, w: 20,
+        cue: 'Arms straight, arc the bar from hip to hip. Move from the ribcage, not the lower back.' },
+      { name: 'Renegade row', unit: 'reps', target: 10, sets: 3, w: 22,
+        cue: 'Push-up position on dumbbells, row one without letting the hips rotate. Feet wide to start.' }
+    ]
+  },
+  {
+    id: 'flex-vup', quality: 'Flexion', home: true,
+    levels: [
+      { name: 'Tuck-up', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'On your back, bring knees and chest together, hands reach past the shins. Lower slowly.' },
+      { name: 'V-up, one leg', unit: 'reps', target: 12, sets: 3, w: 0,
+        cue: 'One leg straight, alternate. The straight leg is what makes it hard.' },
+      { name: 'Full V-up', unit: 'reps', target: 10, sets: 3, w: 0,
+        cue: 'Legs and torso rise together into a V. If you have to throw yourself up, go back a rung.' },
+      { name: 'Weighted V-up', unit: 'reps', target: 10, sets: 3, w: 5,
+        cue: 'Dumbbell held overhead throughout.' }
+    ]
+  },
+  {
     id: 'flex-lying', quality: 'Flexion', home: true,
     levels: [
       { name: 'Lying leg raise, knees bent', unit: 'reps', target: 12, sets: 3, w: 0,
@@ -286,30 +334,30 @@ export const DAYS = {
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bulgarian', 'legpress', 'calf', 'shrug-bb', 'farmerhold', 'hammerrope'],
+    work: ['bulgarian', 'legext', 'calf', 'shrug-bb', 'farmerhold', 'hammerrope'],
     prepKey: 'squat', prep: 4,
-    core: 2, coreQ: ['Anti-extension', 'Anti-rotation']
+    core: 2, coreQ: ['Anti-extension', 'Anti-rotation', 'Anti-lateral']
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull', 'revcurl', 'wristcurl'],
+    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull', 'revcurl', 'revwrist'],
     prepKey: 'home', prep: 3,
-    core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Flexion'],
+    core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
   },
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
+    work: ['bbrow', 'dip', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
     prepKey: 'bench', prep: 2, core: 0
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine', 'revwrist'],
+    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine'],
     prepKey: 'dead', prep: 4,
-    core: 2, coreQ: ['Anti-lateral', 'Anti-extension'],
+    core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
   },
   upperB: {
@@ -338,7 +386,7 @@ export const CORE_START = {
    maintenance level, which is also about what 40km of running a week leaves
    room to recover from — this is a deliberate trade, not an oversight. */
 export const VOLUME_TARGET = {
-  quads: 10, 'hams/glutes': 10, calves: 3, chest: 8, 'front delts': 5,
+  quads: 10, 'hams/glutes': 10, calves: 3, chest: 11, 'front delts': 5,
   'back horizontal': 6, 'back vertical': 10, 'side delts': 16,
   'rear delts': 9, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
 };
@@ -607,7 +655,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v31', date: '2026-08-24' };
+export const BUILD = { version: 'v34', date: '2026-09-14' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

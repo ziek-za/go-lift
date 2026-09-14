@@ -273,9 +273,11 @@ function pickCore(n, homeOnly, wanted) {
      must sort last, which the obvious version of this gets backwards. */
   const rank = (list, id) => { const i = list.indexOf(id); return i === -1 ? Infinity : i; };
   const seen = S.coreSeen || [], qSeen = S.coreQ || [];
-  const order = wanted && wanted.length
-    ? wanted.slice(0, n)
-    : [...CORE_ROTATION].sort((a, b) => rank(qSeen, b) - rank(qSeen, a)).slice(0, n);
+  /* The day supplies a pool of qualities, not a fixed order. Picking the
+     least recently trained n from that pool is what stops the same three
+     movements turning up every week. */
+  const pool0 = (wanted && wanted.length) ? [...new Set(wanted)] : [...CORE_ROTATION];
+  const order = pool0.sort((a, b) => rank(qSeen, b) - rank(qSeen, a)).slice(0, n);
 
   const chosen = [], used = new Set();
   for (const q of order) {
@@ -935,11 +937,37 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
   startRest(restFor(it, s), `${it.name} · set ${setIdx + 1} done`);
 }
 
+/* Changing a working weight has to rebuild the ramp underneath it. Leaving
+   the old ramp in place is how you end up warming up with more than you are
+   about to lift — and re-deriving the ramp from the stale weight is how an
+   edit appears to snap back to the number you just replaced. */
 function applyWeightToSession(sess, idx, w) {
   const it = sess?.items?.[idx];
   if (!it) return;
+
   for (const set of it.sets) if (set.reps == null && !set.warm) { set.w = w; delete set.full; }
-  if (sess.easy) for (const set of it.sets) if (set.reps == null) { set.full = w; set.w = round(w * 0.85, (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25); }
+
+  if (it.kind === 'acc' && ACCESSORIES[it.ref]) {
+    const rampsLogged = it.sets.some(x => x.warm && x.reps != null);
+    if (!rampsLogged) {
+      const loaded = new Set();
+      const before = sess.items.slice(0, idx);
+      if (sess.dayKey && DAYS[sess.dayKey]?.main) loaded.add(MAINS[DAYS[sess.dayKey].main].pattern);
+      for (const other of before) {
+        const p = other.kind === 'acc' ? ACCESSORIES[other.ref]?.pattern
+                : other.kind === 'main' ? MAINS[other.ref]?.pattern : null;
+        if (p) loaded.add(p);
+      }
+      const fresh = accessoryRamp(ACCESSORIES[it.ref], w, loaded);
+      it.sets = [...fresh, ...it.sets.filter(x => !x.warm)];
+    }
+  }
+
+  if (sess.easy) for (const set of it.sets)
+    if (set.reps == null) {
+      set.full = set.full ?? set.w;
+      set.w = round(set.full * 0.85, (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25);
+    }
 }
 
 function redrawItem(sess, idx) {
@@ -1198,6 +1226,11 @@ function renderToday() {
     </div>`}
 
     ${sess.items.map(itemCard).join('')}
+    ${sess.undo && !sess.done ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
+      <div class="why mono" style="color:var(--go)">Removed from this gym</div>
+      ${sess.undo.item.name} was marked unavailable at ${sess.undo.club}.
+      <div class="btn-row" style="margin-top:9px"><button class="btn-sm btn-go" id="undoremove">Undo, put it back</button></div>
+    </div>` : ''}
     ${sess.done ? '' : addPanel(sess)}
 
     <div class="btn-row">
@@ -1348,6 +1381,24 @@ function renderPlan() {
     </div>`).join('')}
 
     <p class="eyebrow">Training maxes</p>
+    ${(() => {
+      const hot = Object.entries(MAINS).map(([k, m]) => {
+        const r = bestEstimate(k);
+        const top = r && Math.max(r.est || 0, r.tested ? r.tested.w : 0);
+        if (!top) return null;
+        const pct = Math.round(S.mains[k].tm / top * 100);
+        return pct >= 95 ? { name: m.name, pct, tm: S.mains[k].tm, want: barRound(top * 0.9) } : null;
+      }).filter(Boolean);
+      return hot.length ? `<div class="flag" style="border-left-color:var(--stall);background:rgba(200,32,45,.07)">
+        <div class="why mono" style="color:var(--stall)">Training max has drifted</div>
+        A training max is meant to sit near 90% of what you can actually lift, so the prescribed
+        work stays repeatable. ${hot.map(h => `<b>${h.name}</b> is at ${h.pct}% of your best —
+        ${h.tm}kg against a suggested ${h.want}kg`).join('; ')}.
+        <div class="btn-row" style="margin-top:9px">
+          ${hot.map(h => `<button class="btn-sm" data-tmfix="${h.name}|${h.want}">Set ${h.name.split(' ')[0].toLowerCase()} to ${h.want}kg</button>`).join('')}
+        </div>
+      </div>` : '';
+    })()}
     ${Object.entries(MAINS).map(([k, m]) => `<div class="card" style="padding:12px 14px;display:flex;align-items:center;gap:10px">
       <span style="flex:1"><span class="display" style="font-size:17px">${m.name}</span>
         <span class="mono" style="display:block;font-size:11px;color:var(--dust)">top set ${barRound(S.mains[k].tm * 0.95)}kg this cycle</span></span>
@@ -2010,18 +2061,31 @@ function wire() {
       S.clubOut[S.club] = [...new Set([...(S.clubOut[S.club] || []), id])];
       const taken = new Set(sess.items.map(x => x.ref));
       const sub = substituteFor(id, taken, sess.venue === 'home');
+      sess.undo = { id, idx, item: it, club: S.club };
       if (sub) {
         const a = ACCESSORIES[sub], st = S.acc[sub];
         sess.items[idx] = { kind: 'acc', ref: sub, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
           sets: Array.from({ length: st.sets }, () => ({ w: st.w, target: st.reps, reps: null })) };
-        toast(`${a.name} instead — ${S.club} will not offer that again`);
+        toast(`${a.name} instead — tap Undo if that was a mistake`);
       } else {
         sess.items.splice(idx, 1);
-        toast(`Removed. Nothing else covers that pattern here.`);
+        toast('Removed — tap Undo if that was a mistake');
       }
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
       if (sess.adhoc) draft = sess;
       await save(); render(); return;
+    }
+
+    if (t.id === 'undoremove') {
+      const sess = $('#v-today')._sess, u = sess && sess.undo;
+      if (!u) return;
+      S.clubOut[u.club] = outAt(u.club).filter(x => x !== u.id);
+      const cur = sess.items[u.idx];
+      if (cur && cur.ref !== u.id) sess.items[u.idx] = u.item;  /* swap the substitute back out */
+      else sess.items.splice(u.idx, 0, u.item);
+      delete sess.undo;
+      await save(); render(); toast(`${u.item.name} is back`);
+      return;
     }
 
     const rs = t.closest('[data-restore]');
@@ -2080,6 +2144,14 @@ function wire() {
       it.sets[+rpe.closest('.rpe').dataset.set].rpe = +rpe.dataset.rpe;
       rpe.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === rpe));
       await save(); return;
+    }
+
+    const tf = t.closest('[data-tmfix]');
+    if (tf) {
+      const [name, want] = tf.dataset.tmfix.split('|');
+      const key = Object.entries(MAINS).find(([, m]) => m.name === name)?.[0];
+      if (key) { S.mains[key].tm = +want; S.mains[key].misses = 0; await save(); render(); toast(`${name} training max → ${want}kg`); }
+      return;
     }
 
     const tm = t.closest('[data-tm]');
@@ -2232,7 +2304,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v31';
+const APP_BUILD = 'v34';
 
 let lastError = null;
 
