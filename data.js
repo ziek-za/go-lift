@@ -77,6 +77,25 @@ export const ACCESSORIES = {
   revwrist:       { name: 'Reverse wrist curl', pattern: 'forearms', w: 8, dbl: true, sets: 2, reps: 15, repMin: 12, repMax: 20, inc: 1, home: true, note: 'Dumbbells, deliberately — a 5kg jump on a lift this light is 40 percent. The extensors balance all the gripping and keep the elbow happy.' },
   hammerrope:     { name: 'Rope hammer curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true },
   farmerhold:     { name: "Farmer's hold", pattern: 'forearms', w: 40, dbl: true, sets: 3, reps: 40, repMin: 30, repMax: 60, inc: 2, home: true, note: 'Seconds, not reps. Heaviest you can hold with a full grip, stood tall.' },
+
+  /* Bands and bodyweight — the home day had no pressing and no pulling at all,
+     because everything needing a bar or a bench was ruled out. Bands cover the
+     pulling; push-up variations cover the pressing. */
+  pushup:         { name: 'Push-up', pattern: 'hpush', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 25, inc: 0, home: true, note: 'Hands under the shoulders, elbows about 45°, body in one line. When 25 is easy, elevate the feet rather than adding reps.', variants: ['pushup-feet', 'pushup-weighted', 'pushup-deficit'] },
+  'pushup-feet':  { name: 'Feet-elevated push-up', pattern: 'hpush', w: 0, sets: 3, reps: 12, repMin: 10, repMax: 20, inc: 0, home: true, note: 'Feet on a chair. Shifts the load upward onto the upper chest and shoulders.' },
+  'pushup-deficit': { name: 'Deficit push-up', pattern: 'hpush', w: 0, sets: 3, reps: 12, repMin: 10, repMax: 18, inc: 0, home: true, note: 'Hands on two books or dumbbells so the chest drops below them. The deep stretch at the bottom is the point.' },
+  'pushup-weighted': { name: 'Weighted push-up', pattern: 'hpush', w: 10, sets: 3, reps: 12, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Plate on the upper back, or a loaded backpack. Once bodyweight sets run past 20 this is the way forward.' },
+  pikepush:       { name: 'Pike push-up', pattern: 'vpush', w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 0, home: true, note: 'Hips high, head travels to the floor between the hands. The closest thing to an overhead press without a rack.' },
+
+  bandrow:        { name: 'Band row', pattern: 'hpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor the band at waist height, or sit with it round your feet. Pull to the belly, squeeze, slow release. Step back to make it harder.', variants: ['bandrow-single', 'dbrow'] },
+  'bandrow-single': { name: 'Single-arm band row', pattern: 'hpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'One side at a time finds the weaker one.' },
+  bandpullover:   { name: 'Band pull-over', pattern: 'vpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor high, arms straight, pull down to the thighs. The closest you get to a lat pulldown without a bar — and it is a genuine lat builder.', variants: ['bandlat', 'strarm'] },
+  bandlat:        { name: 'Band lat pulldown, kneeling', pattern: 'vpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor above a door, kneel, pull the elbows down and back.' },
+  bandpullapart:  { name: 'Band pull-apart', pattern: 'rear', w: 0, sets: 3, reps: 20, repMin: 15, repMax: 30, inc: 0, home: true, note: 'Straight arms, pull to the chest, squeeze the blades. High reps, no shrugging. Cheap volume for a weak point.' },
+  bandfacepull:   { name: 'Band face pull', pattern: 'rear', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'To the eyebrows, rotate the knuckles up at the end.' },
+  bandlateral:    { name: 'Band lateral raise', pattern: 'lat', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Band under the feet. Resistance builds towards the top, which is the opposite of a dumbbell — worth having both.' },
+  bandcurl:       { name: 'Band curl', pattern: 'biceps', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Hardest at the top where a dumbbell is easiest.' },
+  bandpushdown:   { name: 'Band pushdown', pattern: 'triceps', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Anchor high, elbows pinned, lock out hard.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
   machinerow:     { name: 'Free-weight row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
@@ -341,7 +360,7 @@ export const DAYS = {
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    work: ['bbcurl', 'seatedhammer', 'dblat', 'reardb', 'dbohext', 'floorskull', 'revcurl', 'revwrist'],
+    work: ['pushup', 'bandpullover', 'bbcurl', 'seatedhammer', 'dblat', 'bandpullapart', 'dbohext', 'bandpushdown'],
     prepKey: 'home', prep: 3,
     core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
@@ -355,7 +374,7 @@ export const DAYS = {
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine'],
+    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine', 'revcurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
@@ -655,7 +674,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v34', date: '2026-09-14' };
+export const BUILD = { version: 'v35', date: '2026-09-14' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

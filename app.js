@@ -550,6 +550,15 @@ function applyProgression(sess) {
       S.coreQ = [it.quality, ...(S.coreQ || []).filter(x => x !== it.quality)].slice(0, 4);
       const logged = it.sets.filter(x => x.reps != null);
       if (!logged.length) continue;
+      /* Levels and clean-session counts were stored but never the work itself,
+         which is why core had no previous attempt to show. */
+      S.coreHist = S.coreHist || {};
+      const hk = `${it.ref}:${coreLevel(it.ref)}`;
+      S.coreHist[hk] = [...(S.coreHist[hk] || []), {
+        d: sess.date, label: sess.label, club: sess.club, unit: it.unit,
+        sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target }))
+      }].slice(-8);
+
       S.coreClean = S.coreClean || {};
       const clean = logged.length >= it.sets.length && logged.every(x => x.reps >= x.target);
       if (!clean) { S.coreClean[it.ref] = 0; continue; }
@@ -865,6 +874,11 @@ function trackStatus() {
    are read back as best they can be. */
 
 function lastAttempt(kind, ref) {
+  if (kind === 'core') {
+    const h = (S.coreHist || {})[`${ref}:${coreLevel(ref)}`];
+    const last = h && h.length ? h[h.length - 1] : null;
+    return last ? { date: last.d, label: last.label || null, club: last.club || null, sets: last.sets } : null;
+  }
   const st = kind === 'main' ? S.mains[ref] : S.acc[ref];
   const h = st && st.hist && st.hist.length ? st.hist[st.hist.length - 1] : null;
   if (!h) return null;
@@ -1025,7 +1039,7 @@ function setRow(it, s, i) {
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
       <div class="line">
         <span class="n mono">${s.warm ? '·' : i + 1}</span>
-        ${s.warm || it.kind === 'core' ? '' : (() => {
+        ${s.warm ? '' : (() => {
           const st = setStatus(it, s, i);
           const open = openHist === `${it._idx}:${i}`;
           const title = { hit: 'Hit it last time', miss: 'Fell short last time', new: 'First go at this' }[st.k];
@@ -1041,7 +1055,7 @@ function setRow(it, s, i) {
         ${label ? `<span class="kindlabel mono">${label}</span>` : ''}
       </div>
       <div class="acts">${actions}</div>
-      ${openHist === `${it._idx}:${i}` && !s.warm && it.kind !== 'core' ? (() => {
+      ${openHist === `${it._idx}:${i}` && !s.warm ? (() => {
         const st = setStatus(it, s, i);
         if (!st.prev) return `<div class="hprev"><span class="hp-none">No record of this one yet — this is your first logged attempt.</span></div>`;
         const p = st.p;
@@ -1051,7 +1065,7 @@ function setRow(it, s, i) {
           ${!p ? '' : p.target == null ? '' : ''}
           ${p ? `<div class="hp-row">
             <span class="hp-w mono">${p.w ? p.w + 'kg' : 'bodyweight'}</span>
-            <span class="hp-r"><b>${p.reps}</b>${p.target != null ? ` of ${p.target}` : ''}</span>
+            <span class="hp-r"><b>${p.reps}${it.unit === 'secs' ? 's' : ''}</b>${p.target != null ? ` of ${p.target}${it.unit === 'secs' ? 's' : ''}` : ''}</span>
             ${p.rpe ? `<span class="hp-rpe mono" style="--rc:${RPE_SCALE[p.rpe] ? RPE_SCALE[p.rpe].colour : 'var(--dust)'}">RPE ${p.rpe}</span>` : ''}
             <span class="hp-v">${st.k === 'hit' ? 'hit' : st.k === 'miss' ? 'short'
               : st.unknown ? 'target not recorded then' : 'prescription has changed since'}</span>
@@ -2304,7 +2318,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v34';
+const APP_BUILD = 'v35';
 
 let lastError = null;
 
@@ -2331,7 +2345,7 @@ if (typeof window !== 'undefined') {
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
-  S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || [];
+  S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || []; S.coreHist = S.coreHist || {};
 
   S.settings.coreStart = S.settings.coreStart || 'advanced';
   /* Old builds stored flat core exercise ids; only track ids mean anything now. */
