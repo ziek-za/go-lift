@@ -267,7 +267,7 @@ function coreW(trackId) {
 
 /* Pick n tracks from n different qualities, rotating both which qualities
    come up and which track represents each one. */
-function pickCore(n, homeOnly, wanted) {
+function pickCore(n, homeOnly, wanted, skip = () => false) {
   /* Least recently used wins. Never-used sorts ahead of everything, then
      oldest first — an index of 0 means it was the last thing you did, so it
      must sort last, which the obvious version of this gets backwards. */
@@ -281,14 +281,14 @@ function pickCore(n, homeOnly, wanted) {
 
   const chosen = [], used = new Set();
   for (const q of order) {
-    const pool = CORE_TRACKS.filter(t => t.quality === q && !used.has(t.id) && (!homeOnly || t.home));
+    const pool = CORE_TRACKS.filter(t => t.quality === q && !used.has(t.id) && (!homeOnly || t.home) && !skip(t));
     if (!pool.length) continue;
     pool.sort((a, b) => rank(seen, b.id) - rank(seen, a.id));
     chosen.push(pool[0]); used.add(pool[0].id);
   }
   /* If a requested quality had nothing left, top up from anywhere. */
   if (chosen.length < n) {
-    const rest = CORE_TRACKS.filter(t => !used.has(t.id) && (!homeOnly || t.home))
+    const rest = CORE_TRACKS.filter(t => !used.has(t.id) && (!homeOnly || t.home) && !skip(t))
       .sort((a, b) => rank(seen, b.id) - rank(seen, a.id));
     for (const t of rest) { if (chosen.length >= n) break; chosen.push(t); used.add(t.id); }
   }
@@ -399,7 +399,12 @@ function buildPlanned(dateStr, dayKey) {
       list, sets: [] });
   }
 
-  if (D.core) for (const t of pickCore(D.core, atHome, D.coreQ)) items.push(coreItem(t));
+  /* Two grip-dominant exercises in one session means the second is limited by
+     forearms that are already done, not by the muscle it is meant to train.
+     Both stay in the programme; a carry just lands on a day without a hold. */
+  const dayWork = resolveWork(slotsFor(D, cycleNo(dateStr)), atHome);
+  const gripTaken = dayWork.some(id => ACCESSORIES[id]?.grip);
+  if (D.core) for (const t of pickCore(D.core, atHome, D.coreQ, tr => gripTaken && tr.grip)) items.push(coreItem(t));
 
   if (D.main) {
     const M = MAINS[D.main], tm = S.mains[D.main].tm;
@@ -412,7 +417,7 @@ function buildPlanned(dateStr, dayKey) {
     items.push({ kind: 'main', ref: D.main, name: M.name, wave: wave.name, sets });
   }
 
-  const work = resolveWork(slotsFor(D, cycleNo(dateStr)), atHome);
+  const work = [...dayWork];
   if (verdict.trim >= 2) work.pop();
   const loaded = new Set();
   if (D.main) loaded.add(MAINS[D.main].pattern);
@@ -2436,7 +2441,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v38';
+const APP_BUILD = 'v39';
 
 let lastError = null;
 

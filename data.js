@@ -76,7 +76,7 @@ export const ACCESSORIES = {
   wristcurl:      { name: 'Wrist curl', pattern: 'forearms', w: 25, sets: 3, reps: 15, repMin: 12, repMax: 22, inc: 5, bar: true, home: true, note: 'Forearms on a bench or your thighs, let the bar roll to the fingertips, then curl it back.' },
   revwrist:       { name: 'Reverse wrist curl', pattern: 'forearms', w: 8, dbl: true, sets: 2, reps: 15, repMin: 12, repMax: 20, inc: 1, home: true, note: 'Dumbbells, deliberately — a 5kg jump on a lift this light is 40 percent. The extensors balance all the gripping and keep the elbow happy.' },
   hammerrope:     { name: 'Rope hammer curl', pattern: 'forearms', w: 25, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true },
-  farmerhold:     { name: "Farmer's hold", pattern: 'forearms', w: 40, dbl: true, sets: 3, reps: 40, repMin: 30, repMax: 60, inc: 2, home: true, note: 'Seconds, not reps. Heaviest you can hold with a full grip, stood tall.' },
+  farmerhold:     { name: "Farmer's hold", pattern: 'forearms', grip: true, w: 40, dbl: true, sets: 3, reps: 40, repMin: 30, repMax: 60, inc: 2, home: true, note: 'Seconds, not reps. Heaviest you can hold with a full grip, stood tall.' },
 
   /* Bands and bodyweight — the home day had no pressing and no pulling at all,
      because everything needing a bar or a bench was ruled out. Bands cover the
@@ -215,7 +215,7 @@ export const CORE_TRACKS = [
     ]
   },
   {
-    id: 'lat-carry', quality: 'Anti-lateral', home: true,
+    id: 'lat-carry', quality: 'Anti-lateral', home: true, grip: true,
     levels: [
       { name: 'Suitcase carry', unit: 'secs', target: 40, sets: 3, w: 20,
         cue: 'One dumbbell, one side, walk tall. The job is refusing to lean towards it. Swap sides each set.' },
@@ -361,7 +361,7 @@ export const DAYS = {
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: [['walking-lunge', 'bulgarian'], ['legext-sl', 'legext'], 'calf', 'shrug-bb', 'farmerhold', ['hammerrope', 'wristcurl']],
+    work: [['walking-lunge', 'bulgarian'], ['legext-sl', 'legext'], 'calf', 'shrug-bb', 'farmerhold', ['hammerrope', 'wristcurl'], 'overheadrope'],
     prepKey: 'squat', prep: 4,
     core: 2, coreQ: ['Anti-extension', 'Anti-rotation', 'Anti-lateral']
   },
@@ -378,12 +378,15 @@ export const DAYS = {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
     work: ['bbrow', 'dip', ['inclinedb', 'smithincline'], ['pullup', 'latpull'], 'leancable', 'cablerear', ['inclinecurl', 'inclinehammer']],
-    prepKey: 'bench', prep: 2, core: 0
+    prepKey: 'bench', prep: 2,
+    /* Abs on a day with no load on the spine — the same reasoning that keeps
+       flexion off the squat and deadlift days. */
+    core: 1, coreQ: ['Flexion']
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: [['frontsq', 'hack'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl'],
+    work: [['frontsq', 'hack'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl', 'cablecurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
@@ -391,7 +394,7 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: [['dbrow', 'seatedrow'], ['fixedlat', 'latpull'], 'strarm', 'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'overheadrope']],
+    work: [['dbrow', 'seatedrow'], ['fixedlat', 'pullup'], 'strarm', 'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'rollingbar'], 'cableflye'],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -469,8 +472,8 @@ export const RUN_BASELINE = 260;
    because short rest there means less weight on the next set, and load is
    what drives the adaptation; isolation loses a third because it does not. */
 export const REST = {
-  warm: 45, mainHeavy: 210, mainMid: 150, backoff: 120,
-  compound: 120, isolation: 60, highRep: 45, core: 40
+  warm: 45, mainHeavy: 180, mainMid: 120, backoff: 90,
+  compound: 90, isolation: 60, highRep: 45, core: 40
 };
 
 /* Nothing drops below this, whatever the maths says. */
@@ -689,7 +692,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v38', date: '2026-09-15' };
+export const BUILD = { version: 'v39', date: '2026-09-21' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
