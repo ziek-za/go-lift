@@ -1947,6 +1947,17 @@ async function applyUpdate() {
     }
   } catch (e) { noteError('update:caches', e); }
 
+  /* Unregistering and emptying the worker's caches is not enough: the page
+     then loads app.js and data.js by their plain names, and Chrome's own HTTP
+     cache hands back the old copies for as long as the server said it could —
+     about ten minutes on GitHub Pages. cache:'reload' fetches each file from
+     the server and overwrites that cached copy, so the navigation below
+     actually lands on the new code. */
+  try {
+    await Promise.all(['./', './index.html', './app.js', './data.js', './styles.css', './sw.js']
+      .map(u => fetch(u, { cache: 'reload' }).catch(() => {})));
+  } catch (e) { noteError('update:refetch', e); }
+
   /* Your training data lives in IndexedDB and is untouched by any of the above. */
   const base = location.href.split('#')[0].split('?')[0];
   location.replace(base + '?u=' + Date.now());
@@ -2441,7 +2452,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v39';
+const APP_BUILD = 'v40';
 
 let lastError = null;
 

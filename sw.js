@@ -3,7 +3,7 @@
    was cached and never notices a deploy, which is exactly the trap this
    file fell into. Offline still works: the network attempt fails fast and
    falls straight back to the cached copy. */
-const V = 'load-v39';
+const V = 'load-v40';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './data.js',
                './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
@@ -41,8 +41,15 @@ self.addEventListener('fetch', e => {
   }
 
   // Everything else: try the network, fall back to cache when there is no signal.
+  // no-cache makes the browser check with the server every time — a 304 when
+  // nothing changed, the new file when something did — instead of reusing a
+  // copy it was told it could keep for ten minutes. Navigations cannot be
+  // re-initialised with options, so they are rebuilt from their URL.
+  const fresh = e.request.mode === 'navigate'
+    ? new Request(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
+    : new Request(e.request, { cache: 'no-cache' });
   e.respondWith(
-    fetch(e.request).then(r => {
+    fetch(fresh).then(r => {
       if (r.ok) { const c = r.clone(); caches.open(V).then(k => k.put(e.request, c)); }
       return r;
     }).catch(() => caches.match(e.request).then(hit => hit ||
