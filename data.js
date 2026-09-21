@@ -66,8 +66,8 @@ export const ACCESSORIES = {
      pop at the top, heavy and high-rep both work; the mistake is rolling
      the shoulders instead of driving them straight up. */
   'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 5, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
-  'shrug-db':     { name: 'Dumbbell shrug', pattern: 'traps', w: 40, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2, note: 'Arms hang, shoulders to ears. No rolling.' },
-  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 4, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true },
+  'shrug-db':     { name: 'Dumbbell shrug', pattern: 'traps', w: 40, dbl: true, sets: 4, reps: 15, repMin: 12, repMax: 18, inc: 2, note: 'Arms hang, shoulders to ears. No rolling.' },
+  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 4, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true, variants: ['shrug-db', 'shrug-hold'] },
   'shrug-hold':   { name: 'Shrug with a hold', pattern: 'traps', w: 80, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Three seconds at the top of every rep.' },
 
   /* Forearms — nothing was training them directly, and they are the one
@@ -81,21 +81,21 @@ export const ACCESSORIES = {
   /* Bands and bodyweight — the home day had no pressing and no pulling at all,
      because everything needing a bar or a bench was ruled out. Bands cover the
      pulling; push-up variations cover the pressing. */
-  pushup:         { name: 'Push-up', pattern: 'hpush', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 25, inc: 0, home: true, note: 'Hands under the shoulders, elbows about 45°, body in one line. When 25 is easy, elevate the feet rather than adding reps.', variants: ['pushup-feet', 'pushup-weighted', 'pushup-deficit'] },
-  'pushup-feet':  { name: 'Feet-elevated push-up', pattern: 'hpush', w: 0, sets: 3, reps: 12, repMin: 10, repMax: 20, inc: 0, home: true, note: 'Feet on a chair. Shifts the load upward onto the upper chest and shoulders.' },
-  'pushup-deficit': { name: 'Deficit push-up', pattern: 'hpush', w: 0, sets: 3, reps: 12, repMin: 10, repMax: 18, inc: 0, home: true, note: 'Hands on two books or dumbbells so the chest drops below them. The deep stretch at the bottom is the point.' },
-  'pushup-weighted': { name: 'Weighted push-up', pattern: 'hpush', w: 10, sets: 3, reps: 12, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Plate on the upper back, or a loaded backpack. Once bodyweight sets run past 20 this is the way forward.' },
-  pikepush:       { name: 'Pike push-up', pattern: 'vpush', w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 0, home: true, note: 'Hips high, head travels to the floor between the hands. The closest thing to an overhead press without a rack.' },
+  pushup:         { name: 'Push-up', pattern: 'hpush', bodyweight: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 25, inc: 0, home: true, note: 'Hands under the shoulders, elbows about 45°, body in one line. When 25 is easy, elevate the feet rather than adding reps.', variants: ['pushup-feet', 'pushup-weighted', 'pushup-deficit'] },
+  'pushup-feet':  { name: 'Feet-elevated push-up', pattern: 'hpush', bodyweight: true, w: 0, sets: 3, reps: 12, repMin: 10, repMax: 20, inc: 0, home: true, note: 'Feet on a chair. Shifts the load upward onto the upper chest and shoulders.' },
+  'pushup-deficit': { name: 'Deficit push-up', pattern: 'hpush', bodyweight: true, w: 0, sets: 3, reps: 12, repMin: 10, repMax: 18, inc: 0, home: true, note: 'Hands on two books or dumbbells so the chest drops below them. The deep stretch at the bottom is the point.' },
+  'pushup-weighted': { name: 'Weighted push-up', pattern: 'hpush', bodyweight: true, w: 10, sets: 3, reps: 12, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Plate on the upper back, or a loaded backpack. Once bodyweight sets run past 20 this is the way forward.' },
+  pikepush:       { name: 'Pike push-up', pattern: 'vpush', bodyweight: true, w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 0, home: true, note: 'Hips high, head travels to the floor between the hands. The closest thing to an overhead press without a rack.' },
 
-  bandrow:        { name: 'Band row', pattern: 'hpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor the band at waist height, or sit with it round your feet. Pull to the belly, squeeze, slow release. Step back to make it harder.', variants: ['bandrow-single', 'dbrow'] },
-  'bandrow-single': { name: 'Single-arm band row', pattern: 'hpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'One side at a time finds the weaker one.' },
-  bandpullover:   { name: 'Band pull-over', pattern: 'vpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor high, arms straight, pull down to the thighs. The closest you get to a lat pulldown without a bar — and it is a genuine lat builder.', variants: ['bandlat', 'strarm'] },
-  bandlat:        { name: 'Band lat pulldown, kneeling', pattern: 'vpull', w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor above a door, kneel, pull the elbows down and back.' },
-  bandpullapart:  { name: 'Band pull-apart', pattern: 'rear', w: 0, sets: 3, reps: 20, repMin: 15, repMax: 30, inc: 0, home: true, note: 'Straight arms, pull to the chest, squeeze the blades. High reps, no shrugging. Cheap volume for a weak point.' },
-  bandfacepull:   { name: 'Band face pull', pattern: 'rear', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'To the eyebrows, rotate the knuckles up at the end.' },
-  bandlateral:    { name: 'Band lateral raise', pattern: 'lat', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Band under the feet. Resistance builds towards the top, which is the opposite of a dumbbell — worth having both.' },
-  bandcurl:       { name: 'Band curl', pattern: 'biceps', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Hardest at the top where a dumbbell is easiest.' },
-  bandpushdown:   { name: 'Band pushdown', pattern: 'triceps', w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Anchor high, elbows pinned, lock out hard.' },
+  bandrow:        { name: 'Band row', pattern: 'hpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor the band at waist height, or sit with it round your feet. Pull to the belly, squeeze, slow release. Step back to make it harder.', variants: ['bandrow-single', 'dbrow'] },
+  'bandrow-single': { name: 'Single-arm band row', pattern: 'hpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'One side at a time finds the weaker one.' },
+  bandpullover:   { name: 'Band pull-over', pattern: 'vpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor high, arms straight, pull down to the thighs. The closest you get to a lat pulldown without a bar — and it is a genuine lat builder.', variants: ['bandlat', 'strarm'] },
+  bandlat:        { name: 'Band lat pulldown, kneeling', pattern: 'vpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor above a door, kneel, pull the elbows down and back.' },
+  bandpullapart:  { name: 'Band pull-apart', pattern: 'rear', band: true, w: 0, sets: 4, reps: 20, repMin: 15, repMax: 30, inc: 0, home: true, note: 'Straight arms, pull to the chest, squeeze the blades. High reps, no shrugging. Cheap volume for a weak point.' },
+  bandfacepull:   { name: 'Band face pull', pattern: 'rear', band: true, w: 0, sets: 4, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'To the eyebrows, rotate the knuckles up at the end.' },
+  bandlateral:    { name: 'Band lateral raise', pattern: 'lat', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Band under the feet. Resistance builds towards the top, which is the opposite of a dumbbell — worth having both.' },
+  bandcurl:       { name: 'Band curl', pattern: 'biceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Hardest at the top where a dumbbell is easiest.' },
+  bandpushdown:   { name: 'Band pushdown', pattern: 'triceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Anchor high, elbows pinned, lock out hard.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
   machinerow:     { name: 'Free-weight row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
@@ -117,14 +117,14 @@ export const ACCESSORIES = {
   machinepress:   { name: 'Shoulder press machine', pattern: 'vpush', w: 110, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
   stdbpress:      { name: 'Standing dumbbell press', pattern: 'vpush', w: 18, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, home: true },
 
-  leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 5, reps: 8, repMin: 8, repMax: 12, inc: 1.25, machine: true, note: 'Lean away from the stack, arm crossing the body at the bottom. That bottom position is why this one carries the most sets. Warm the cuff first — it bites cold.', variants: ['dblat', 'cablelat-light'] },
-  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 5, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Elbows lead, stop at shoulder height. If the traps take over or you start swinging, halve the weight — this is the exercise people most often turn into a shrug.' },
+  leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 4, reps: 8, repMin: 8, repMax: 12, inc: 1.25, machine: true, note: 'Lean away from the stack, arm crossing the body at the bottom. That bottom position is why this one carries the most sets. Warm the cuff first — it bites cold.', variants: ['dblat', 'cablelat-light'] },
+  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Raise in the scapular plane — arms about 30° in front of your body, not straight out to the sides — with thumbs neutral. That keeps the space the rotator cuff runs through open. Turning the thumbs down closes it, which is the usual reason laterals start to ache.' },
   leandb:         { name: 'Leaning dumbbell lateral raise', pattern: 'lat', w: 8, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1, home: true, note: 'Hold a rack upright and lean away. The lean loads the bottom of the range, which the standing version misses entirely.' },
-  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
+  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 4, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
   reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'cablerear', 'proney'] },
-  facepull:       { name: 'Face pull', pattern: 'rear', w: 25, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 2.5, machine: true, note: 'To the eyebrows, rotate at the end.' },
+  facepull:       { name: 'Face pull', pattern: 'rear', w: 25, sets: 4, reps: 15, repMin: 12, repMax: 18, inc: 2.5, machine: true, note: 'To the eyebrows, rotate at the end.' },
   cablerear:      { name: 'Single-arm cable rear delt', pattern: 'rear', w: 7.5, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1.25, machine: true },
   proney:         { name: 'Prone Y raise on the floor', pattern: 'rear', w: 4, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1, home: true, note: 'Light. Hold a beat at the top.' },
 
@@ -137,7 +137,7 @@ export const ACCESSORIES = {
   cablecurl:      { name: 'Single-arm cable curl, facing away', pattern: 'biceps', w: 17.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true },
   assistcurl:     { name: 'Concentration curl', pattern: 'biceps', w: 18, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1, home: true },
   bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 4, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
-  dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 3, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
+  dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 4, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
   dip:            { name: 'Weighted dip', pattern: 'hpush', addedWeight: true, w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
   closebench:     { name: 'Close-grip bench', pattern: 'triceps', w: 75, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true },
@@ -353,22 +353,23 @@ export const CORE_LEVEL_UP = 2;
    when you can only fit two or three. */
 export const CORE_ROTATION = ['Anti-extension', 'Flexion', 'Anti-lateral', 'Anti-rotation'];
 
+/* A slot can hold a list of exercises. The app works through them one per
+   cycle, so each gets a full four weeks to progress before it hands over —
+   variety without losing the thread of whether you are actually getting
+   stronger. Plain strings are fixed slots. */
 export const DAYS = {
-  /* Core on the barbell days is bracing, not ab training — dead bugs and
-     Pallof presses before a heavy squat prime the trunk without costing
-     anything. Loaded spinal flexion belongs away from a loaded spine, so it
-     lives on Tuesday instead. */
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bulgarian', 'legext', 'calf', 'shrug-bb', 'farmerhold', 'hammerrope'],
+    work: [['walking-lunge', 'bulgarian'], ['legext-sl', 'legext'], 'calf', 'shrug-bb', 'farmerhold', ['hammerrope', 'wristcurl']],
     prepKey: 'squat', prep: 4,
     core: 2, coreQ: ['Anti-extension', 'Anti-rotation', 'Anti-lateral']
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    work: ['pushup', 'bandpullover', 'bbcurl', 'seatedhammer', 'dblat', 'bandpullapart', 'dbohext', 'bandpushdown'],
+    work: [['pushup', 'pushup-deficit'], ['bandpullover', 'bandlat'], ['bbcurl', 'dragcurl'], 'seatedhammer',
+           'bandlateral', ['bandpullapart', 'bandfacepull'], 'dbohext', 'bandpushdown'],
     prepKey: 'home', prep: 3,
     core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
@@ -376,13 +377,13 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', 'inclinedb', 'pullup', 'leancable', 'cablerear', 'inclinecurl'],
+    work: ['bbrow', 'dip', ['inclinedb', 'smithincline'], ['pullup', 'latpull'], 'leancable', 'cablerear', ['inclinecurl', 'inclinehammer']],
     prepKey: 'bench', prep: 2, core: 0
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: ['frontsq', 'rdl', 'legcurl', 'leandb', 'shrug-machine', 'revcurl'],
+    work: [['frontsq', 'hack'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
@@ -390,10 +391,16 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['dbrow', 'fixedlat', 'strarm', 'cablelat-light', 'facepull', 'ezpreacher', 'ropepush'],
+    work: [['dbrow', 'seatedrow'], ['fixedlat', 'latpull'], 'strarm', 'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'overheadrope']],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
+
+/* Resolve a day's slots for a given cycle. */
+export function slotsFor(day, cycle) {
+  const c = Math.max(1, cycle || 1);
+  return day.work.map(slot => Array.isArray(slot) ? slot[(c - 1) % slot.length] : slot);
+}
 
 /* Starting rung for every core ladder. You are not a beginner; the default
    assumes that, and you can move it. */
@@ -414,8 +421,8 @@ export const CORE_START = {
    room to recover from — this is a deliberate trade, not an oversight. */
 export const VOLUME_TARGET = {
   quads: 10, 'hams/glutes': 10, calves: 3, chest: 11, 'front delts': 5,
-  'back horizontal': 6, 'back vertical': 10, 'side delts': 16,
-  'rear delts': 9, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
+  'back horizontal': 6, 'back vertical': 10, 'side delts': 11,
+  'rear delts': 11, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
 };
 
 export const MUSCLE_OF = {
@@ -617,7 +624,7 @@ export const CUES = {
   fixedlat:   'Pull the elbows down and back, not the hands. Let the shoulders rise fully at the top.',
   inclinebb:  'Bench around 30°. Higher than that and it becomes a shoulder press.',
   machinepress: 'Do not let the lower back arch off the pad. Stop just short of lockout to keep tension.',
-  dblat:      'Elbows lead, thumbs slightly down, stop at shoulder height. If you swing, halve the weight.',
+  dblat:      'Arms slightly forward of your body, thumbs neutral or turned a touch up — never down. Elbows lead, stop at shoulder height.',
   leancable:  'Lean away, arm crossing the body at the bottom. Elbow leads, stop at shoulder height, no shrug.',
   facepull:   'Pull to the eyebrows and rotate the knuckles up at the end. High reps, light load.',
   revpec:     'Chest stays on the pad. Squeeze the shoulder blades, do not shrug.',
@@ -682,7 +689,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v36', date: '2026-09-14' };
+export const BUILD = { version: 'v38', date: '2026-09-15' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

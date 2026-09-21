@@ -2,7 +2,7 @@ import {
   BAR, PLATES, PLATE_COLOUR, MAINS, WAVE, ACCESSORIES, PREP,
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
-  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE,
+  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES
 } from './data.js';
 
@@ -76,7 +76,7 @@ function seed() {
   st.coreLevel = {};
   for (const t of CORE_TRACKS) st.coreLevel[t.id] = Math.min(CORE_START.advanced.rung, t.levels.length - 1);
   for (const [k, a] of Object.entries(ACCESSORIES))
-    st.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
+    st.acc[k] = { w: a.w, reps: a.reps, misses: 0, hist: [], lastDone: null };
   return st;
 }
 
@@ -306,6 +306,13 @@ function coreItem(track) {
   };
 }
 
+/* Set counts belong to the programme, not to your saved progress. Storing
+   them alongside weight and reps froze them at whatever they were when an
+   exercise was first seeded, so every later change to the programme never
+   reached the device. Progress keeps weight, reps and history; the
+   programme decides how many sets. */
+const setsOf = id => (ACCESSORIES[id] && ACCESSORIES[id].sets) || 3;
+
 /* ═══ weight adjustment ═════════════════════════════════════
    Seeded numbers are a starting guess, most of all on machines where the
    stack is unknown. Changing a weight here changes it everywhere — the
@@ -405,13 +412,13 @@ function buildPlanned(dateStr, dayKey) {
     items.push({ kind: 'main', ref: D.main, name: M.name, wave: wave.name, sets });
   }
 
-  const work = resolveWork(D.work, atHome);
+  const work = resolveWork(slotsFor(D, cycleNo(dateStr)), atHome);
   if (verdict.trim >= 2) work.pop();
   const loaded = new Set();
   if (D.main) loaded.add(MAINS[D.main].pattern);
   for (const id of work) {
     const a = ACCESSORIES[id], s = S.acc[id];
-    const n = Math.max(2, s.sets - (verdict.trim ? 1 : 0));
+    const n = Math.max(2, setsOf(id) - (verdict.trim ? 1 : 0));
     const sets = [
       ...accessoryRamp(a, s.w, loaded),
       ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
@@ -450,7 +457,7 @@ function buildAdhoc(dateStr, focusKey, minutes, atHome, ignoreRecovery) {
     const want = n - items.length, perPattern = {};
     const cand = Object.entries(ACCESSORIES)
       .filter(([, a]) => F.patterns.includes(a.pattern))
-      .filter(([, a]) => !atHome || a.home)
+      .filter(([, a]) => atHome ? a.home : !(a.band || a.bodyweight))
       .filter(([, a]) => !hot.has(a.pattern))
       .sort((a, b) => (S.acc[a[0]].lastDone || '').localeCompare(S.acc[b[0]].lastDone || ''));
     for (const [id, a] of cand) {
@@ -458,7 +465,7 @@ function buildAdhoc(dateStr, focusKey, minutes, atHome, ignoreRecovery) {
       if ((perPattern[a.pattern] = (perPattern[a.pattern] || 0) + 1) > 2) continue;
       const s = S.acc[id];
       items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
-        sets: Array.from({ length: s.sets }, () => ({ w: s.w, target: s.reps, reps: null })) });
+        sets: Array.from({ length: setsOf(id) }, () => ({ w: s.w, target: s.reps, reps: null })) });
     }
   }
   return { id: `${dateStr}·extra·${Date.now().toString(36)}`, date: dateStr, dayKey: 'adhoc',
@@ -530,7 +537,7 @@ function applyProgression(sess) {
         sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null })) });
       st.hist = st.hist.slice(-12);
       /* A set trimmed by running load is not a missed set. */
-      const working = it.sets.filter(s => !s.warm).length;
+      const working = it.sets.filter(s => !s.warm).length;  /* what was actually prescribed today */
       const expected = sess.runTrim ? logged.length : working;
       if (logged.length >= expected && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
@@ -605,7 +612,7 @@ function applyPlateau(id, c) {
 function rehydrateSwaps() {
   for (const [from, to] of Object.entries(S.settings.swaps || {}))
     if (ACCESSORIES[to]) for (const d of Object.values(DAYS))
-      if (d.work.includes(from)) d.work = d.work.map(x => (x === from ? to : x));
+      d.work = d.work.map(x => Array.isArray(x) ? x.map(y => (y === from ? to : y)) : (x === from ? to : x));
 }
 
 /* Renders one progression change. Sessions logged before this existed stored
@@ -670,6 +677,55 @@ function askConfirm({ title, body, label, act, danger }) {
   box.classList.add('on');
 }
 
+/* ═══ feedback ══════════════════════════════════════════════
+   Notes against a build, carried in the backup so they travel with your data.
+   A note belongs to the version it was written on: once the app is newer,
+   the note has been acted on (or deliberately not) and becomes read-only. */
+
+const verNum = v => {
+  const m = String(v || '').match(/^v(\d+)(?:\.(\d+))?/);
+  return m ? (+m[1]) * 1000 + (+(m[2] || 0)) : 0;
+};
+const fbLive = f => verNum(f.version) >= verNum(APP_BUILD);
+
+function feedbackSection() {
+  const all = S.feedback || [];
+  const live = all.filter(fbLive);
+  const old = all.filter(f => !fbLive(f));
+  const byVer = {};
+  for (const f of old) (byVer[f.version] = byVer[f.version] || []).push(f);
+  const vers = Object.keys(byVer).sort((a, b) => verNum(b) - verNum(a));
+  const when = iso => new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+
+  return `<p class="eyebrow">Feedback for ${APP_BUILD}</p>
+    <div class="card" style="padding:14px">
+      <textarea id="fbnew" rows="3" placeholder="What should change? It is saved with your backup."></textarea>
+      <div class="btn-row"><button class="btn-go" id="fbadd">Add note</button></div>
+      ${live.length ? `<div class="fblist">${live.map(f => fbEdit === f.id
+        ? `<div class="fbitem editing">
+            <textarea id="fbedit" rows="3">${f.text.replace(/</g, '&lt;')}</textarea>
+            <div class="btn-row">
+              <button class="btn-sm btn-go" data-fbsave="${f.id}">Save</button>
+              <button class="btn-sm" data-fbcancel="1">Cancel</button>
+            </div></div>`
+        : `<div class="fbitem">
+            <p>${f.text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>
+            <div class="fbmeta mono">${when(f.created)}${f.updated ? ' · edited' : ''}</div>
+            <div class="fbacts">
+              <button class="btn-sm" data-fbedit="${f.id}">Edit</button>
+              <button class="btn-sm btn-quiet" data-fbdel="${f.id}">Remove</button>
+            </div></div>`).join('')}</div>`
+        : '<p class="hint" style="margin-top:10px">Nothing noted against this build yet.</p>'}
+      <p class="hint">Export a copy and send the file over — I will read the notes from it.</p>
+    </div>
+    ${old.length ? `<details class="fbold" ${fbOld ? 'open' : ''}>
+      <summary data-fbold="1">Earlier builds · ${old.length} note${old.length > 1 ? 's' : ''}</summary>
+      ${vers.map(v => `<div class="fbver mono">${v}</div>
+        ${byVer[v].map(f => `<div class="fbitem readonly"><p>${f.text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>
+          <div class="fbmeta mono">${when(f.created)}</div></div>`).join('')}`).join('')}
+    </details>` : ''}`;
+}
+
 /* ═══ history ═══════════════════════════════════════════════ */
 
 /* Effort out of five. RPE on the main lift is the honest signal when it is
@@ -724,7 +780,7 @@ function sessionsByWeek() {
 
 let VIEW = 'today', draft = null, openWeek = null;
 let addQuery = '', addOpen = false, progressTab = 'status', openSession = null, libQuery = '';
-let openHist = null;
+let openHist = null, fbEdit = null, fbOld = false;
 
 /* Was this day's session completed in the current Monday-to-Sunday week? */
 function doneThisWeek(dayKey) {
@@ -755,20 +811,39 @@ function barDiagram(w) {
 
 const outAt = (club = S.club) => (S.clubOut && S.clubOut[club]) || [];
 
+/* Equipment class, so a substitute resembles what it replaces. */
+const kitOf = a => a.band ? 'band' : a.bodyweight ? 'bodyweight' : a.machine ? 'machine'
+  : a.bar ? 'bar' : a.dbl ? 'dumbbell' : 'free';
+
 function substituteFor(id, taken = new Set(), homeOnly = false) {
   const out = outAt(), a = ACCESSORIES[id];
   if (!a) return null;
-  const ranked = [
-    ...(a.variants || []),
-    ...Object.keys(ACCESSORIES).filter(k => ACCESSORIES[k].pattern === a.pattern)
-  ];
-  for (const c of ranked) {
-    const cand = ACCESSORIES[c];
-    if (!cand || c === id || out.includes(c) || taken.has(c)) continue;
-    if (homeOnly && !cand.home) continue;
-    return c;
-  }
-  return null;
+  const usable = c => {
+    const x = ACCESSORIES[c];
+    if (!x || c === id || out.includes(c) || taken.has(c)) return false;
+    if (homeOnly) return !!x.home;
+    /* At a gym, bands and bodyweight work are a step down in load, not a
+       substitute. The library lists them first alphabetically-ish, which is
+       exactly how a band row turned up in place of a machine row. */
+    return !x.band && !x.bodyweight;
+  };
+  /* Declared variants first, then the same pattern ranked by how closely the
+     equipment matches — a machine wants a cable or a machine, a barbell wants
+     a barbell — then anything else that trains the pattern. */
+  const want = kitOf(a);
+  const closeness = c => {
+    const k = kitOf(ACCESSORIES[c]);
+    if (k === want) return 0;
+    if ((want === 'machine' && k === 'free') || (want === 'bar' && k === 'dumbbell')
+        || (want === 'dumbbell' && k === 'bar')) return 1;
+    return 2;
+  };
+  const variants = (a.variants || []).filter(usable);
+  if (variants.length) return variants[0];
+  const same = Object.keys(ACCESSORIES)
+    .filter(c => ACCESSORIES[c].pattern === a.pattern && usable(c))
+    .sort((p, q) => closeness(p) - closeness(q));
+  return same[0] || null;
 }
 
 function resolveWork(ids, homeOnly) {
@@ -1167,7 +1242,7 @@ function suggestionsFor(sess) {
 
   return Object.entries(ACCESSORIES)
     .filter(([id, a]) => pats.includes(a.pattern) && !already.has(id))
-    .filter(([, a]) => !atHome || a.home)
+    .filter(([, a]) => atHome ? a.home : !(a.band || a.bodyweight))
     .sort((a, b) => (S.acc[a[0]].lastDone || '').localeCompare(S.acc[b[0]].lastDone || ''))
     .slice(0, 8);
 }
@@ -1200,7 +1275,7 @@ function addPanel(sess) {
       : 'Suggested for this session first. Search to reach anything else.'}</p>
     ${shown.map(([id, a]) => `<button class="addrow ${rec.has(id) ? 'rec' : ''}" data-add="${id}">
         <span class="an">${a.name}${rec.has(id) ? '<i>suggested</i>' : ''}${atHome && !a.home ? '<i class="warnflag">needs a gym</i>' : ''}</span>
-        <span class="aw mono">${S.acc[id].w}kg × ${S.acc[id].reps} · ${S.acc[id].sets} sets · ${a.pattern}</span>
+        <span class="aw mono">${S.acc[id].w}kg × ${S.acc[id].reps} · ${setsOf(id)} sets · ${a.pattern}</span>
       </button>`).join('')}
     ${!shown.length ? '<p class="hint">Nothing matches that.</p>' : ''}
   </details>`;
@@ -1329,11 +1404,11 @@ function renderPlan() {
         <span class="daytick ${hit ? 'on' : ''}" title="${hit ? 'done this week' : 'not yet'}">${hit ? '✓' : ''}</span>
       </div>
       <div class="mono" style="font-size:11.5px;color:var(--dust);margin-top:4px">
-        ${d.main ? MAINS[d.main].name + ' · ' : ''}${d.work.map(w => ACCESSORIES[w]?.name).filter(Boolean).join(' · ')}${d.core ? ` · ${d.core} core` : ''}${d.prepKey ? ' · warm-up' : ''}
+        ${d.main ? MAINS[d.main].name + ' · ' : ''}${slotsFor(d, cycleNo(today())).map((w, i) => (ACCESSORIES[w]?.name || '') + (Array.isArray(d.work[i]) ? ' ↻' : '')).filter(Boolean).join(' · ')}${d.core ? ` · ${d.core} core` : ''}${d.prepKey ? ' · warm-up' : ''}
       </div></div>`;
     }).join('')}
 
-    <p class="hint">Saturday is the long run. Sunday is yours.</p>
+    <p class="hint">↻ marks a slot that rotates to a different exercise each cycle — each one gets a full four weeks to progress before it hands over. Saturday is the long run. Sunday is yours.</p>
 
     <p class="eyebrow">Core starting level</p>
     <div class="card" style="padding:14px">
@@ -1385,7 +1460,7 @@ function renderPlan() {
     <p class="hint" style="margin:0 0 10px">Seeded from your log. Machine numbers especially are guesses — correct them here or on the exercise itself, and it sticks.</p>
     ${Object.values(DAYS).map(d => `<div class="card" style="padding:12px 14px">
       <div class="mono" style="font-size:10px;letter-spacing:.1em;color:var(--dust-2);margin-bottom:4px">${d.label.toUpperCase()}</div>
-      ${d.work.filter(id => ACCESSORIES[id] && S.acc[id]).map(id => `<div class="wrow">
+      ${slotsFor(d, cycleNo(today())).filter(id => ACCESSORIES[id] && S.acc[id]).map(id => `<div class="wrow">
         <span class="wn">${ACCESSORIES[id].name}${ACCESSORIES[id].dbl ? ' <em>each hand</em>' : ''}</span>
         <span class="step">
           <button data-wn="-1" data-wk="acc" data-wr="${id}">−</button>
@@ -1697,6 +1772,8 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
       <div class="btn-row"><button class="btn-sm" id="checkupdate" ${updateState.checking ? 'disabled' : ''}>Check for a new version</button></div>
     </div>
 
+    ${feedbackSection()}
+
     <p class="eyebrow">Backup</p>
     <div class="sync"><span class="dot ${last ? 'ok' : ''}"></span>
       <span class="txt"><b>${last ? 'Last saved ' + last.toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not backed up yet'}</b>
@@ -1775,7 +1852,14 @@ function repairState() {
   S.acc = S.acc || {}; S.mains = S.mains || {}; S.records = S.records || {};
   S.coreLevel = S.coreLevel || {}; S.settings = S.settings || {};
   for (const [k, a] of Object.entries(ACCESSORIES))
-    if (!S.acc[k]) S.acc[k] = { w: a.w, reps: a.reps, sets: a.sets, misses: 0, hist: [], lastDone: null };
+    if (!S.acc[k]) S.acc[k] = { w: a.w, reps: a.reps, misses: 0, hist: [], lastDone: null };
+  /* Drop the frozen set counts, and pull any rep target back inside the
+     programme's current range in case that range has moved. */
+  for (const [k, st] of Object.entries(S.acc)) {
+    delete st.sets;
+    const a = ACCESSORIES[k];
+    if (a && st.reps != null) st.reps = Math.max(a.repMin, Math.min(a.repMax, st.reps));
+  }
   for (const [k, m] of Object.entries(MAINS))
     if (!S.mains[k]) S.mains[k] = { tm: m.tm, misses: 0, hist: [] };
   for (const [k, r] of Object.entries(SEED_RECORDS))
@@ -1783,7 +1867,10 @@ function repairState() {
   const rung = (CORE_START[S.settings.coreStart] || CORE_START.advanced).rung;
   for (const t of CORE_TRACKS)
     if (S.coreLevel[t.id] == null) S.coreLevel[t.id] = Math.min(rung, t.levels.length - 1);
-  for (const D of Object.values(DAYS)) D.work = D.work.filter(id => ACCESSORIES[id]);
+  for (const D of Object.values(DAYS))
+    D.work = D.work
+      .map(x => Array.isArray(x) ? x.filter(id => ACCESSORIES[id]) : x)
+      .filter(x => Array.isArray(x) ? x.length : ACCESSORIES[x]);
   S.settings.swaps = Object.fromEntries(
     Object.entries(S.settings.swaps || {}).filter(([a, b]) => ACCESSORIES[a] && ACCESSORIES[b]));
 }
@@ -2079,7 +2166,7 @@ function wire() {
       if (sub) {
         const a = ACCESSORIES[sub], st = S.acc[sub];
         sess.items[idx] = { kind: 'acc', ref: sub, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
-          sets: Array.from({ length: st.sets }, () => ({ w: st.w, target: st.reps, reps: null })) };
+          sets: Array.from({ length: setsOf(sub) }, () => ({ w: st.w, target: st.reps, reps: null })) };
         toast(`${a.name} instead — tap Undo if that was a mistake`);
       } else {
         sess.items.splice(idx, 1);
@@ -2139,7 +2226,7 @@ function wire() {
       const sess = $('#v-today')._sess, id = add.dataset.add;
       const a = ACCESSORIES[id], st = S.acc[id];
       sess.items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar,
-        added: true, sets: Array.from({ length: st.sets }, () => ({ w: st.w, target: st.reps, reps: null })) });
+        added: true, sets: Array.from({ length: setsOf(id) }, () => ({ w: st.w, target: st.reps, reps: null })) });
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
       if (sess.adhoc) draft = sess;
       await save(); render(); toast(`${a.name} added`); return;
@@ -2237,6 +2324,32 @@ function wire() {
       catch (e) { toast('Could not copy — read it off the screen'); }
       return;
     }
+    if (t.id === 'fbadd') {
+      const text = ($('#fbnew').value || '').trim();
+      if (!text) return toast('Write something first');
+      S.feedback = S.feedback || [];
+      S.feedback.push({ id: Date.now().toString(36), version: APP_BUILD, text, created: new Date().toISOString() });
+      await save(); render(); toast('Noted'); return;
+    }
+    const fe = t.closest('[data-fbedit]');
+    if (fe) { fbEdit = fe.dataset.fbedit; render(); return; }
+    if (t.closest('[data-fbcancel]')) { fbEdit = null; render(); return; }
+    const fs = t.closest('[data-fbsave]');
+    if (fs) {
+      const f = (S.feedback || []).find(x => x.id === fs.dataset.fbsave);
+      const text = ($('#fbedit').value || '').trim();
+      if (f && fbLive(f) && text) { f.text = text; f.updated = new Date().toISOString(); }
+      fbEdit = null; await save(); render(); return;
+    }
+    const fd = t.closest('[data-fbdel]');
+    if (fd) {
+      const f = (S.feedback || []).find(x => x.id === fd.dataset.fbdel);
+      if (f && fbLive(f)) askConfirm({ title: 'Remove this note?', body: f.text.replace(/</g, '&lt;'),
+        label: 'Remove it', act: 'fbdel:' + f.id, danger: true });
+      return;
+    }
+    if (t.closest('[data-fbold]')) { fbOld = !fbOld; return; }
+
     if (t.id === 'repair') { repairState(); await save(); render(); toast('Repaired'); return; }
     if (t.id === 'checkupdate') return checkForUpdate(false);
     if (t.id === 'applyupdate') return applyUpdate();
@@ -2270,6 +2383,11 @@ function wire() {
     const cf = t.closest('[data-confirm]');
     if (cf) {
       $('#sheet').classList.remove('on');
+      if (cf.dataset.confirm.startsWith('fbdel:')) {
+        const id = cf.dataset.confirm.slice(6);
+        S.feedback = (S.feedback || []).filter(x => !(x.id === id && fbLive(x)));
+        await save(); render(); toast('Removed'); return;
+      }
       if (cf.dataset.confirm === 'restart') {
         S.cycleStart = iso(mondayOf(new Date()));
         await save(); render(); toast('Cycle restarted at week 1');
@@ -2318,7 +2436,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v36';
+const APP_BUILD = 'v38';
 
 let lastError = null;
 
@@ -2346,6 +2464,7 @@ if (typeof window !== 'undefined') {
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
   S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
   S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || []; S.coreHist = S.coreHist || {};
+  S.feedback = S.feedback || [];
 
   S.settings.coreStart = S.settings.coreStart || 'advanced';
   /* Old builds stored flat core exercise ids; only track ids mean anything now. */
