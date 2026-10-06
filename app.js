@@ -43,6 +43,13 @@ const BAR_STEP = 5;
 const barRound = w => round(w, BAR_STEP);
 const e1rm = (w, r) => w * (1 + Math.min(r, 12) / 30);
 const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+/* Past an hour the minutes need padding, or the session clock reads 1:5:00
+   at sixty-five minutes. mmss cannot do it — a rest timer wants 5:00, not
+   05:00 — so the clock gets its own formatter. */
+const hms = s => {
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+  return (h ? `${h}:${String(m).padStart(2, '0')}` : String(m)) + ':' + String(s % 60).padStart(2, '0');
+};
 
 function mondayOf(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; }
 const weeksApart = ds => Math.round((mondayOf(parseDay(ds)) - mondayOf(parseDay(S.cycleStart))) / 6048e5);
@@ -210,7 +217,12 @@ function resumeRest() {
 
 /* ═══ session clock ═════════════════════════════════════════ */
 
-function startSession(sess) { S.active = { id: sess.id, t0: Date.now() }; save(); paintSession(); }
+/* `elapsed` picks the clock up where it stopped — a session reopened after a
+   mis-tapped finish carries on from the time it had, rather than from zero. */
+function startSession(sess, elapsed = 0) {
+  S.active = { id: sess.id, t0: Date.now() - elapsed * 1000 };
+  save(); paintSession();
+}
 function endSession() { S.active = null; save(); paintSession(); }
 
 function paintSession() {
@@ -218,9 +230,7 @@ function paintSession() {
   if (!el) return;
   if (!S.active) { el.classList.remove('on'); el.textContent = ''; return; }
   el.classList.add('on');
-  const t = Math.round((Date.now() - S.active.t0) / 1000);
-  const h = Math.floor(t / 3600);
-  el.textContent = (h ? h + ':' : '') + mmss(t % 3600);
+  el.textContent = hms(Math.round((Date.now() - S.active.t0) / 1000));
 }
 
 setInterval(() => { paintSession(); if (timer) paintRest(); }, 1000);
@@ -499,6 +509,134 @@ function makeEasy(sess, on) {
 
 /* ═══ progression ═══════════════════════════════════════════ */
 
+/* Finishing a session is destructive. It pushes history, moves training maxes,
+   advances double progression, climbs core ladders and sets records, so a
+   mis-tapped Finish cannot be undone by flipping `done` back to false: the
+   progression has already happened, and the real finish would apply it a
+   second time. The exact slice of state the session is about to touch is
+   therefore photographed first, and reopening puts that slice back.
+
+   Only the most recently finished session keeps its photograph. An older one
+   is not the one you are about to un-finish, and keeping every photograph
+   would roughly double the size of every backup. */
+
+const clone = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+
+function progressionSnapshot(sess) {
+  const snap = { mains: {}, acc: {}, records: {}, coreHist: {}, coreClean: {}, coreLevel: {},
+                 coreRefs: [], coreSeen: clone(S.coreSeen || []), coreQ: clone(S.coreQ || []) };
+  for (const it of sess.items || []) {
+    if (it.kind === 'main') {
+      snap.mains[it.ref] = clone(S.mains[it.ref]);
+      snap.records[it.ref] = clone((S.records || {})[it.ref]);
+    }
+    if (it.kind === 'acc') snap.acc[it.ref] = clone(S.acc[it.ref]);
+    if (it.kind === 'core') {
+      snap.coreRefs.push(it.ref);
+      /* A level-up writes history under a *new* key, so every key for this
+         movement is captured and the restore prunes by prefix. */
+      for (const k of Object.keys(S.coreHist || {}))
+        if (k.startsWith(it.ref + ':')) snap.coreHist[k] = clone(S.coreHist[k]);
+      snap.coreClean[it.ref] = clone((S.coreClean || {})[it.ref]);
+      snap.coreLevel[it.ref] = clone((S.coreLevel || {})[it.ref]);
+    }
+  }
+  return snap;
+}
+
+function restoreProgression(snap) {
+  if (!snap) return false;
+  /* A key absent from the photograph did not exist before the finish, so it
+     is removed rather than set to undefined — `acc[id] = undefined` would
+     survive a save and read back as a broken entry. */
+  const put = (obj, k, v) => { if (v === undefined || v === null) delete obj[k]; else obj[k] = v; };
+  for (const [k, v] of Object.entries(snap.mains || {})) put(S.mains, k, v);
+  for (const [k, v] of Object.entries(snap.acc || {})) put(S.acc, k, v);
+  S.records = S.records || {};
+  for (const [k, v] of Object.entries(snap.records || {})) put(S.records, k, v);
+
+  S.coreHist = S.coreHist || {}; S.coreClean = S.coreClean || {}; S.coreLevel = S.coreLevel || {};
+  for (const ref of snap.coreRefs || []) {
+    for (const k of Object.keys(S.coreHist)) if (k.startsWith(ref + ':')) delete S.coreHist[k];
+    put(S.coreClean, ref, (snap.coreClean || {})[ref]);
+    put(S.coreLevel, ref, (snap.coreLevel || {})[ref]);
+  }
+  for (const [k, v] of Object.entries(snap.coreHist || {})) put(S.coreHist, k, v);
+
+  S.coreSeen = snap.coreSeen || []; S.coreQ = snap.coreQ || [];
+  return true;
+}
+
+/* The photograph is kept only on the newest finished session. */
+function pruneSnapshots(keepId) {
+  for (const s of S.sessions) if (s.id !== keepId) delete s.undoProg;
+}
+
+/* Sessions finished before snapshots existed have no photograph, so the
+   rollback is reconstructed instead: the ledger records a `from` for every
+   change it made, and history rows carry the date they were written. What
+   cannot be recovered that way is reported rather than guessed at — records
+   only ever move up, so leaving one alone costs nothing, and a reset clean
+   count costs at most one extra clean session before the next rung. */
+function legacyRollback(sess) {
+  const did = [], cannot = [];
+  /* Notes carry their ref from v42 on. Older ones carry only the display name,
+     so those are matched by name against the session's own exercises — current
+     names first, then any former name the library remembers, because a note
+     written before an exercise was renamed still names the old one. */
+  const refOf = n => {
+    if (n.ref) return n.ref;
+    const mine = (sess.items || []).map(it => it.ref);
+    const named = r => {
+      const a = ACCESSORIES[r] || MAINS[r];
+      return a && (a.name === n.label || (a.was || []).includes(n.label));
+    };
+    return mine.find(named);
+  };
+
+  for (const n of sess.notes || []) {
+    if (n.from === undefined || n.from === null) continue;
+    const ref = refOf(n);
+    if (n.type === 'tm' || n.type === 'reset') {
+      if (ref && S.mains[ref]) { S.mains[ref].tm = n.from; did.push(`${n.label} training max back to ${n.from}kg`); }
+      else cannot.push(n.label + ' training max');
+    } else if (n.type === 'reps') {
+      if (ref && S.acc[ref]) { S.acc[ref].reps = n.from; did.push(`${n.label} back to ${n.from} reps`); }
+      else cannot.push(n.label);
+    } else if (n.type === 'load') {
+      if (ref && S.acc[ref]) { S.acc[ref].w = n.from; S.acc[ref].reps = ACCESSORIES[ref].repMax; did.push(`${n.label} back to ${n.from}kg`); }
+      else cannot.push(n.label);
+    } else if (n.type === 'core') {
+      const t = CORE_TRACKS.find(x => x.quality === n.label);
+      const lv = t && t.levels.findIndex(l => l.name === n.from);
+      if (t && lv >= 0) { S.coreLevel = S.coreLevel || {}; S.coreLevel[t.id] = lv; did.push(`${n.label} ladder back to ${n.from}`); }
+      else cannot.push(n.label + ' ladder');
+    }
+  }
+
+  /* History rows written by this session, identified by its date. */
+  let rows = 0;
+  for (const it of sess.items || []) {
+    const st = it.kind === 'main' ? S.mains[it.ref] : it.kind === 'acc' ? S.acc[it.ref] : null;
+    if (st && st.hist) {
+      const n = st.hist.length;
+      st.hist = st.hist.filter(h => h.d !== sess.date);
+      rows += n - st.hist.length;
+      if (st.lastDone === sess.date) delete st.lastDone;
+    }
+    if (it.kind === 'core') for (const k of Object.keys(S.coreHist || {})) {
+      if (!k.startsWith(it.ref + ':')) continue;
+      const n = S.coreHist[k].length;
+      S.coreHist[k] = S.coreHist[k].filter(h => h.d !== sess.date);
+      rows += n - S.coreHist[k].length;
+      if (!S.coreHist[k].length) delete S.coreHist[k];
+    }
+  }
+  if (rows) did.push(`${rows} history row${rows > 1 ? 's' : ''} from this session removed`);
+  if ((sess.notes || []).some(n => n.type === 'hold')) cannot.push('miss counts');
+  return { did, cannot };
+}
+
 function applyProgression(sess) {
   const notes = [];
   if (sess.easy) { notes.push({ type: 'easy', label: 'Easy day', text: 'Nothing moved — that is what an easy day is for.' }); return notes; }
@@ -526,12 +664,12 @@ function applyProgression(sess) {
            and an easy one at the minimum still earns a small one. */
         if (bump === 2 && rpe >= 9.5) bump = 1;
         if (bump === 0 && rpe != null && rpe <= 7.5) bump = 1;
-        if (bump > 0) { const from = st.tm; st.tm = barRound(st.tm + M.inc * bump); st.misses = 0; notes.push({ type: 'tm', label: M.name, from, to: st.tm, unit: 'kg' }); }
-        else if (bump === 0) { st.misses = 0; notes.push({ type: 'hold', label: M.name, to: st.tm, unit: 'kg' }); }
+        if (bump > 0) { const from = st.tm; st.tm = barRound(st.tm + M.inc * bump); st.misses = 0; notes.push({ type: 'tm', ref: it.ref, label: M.name, from, to: st.tm, unit: 'kg' }); }
+        else if (bump === 0) { st.misses = 0; notes.push({ type: 'hold', ref: it.ref, label: M.name, to: st.tm, unit: 'kg' }); }
         else {
           st.misses++;
-          if (st.misses >= 2) { const from = st.tm; st.tm = barRound(st.tm * 0.9); st.misses = 0; notes.push({ type: 'reset', label: M.name, from, to: st.tm, unit: 'kg' }); }
-          else notes.push({ type: 'hold', label: M.name, to: st.tm, unit: 'kg' });
+          if (st.misses >= 2) { const from = st.tm; st.tm = barRound(st.tm * 0.9); st.misses = 0; notes.push({ type: 'reset', ref: it.ref, label: M.name, from, to: st.tm, unit: 'kg' }); }
+          else notes.push({ type: 'hold', ref: it.ref, label: M.name, to: st.tm, unit: 'kg' });
         }
       }
     }
@@ -549,12 +687,12 @@ function applyProgression(sess) {
       const expected = sess.runTrim ? logged.length : working;
       if (logged.length >= expected && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
-        if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
-        else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
+        if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', ref: it.ref, label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
+        else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', ref: it.ref, label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
       } else {
         st.misses++;
         const short = logged.filter(x => x.reps < x.target).length;
-        notes.push({ type: 'hold', label: a.name, to: st.w, unit: 'kg', reps: st.reps,
+        notes.push({ type: 'hold', ref: it.ref, label: a.name, to: st.w, unit: 'kg', reps: st.reps,
           why: logged.length < working
             ? `only ${logged.length} of ${working} sets logged`
             : `${short} set${short > 1 ? 's' : ''} short of ${st.reps}` });
@@ -583,7 +721,7 @@ function applyProgression(sess) {
         S.coreLevel = S.coreLevel || {};
         S.coreLevel[it.ref] = lv + 1;
         S.coreClean[it.ref] = 0;
-        notes.push({ type: 'core', label: t.quality, from: t.levels[lv].name, to: t.levels[lv + 1].name });
+        notes.push({ type: 'core', ref: it.ref, label: t.quality, from: t.levels[lv].name, to: t.levels[lv + 1].name });
       }
     }
     if (it.kind === 'mobility' || it.kind === 'prep') for (const m of it.list) S.mobSeen = [m.id, ...S.mobSeen.filter(x => x !== m.id)].slice(0, 8);
@@ -668,8 +806,22 @@ function showSummary(sess, notes) {
     </div>
     ${gains ? `<p class="hint">${gains} lift${gains > 1 ? 's' : ''} moved up. The detail is in History.</p>` : ''}
     <button class="btn-go" id="sheetclose">Done</button>
+    ${sess.undoProg ? `<button id="reopen" data-reopen="${sess.id}" style="margin-top:8px">Finished by mistake — reopen</button>` : ''}
   </div>`;
   box.classList.add('on');
+}
+
+function showRollback({ did, cannot }, elapsed) {
+  $('#sheet').innerHTML = `<div class="summary">
+    <h3>Reopened</h3>
+    ${elapsed ? `<p class="hint">Clock picked up at ${Math.round(elapsed / 60)} min.</p>` : ''}
+    ${did.length ? `<p>Rolled back:</p><ul class="rbk">${did.map(x => `<li>${x}</li>`).join('')}</ul>`
+      : '<p>The ledger recorded no changes, so there was nothing to roll back.</p>'}
+    ${cannot.length ? `<p class="hint">Left as they are, because the old value was not recorded:
+      ${cannot.join(', ')}. Records only ever move up, so that costs nothing.</p>` : ''}
+    <button class="btn-go" id="sheetclose">Got it</button>
+  </div>`;
+  $('#sheet').classList.add('on');
 }
 
 /* A destructive action deserves a sentence about what it destroys, not a
@@ -1300,7 +1452,9 @@ function addPanel(sess) {
 function renderToday() {
   const d = today(), el = $('#v-today');
   const sess = draft || sessionFor(d);
-  const dayName = parseDay(d).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
+  /* Date off the session, not the clock: a session reopened the next morning
+     is still Friday's session and should not be labelled Saturday. */
+  const dayName = parseDay(sess?.date || d).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'short' });
 
   if (!sess) {
     el.innerHTML = `<p class="eyebrow">${dayName}</p>
@@ -1322,6 +1476,11 @@ function renderToday() {
       Accessory sets trimmed, main lift untouched. Intensity keeps strength; volume is what costs you recovery.</div>` : ''}
     ${sess.easy ? `<div class="flag amber"><div class="why mono">Easy day</div>
       Everything at 85%. This session will not move any weights up or down.</div>` : ''}
+    ${S.reopened === sess.id ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
+      <div class="why mono" style="color:var(--go)">Reopened</div>
+      Logged sets are untouched and the progressions it had applied are rolled back
+      — they get worked out again when you finish it.${sess.date !== today()
+        ? ' This is not today\'s session; "Back to today" leaves it as it is.' : ''}</div>` : ''}
 
     ${sess.done ? '' : `<div class="btn-row" style="margin:0 0 14px">
       ${S.active?.id === sess.id
@@ -1329,6 +1488,9 @@ function renderToday() {
         : `<button class="btn-go" id="startsession">Start session</button>`}
       <button class="btn-sm ${sess.easy ? 'btn-go' : ''}" id="easy">${sess.easy ? 'Back to full' : 'Not feeling great'}</button>
     </div>`}
+    ${sess.done ? `<div class="btn-row" style="margin:0 0 14px">
+      <button class="btn-sm" data-reopen="${sess.id}">Reopen this session</button>
+    </div>` : ''}
 
     ${sess.items.map(itemCard).join('')}
     ${sess.undo && !sess.done ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
@@ -1340,7 +1502,8 @@ function renderToday() {
 
     <div class="btn-row">
       <button class="btn-go" id="finish">${sess.done ? 'Saved' : 'Finish session'}</button>
-      ${sess.adhoc ? '<button id="discard" class="btn-quiet">Discard</button>' : ''}
+      ${sess.adhoc ? '<button id="discard" class="btn-quiet">Discard</button>'
+        : S.reopened === sess.id ? '<button id="discard" class="btn-quiet">Back to today</button>' : ''}
     </div>
     ${runCard()}
     ${!sess.adhoc ? `<hr class="rule"><p class="eyebrow">Something extra</p>${adhocForm()}` : ''}`;
@@ -1659,6 +1822,13 @@ function sessionDetail(s) {
         `<button data-setclub="${s.id}|${c}" aria-pressed="${(s.club || '') === c}">${c}</button>`).join('')}</div>
       <p class="hint">Correcting this updates the session record and every later session that inherited the same gym.</p>
     </div>
+
+    ${s.done ? `<div class="card" style="padding:13px 14px">
+      <label class="f">Finished too early?</label>
+      <p class="hint" style="margin:0 0 9px">Reopening puts this session back in Today with its logged
+      sets intact, so you can carry on where you stopped.</p>
+      <div class="btn-row" style="margin:0"><button class="btn-sm" data-reopen="${s.id}">Reopen it</button></div>
+    </div>` : ''}
 
     ${!s.notes ? `<div class="card" style="padding:13px 14px">
       <p class="hint" style="margin:0">Finished before the app started recording changes, so there is no
@@ -2309,7 +2479,7 @@ function wire() {
       if (!draft.items.length) draft = buildAdhoc(today(), $('#af').value, m, atHome, true);
       VIEW = 'today'; render(); scrollTo({ top: 0, behavior: 'smooth' }); return;
     }
-    if (t.id === 'discard') { draft = null; render(); return; }
+    if (t.id === 'discard') { draft = null; delete S.reopened; await save(); render(); return; }
 
     if (t.id === 'startsession') {
       const sess = $('#v-today')._sess; if (!sess) return;
@@ -2318,6 +2488,26 @@ function wire() {
       render(); toast('Clock running'); return;
     }
     if (t.id === 'endsession') { endSession(); render(); return; }
+
+    const rp = t.closest('[data-reopen]');
+    if (rp) {
+      const sess = S.sessions.find(x => x.id === rp.dataset.reopen);
+      if (!sess) return;
+      const gains = (sess.notes || []).filter(isGain).length;
+      const common = 'Your logged sets stay exactly as they are and the clock picks up where it stopped.';
+      askConfirm({
+        title: 'Reopen this session?',
+        body: sess.undoProg
+          ? common + (gains
+              ? ` The ${gains} progression${gains > 1 ? 's' : ''} it applied will be rolled back and worked out again when you finish it properly.`
+              : ' Nothing moved up when it finished, so there is nothing to roll back.')
+          : common + ' This one finished before the app kept a snapshot, so the rollback is '
+            + 'reconstructed from the ledger in History — it undoes what that recorded and '
+            + 'tells you anything it could not.',
+        label: 'Reopen it', act: 'reopen:' + sess.id
+      });
+      return;
+    }
 
     if (t.id === 'easy') {
       const sess = $('#v-today')._sess; if (!sess) return;
@@ -2329,12 +2519,15 @@ function wire() {
 
     if (t.id === 'finish') {
       const sess = $('#v-today')._sess; if (!sess || sess.done) return;
+      /* Taken before anything moves, so a mis-tap is recoverable. */
+      const snap = progressionSnapshot(sess);
       sess.done = true; sess.completedAt = new Date().toISOString();
       if (S.active?.id === sess.id) { sess.duration = Math.round((Date.now() - S.active.t0) / 1000); endSession(); }
       const notes = applyProgression(sess);
       sess.notes = notes;
       if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
-      draft = null; stopRest(); stopSetClock();
+      sess.undoProg = snap; pruneSnapshots(sess.id);
+      draft = null; delete S.reopened; stopRest(); stopSetClock();
       await save(); await syncNow(true); render();
       showSummary(sess, notes); return;
     }
@@ -2415,6 +2608,30 @@ function wire() {
         S.feedback = (S.feedback || []).filter(x => !(x.id === id && fbLive(x)));
         await save(); render(); toast('Removed'); return;
       }
+      if (cf.dataset.confirm.startsWith('reopen:')) {
+        const sess = S.sessions.find(x => x.id === cf.dataset.confirm.slice(7));
+        if (!sess || !sess.done) { toast('Could not reopen that one'); return; }
+        const legacy = sess.undoProg ? null : legacyRollback(sess);
+        if (sess.undoProg) restoreProgression(sess.undoProg);
+        const elapsed = sess.duration || 0;
+        delete sess.undoProg; delete sess.completedAt; delete sess.notes; delete sess.duration;
+        sess.done = false;
+        /* Today renders whatever `draft` points at, which is how an unplanned
+           session already works — so a session reopened the morning after
+           shows up instead of the day's own plan rather than being stranded. */
+        draft = sess;
+        /* `draft` lives in memory only, so the id is parked in state too —
+           otherwise a reload while a reopened session is open would strand it
+           all over again, which is the bug this is meant to cure. */
+        S.reopened = sess.id;
+        startSession(sess, elapsed);
+        await save(); render();
+        /* A reconstructed rollback has to show its work — it is the one path
+           here that cannot promise to be exact. */
+        if (legacy && (legacy.did.length || legacy.cannot.length)) showRollback(legacy, elapsed);
+        else toast(elapsed ? 'Reopened · clock back at ' + Math.round(elapsed / 60) + ' min' : 'Reopened');
+        return;
+      }
       if (cf.dataset.confirm === 'restart') {
         S.cycleStart = iso(mondayOf(new Date()));
         await save(); render(); toast('Cycle restarted at week 1');
@@ -2463,7 +2680,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v41';
+const APP_BUILD = 'v42';
 
 let lastError = null;
 
@@ -2505,6 +2722,14 @@ if (typeof window !== 'undefined') {
     S.cycleStart = S.sessions.some(s => s.done) ? anchor : iso(mondayOf(new Date()));
   }
   rehydrateSwaps();
+
+  /* Put a reopened session back in front of you after a reload. If it was
+     finished in the meantime, or has gone, the pointer is simply dropped. */
+  if (S.reopened) {
+    const r = S.sessions.find(x => x.id === S.reopened);
+    if (r && !r.done) draft = r; else delete S.reopened;
+  }
+
   await save(); wire(); render(); resumeRest(); paintSession();
   if ((location.search || '').includes('u=')) {
     try { history.replaceState({}, '', location.pathname); } catch (e) {}

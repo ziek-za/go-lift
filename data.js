@@ -98,7 +98,9 @@ export const ACCESSORIES = {
   bandcurl:       { name: 'Band curl', pattern: 'biceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Hardest at the top where a dumbbell is easiest.' },
   bandpushdown:   { name: 'Band pushdown', pattern: 'triceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Anchor high, elbows pinned, lock out hard.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
-  machinerow:     { name: 'T-bar row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, variants: ['csrow', 'seatedrow'], note: 'Plate-loaded, chest off the pad, torso hinged. The one you have been loading — the weight history follows the name.' },
+  /* `was` keeps the names this exercise has had, so a history note written
+     under an old name can still be matched back to it. */
+  machinerow:     { name: 'T-bar row machine', was: ['Free-weight row machine'], pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, variants: ['csrow', 'seatedrow'], note: 'Plate-loaded, chest off the pad, torso hinged. The one you have been loading — the weight history follows the name.' },
   csrow:          { name: 'Chest-supported row, wide grip', pattern: 'hpull', w: 60, sets: 3, reps: 12, repMin: 10, repMax: 14, inc: 5, machine: true, note: 'Chest stays on the pad and the elbows flare wide — that angle hits the mid-back and rear delts rather than the lats, so it earns its own slot alongside the T-bar.' },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
   seatedrow:      { name: 'Seated row, 45° medium grip', pattern: 'hpull', w: 90, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
@@ -730,7 +732,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v41', date: '2026-10-06' };
+export const BUILD = { version: 'v42', date: '2026-10-06' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
