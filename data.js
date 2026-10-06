@@ -48,7 +48,8 @@ export const ACCESSORIES = {
   'legext-sl':    { name: 'Single-leg extension', pattern: 'squat', w: 57.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true, note: 'One leg at a time finds the side that is lagging, which is usually the one you cannot see.' },
   sissy:          { name: 'Sissy squat', pattern: 'squat', w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Hold something for balance, knees travel forward, hips stay extended. Brutal on the quads through the deepest knee flexion — the other end of the range from a leg extension.' },
   'goblet-heel':  { name: 'Heel-elevated goblet squat', pattern: 'squat', w: 24, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, home: true, note: 'Heels on a plate, upright torso, all the way down. The elevation shifts the work onto the quads and off the hips.' },
-  frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack'] },
+  beltsq:         { name: 'Belt squat', pattern: 'squat', w: 80, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, machine: true, note: 'Load hangs from the hips, so the spine carries nothing. Quads and glutes get a full squat with no bar on the back — which is why it sits well on the day after a hard trail run.', variants: ['hack', 'legpress'] },
+  frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack', 'beltsq'] },
   pausesq:        { name: 'Pause squat', pattern: 'squat', w: 100, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, note: '2s in the hole.' },
 
   rdl:            { name: 'Romanian deadlift', pattern: 'hinge', w: 90, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Stop at the stretch, not the floor.', variants: ['seatedgm', 'standgm'] },
@@ -97,7 +98,8 @@ export const ACCESSORIES = {
   bandcurl:       { name: 'Band curl', pattern: 'biceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Hardest at the top where a dumbbell is easiest.' },
   bandpushdown:   { name: 'Band pushdown', pattern: 'triceps', band: true, w: 0, sets: 3, reps: 18, repMin: 15, repMax: 25, inc: 0, home: true, note: 'Anchor high, elbows pinned, lock out hard.' },
   bbrow:          { name: 'Bent-over barbell row', pattern: 'hpull', w: 105, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, variants: ['machinerow', 'dbrow'] },
-  machinerow:     { name: 'Free-weight row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
+  machinerow:     { name: 'T-bar row machine', pattern: 'hpull', w: 120, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, variants: ['csrow', 'seatedrow'], note: 'Plate-loaded, chest off the pad, torso hinged. The one you have been loading — the weight history follows the name.' },
+  csrow:          { name: 'Chest-supported row, wide grip', pattern: 'hpull', w: 60, sets: 3, reps: 12, repMin: 10, repMax: 14, inc: 5, machine: true, note: 'Chest stays on the pad and the elbows flare wide — that angle hits the mid-back and rear delts rather than the lats, so it earns its own slot alongside the T-bar.' },
   dbrow:          { name: 'Bent-over dumbbell row', pattern: 'hpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2, home: true },
   seatedrow:      { name: 'Seated row, 45° medium grip', pattern: 'hpull', w: 90, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
 
@@ -111,6 +113,10 @@ export const ACCESSORIES = {
   smithincline:   { name: 'Incline smith press', pattern: 'hpush', w: 70, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
   cableflye:      { name: 'Cable flye', pattern: 'hpush', w: 41, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2.5, machine: true, note: 'Foam roller behind your back.' },
   pecdeck:        { name: 'Pectoral machine', pattern: 'hpush', w: 52.5, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
+  flatdb:         { name: 'Flat dumbbell press', pattern: 'hpush', w: 30, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, note: 'Flat, not incline — the sternal pec does the most work here and it is the fibre that makes a chest look thick from the side. Dumbbells let the hands come together at the top, which a bar cannot.', variants: ['chestpress', 'inclinedb'] },
+  chestpress:     { name: 'Chest press machine', pattern: 'hpush', w: 70, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Fixed path, so you can push to genuine failure without a spotter. Good second press of the week when bench has already taken the heavy work.', variants: ['flatdb', 'smithincline'] },
+  declinedb:      { name: 'Decline dumbbell press', pattern: 'hpush', w: 26, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, note: 'Bench on the shallowest decline it has. The lower sternal fibres are the one part of the chest that neither bench nor an incline reaches well, and they are what squares off the bottom edge.', variants: ['chestpress', 'flatdb'] },
+  dbflye:         { name: 'Dumbbell flye, flat bench', pattern: 'hpush', w: 14, dbl: true, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, note: 'Soft elbows, wide arc, stretch at the bottom. Loaded stretch is where a flye earns its place — do not turn it into a press.', variants: ['cableflye', 'pecdeck'] },
   floorpress:     { name: 'Dumbbell floor press', pattern: 'hpush', w: 24, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Upper arms stop on the floor.' },
 
   dbpress:        { name: 'Seated dumbbell press', pattern: 'vpush', w: 16, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2 },
@@ -377,8 +383,10 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', ['inclinedb', 'smithincline'], ['pullup', 'latpull'], 'leancable', 'cablerear', ['inclinecurl', 'inclinehammer']],
-    prepKey: 'bench', prep: 2,
+    work: ['bbrow', 'dip', ['inclinedb', 'smithincline', 'inclinebb'], ['pullup', 'latpull'], 'leancable', 'cablerear', ['inclinecurl', 'inclinehammer']],
+    /* Three, not two: the activator takes one of them and a rotating item
+       still gets a slot. Roughly ninety seconds more prep. */
+    prepKey: 'bench', prep: 3,
     /* Abs on a day with no load on the spine — the same reasoning that keeps
        flexion off the squat and deadlift days. */
     core: 1, coreQ: ['Flexion']
@@ -386,7 +394,7 @@ export const DAYS = {
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: [['frontsq', 'hack'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl', 'cablecurl'],
+    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl', 'cablecurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
@@ -394,7 +402,14 @@ export const DAYS = {
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: [['dbrow', 'seatedrow'], ['fixedlat', 'pullup'], 'strarm', 'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'rollingbar'], 'cableflye'],
+    /* Chest used to live entirely on upperA — bench, dips and an incline, nine
+       sets on one day and a single flye on the other. Pressing twice a week is
+       what builds a bench, so the second press sits here. It takes the slot
+       straight-arm pulldowns had: vertical pulling was running three sets over
+       target while this day had no real push at all. */
+    work: [['dbrow', 'seatedrow', 'csrow'], ['fixedlat', 'pullup'], ['chestpress', 'flatdb', 'declinedb'],
+           'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'rollingbar'],
+           ['cableflye', 'dbflye', 'pecdeck']],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -423,7 +438,10 @@ export const CORE_START = {
    maintenance level, which is also about what 40km of running a week leaves
    room to recover from — this is a deliberate trade, not an oversight. */
 export const VOLUME_TARGET = {
-  quads: 10, 'hams/glutes': 10, calves: 3, chest: 11, 'front delts': 5,
+  /* Chest went from an afterthought to a stated weak point, so its target
+     moved with it: 16-18 hard sets a week is the range the volume literature
+     supports for a muscle you are actually prioritising. */
+  quads: 10, 'hams/glutes': 10, calves: 3, chest: 17, 'front delts': 5,
   'back horizontal': 6, 'back vertical': 10, 'side delts': 11,
   'rear delts': 11, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
 };
@@ -532,6 +550,13 @@ export const PREP = {
     label: 'Bench prep',
     opener: { id: 'bp-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells, 4 to 6kg. Lead with the elbows to shoulder height, lower slowly. Should feel like almost nothing.' },
+    /* An activator runs every bench day rather than waiting its turn in the
+       rotation. The pool has six items and only one slot, so pec work was
+       turning up roughly one session in six — which is why the bar felt like
+       it was being moved by shoulders and triceps. Deliberately almost
+       weightless: the aim is recruitment, not fatigue. */
+    activator: { id: 'bp-act', name: 'Pec activation · flye into squeeze', secs: 110, detail: '2 × 10 light flyes, then 3 × 6s palm press', sets: '2 × 10 + 3 holds',
+      cue: 'Band or the lightest cable on the stack. Ten slow flyes with a two-second squeeze at the top — free hand on the chest to find it if you need to — then press the palms together hard in front of you for six seconds, three times. Thinking about the muscle instead of the weight measurably raises pec activation at moderate loads; the effect shrinks as the bar gets near maximal, which is the whole reason to arrive already feeling it.' },
     pool: [
       { id: 'bp-pullapart', name: 'Band pull-apart', secs: 60, detail: '20 reps', sets: '20 reps',
         cue: 'Straight arms, pull the band to your chest squeezing the shoulder blades. No shrugging.' },
@@ -544,7 +569,13 @@ export const PREP = {
       { id: 'bp-tspine', name: 'Thoracic opener', secs: 75, detail: '75s, one hold',
         cue: 'Elbows on a bench, chest sinks. A stiff upper back costs you the arch and the shoulder position.' },
       { id: 'bp-pushup', name: 'Push-up, slow', secs: 60, detail: '8 slow reps', sets: '8 reps',
-        cue: 'Three seconds down, elbows at 45°. Grooves the pattern before you load it.' }
+        cue: 'Three seconds down, elbows at 45°. Grooves the pattern before you load it.' },
+      { id: 'bp-dbstretch', name: 'Loaded pec stretch', secs: 60, detail: '2 × 20s', sets: '2 × 20s',
+        cue: 'Lightest dumbbells you own, flat on a bench, sink into the bottom of a flye and hold. Twenty seconds, no longer — a long static stretch costs you force, a short loaded one buys you range and leaves the pec switched on.' },
+      { id: 'bp-emptybar', name: 'Empty bar, paused', secs: 75, detail: '8 reps, 2s on the chest', sets: '8 reps',
+        cue: 'Just the bar. Two seconds resting on the chest every rep, staying tight. Finds the groove and the touch point before the plates make it expensive.' },
+      { id: 'bp-pushuphold', name: 'Push-up, bottom hold', secs: 60, detail: '5 reps, 3s at the bottom', sets: '5 reps',
+        cue: 'Chest an inch off the floor, hold three seconds, press up fast. The hold is where you feel the pec; the fast press is where you remind it to fire.' }
     ]
   },
   ohp: {
@@ -643,7 +674,14 @@ export const CUES = {
   rollout:    'Ribs down, do not let the lower back sag. Go only as far as you can come back from.',
   copenhagen: 'Top leg on the bench, hips up. Start with the knee on the bench if the ankle version is too much.',
   hollow:     'Lower back stays flat on the floor. Lower the legs until it lifts, then raise them slightly.',
-  suitcase:   'One dumbbell, one side. Stand tall — the job is refusing to lean.'
+  suitcase:   'One dumbbell, one side. Stand tall — the job is refusing to lean.',
+  flatdb:     'Shoulder blades pinned back the way you set them for bench. Bring the dumbbells towards each other at the top, not just up.',
+  chestpress: 'Set the seat so the handles sit at mid-chest. Let the chest stretch at the back of every rep rather than stopping short.',
+  declinedb:  'Shallow decline, not steep. Dumbbells towards each other at the top and a full stretch at the bottom.',
+  dbflye:     'Fixed, slightly bent elbows throughout. If the elbow angle changes you are pressing, and the stretch is the point.',
+  csrow:      'Chest stays on the pad. Elbows flare out to about 45° and pull to the upper ribs — wide, not tucked.',
+  machinerow: 'Chest off the pad, hinge at the hips, pull to the belly with the elbows close. Let the lats finish the rep.',
+  beltsq:     'Hips back, chest up, all the way down. Nothing on the spine, so you can chase depth harder than you would with a bar.'
 };
 
 /* Constructed search rather than a hardcoded link, so it never rots. */
@@ -692,7 +730,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v40', date: '2026-09-21' };
+export const BUILD = { version: 'v41', date: '2026-10-06' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

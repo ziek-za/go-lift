@@ -392,8 +392,11 @@ function buildPlanned(dateStr, dayKey) {
   if (D.prepKey && PREP[D.prepKey]) {
     const P = PREP[D.prepKey];
     const rank = id => { const i = (S.mobSeen || []).indexOf(id); return i === -1 ? Infinity : i; };
-    const rest = [...P.pool].sort((a, b) => rank(b.id) - rank(a.id)).slice(0, Math.max(0, D.prep - 1));
-    const list = [P.opener, ...rest].filter(Boolean);
+    /* The activator is not part of the rotation — it runs every time, and the
+       rotating slots are counted after it. */
+    const fixed = [P.opener, P.activator].filter(Boolean);
+    const rest = [...P.pool].sort((a, b) => rank(b.id) - rank(a.id)).slice(0, Math.max(0, D.prep - fixed.length));
+    const list = [...fixed, ...rest];
     items.push({ kind: 'prep', ref: D.prepKey,
       name: `${P.label} · ${Math.round(list.reduce((t, m) => t + m.secs, 0) / 60)} min`,
       list, sets: [] });
@@ -966,10 +969,18 @@ function lastAttempt(kind, ref) {
   return { date: h.d, label: h.label || null, club: h.club || null, sets };
 }
 
+/* History holds working sets only. `i` indexes it.sets, which counts ramps too,
+   so comparing by raw index shifts every dot by the number of ramp sets — the
+   moment a ramp appears where there was none, finished work reads as missing. */
+function workingIndex(it, i) {
+  return it.sets.slice(0, i).filter(x => !x.warm).length;
+}
+
 /* green hit, amber short, grey when the prescription has changed since */
 function setStatus(it, s, i) {
   const prev = lastAttempt(it.kind, it.ref);
-  const p = prev && prev.sets[i];
+  if (s.warm) return { k: 'new', prev, p: null, warm: true };
+  const p = prev && prev.sets[workingIndex(it, i)];
   if (!p || p.reps == null) return { k: 'new', prev, p: null };
   /* History written before targets were stored cannot be judged — comparing
      it against today's target marks work you actually completed as a miss,
@@ -1118,7 +1129,7 @@ function setRow(it, s, i) {
 
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
       <div class="line">
-        <span class="n mono">${s.warm ? '·' : i + 1}</span>
+        <span class="n mono">${s.warm ? '·' : workingIndex(it, i) + 1}</span>
         ${s.warm ? '' : (() => {
           const st = setStatus(it, s, i);
           const open = openHist === `${it._idx}:${i}`;
@@ -2452,7 +2463,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v40';
+const APP_BUILD = 'v41';
 
 let lastError = null;
 
