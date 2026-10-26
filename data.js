@@ -403,7 +403,7 @@ export const DAYS = {
     work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl', 'cablecurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
-    note: 'Easy run today. Volume is trimmed on purpose — do not add it back.'
+    note: 'Easy run today, so this day carries a slot less than the heavy one by design — do not add it back.'
   },
   upperB: {
     key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
@@ -485,21 +485,6 @@ export const ADHOC_FOCUS = {
 
 /* Running. Load units are minutes weighted by effort — crude, but it tracks
    the thing that actually interferes with lifting. */
-export const RUN_TYPES = {
-  easy:     { label: 'Easy',        factor: 1.0 },
-  moderate: { label: 'Moderate',    factor: 1.4 },
-  long:     { label: 'Long',        factor: 1.25 },
-  hard:     { label: 'Hard / trail', factor: 1.9 }
-};
-
-/* 30–50km a week across three runs sits about here. Recalculated from your own
-   trailing four weeks as soon as there are four weeks to read. */
-export const RUN_BASELINE = 260;
-
-/* Seconds of rest, before adjustment for a missed set or a high RPE. */
-/* Cut hardest where it costs least. Heavy sets stay above three minutes
-   because short rest there means less weight on the next set, and load is
-   what drives the adaptation; isolation loses a third because it does not. */
 export const REST = {
   warm: 45, mainHeavy: 180, mainMid: 120, backoff: 90,
   compound: 90, isolation: 60, highRep: 45, core: 40
@@ -655,7 +640,7 @@ export const POSTURE_DOSE = { perWeek: 3, minutes: 22, horizonWeeks: 8 };
    next rung is harder rather than simply longer. */
 export const POSTURE_WORK = [
   {
-    id: 'deep-flexor', group: 'Neck', name: 'Deep neck flexor hold',
+    id: 'deep-flexor', search: 'craniocervical flexion chin tuck deep neck flexor', group: 'Neck', name: 'Deep neck flexor hold',
     why: 'The muscles that hold your head back over your shoulders rather than in front of them. Nothing in your lifting touches them.',
     unit: 'secs', sets: 3, start: 8, min: 5, max: 12,
     levels: [
@@ -666,7 +651,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'lower-trap', group: 'Shoulders', name: 'Lower trapezius raise',
+    id: 'lower-trap', search: 'prone Y raise lower trapezius', group: 'Shoulders', name: 'Lower trapezius raise',
     why: 'The lower trap pulls the shoulder blade down and back. Face pulls and rear delt work hit the muscles above it, not this one.',
     unit: 'reps', sets: 3, start: 12, min: 10, max: 18,
     levels: [
@@ -677,7 +662,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'serratus', group: 'Shoulders', name: 'Serratus wall slide',
+    id: 'serratus', search: 'serratus wall slide upward rotation', group: 'Shoulders', name: 'Serratus wall slide',
     why: 'The serratus rotates the shoulder blade up and around the ribcage. Without it the shoulder cannot sit wide, which is exactly the look you are after.',
     unit: 'reps', sets: 3, start: 10, min: 8, max: 15,
     levels: [
@@ -688,7 +673,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'thoracic', group: 'Spine', name: 'Thoracic extension',
+    id: 'thoracic', search: 'thoracic extension foam roller', group: 'Spine', name: 'Thoracic extension',
     why: 'A stiff upper back is what forces the shoulders forward and the head with them. Mobility here responds faster than anything else on this list.',
     unit: 'secs', sets: 3, start: 30, min: 20, max: 45,
     levels: [
@@ -699,7 +684,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'lumbar-endurance', group: 'Spine', name: 'Lumbar extensor hold',
+    id: 'lumbar-endurance', search: 'prone back extension hold lumbar endurance', group: 'Spine', name: 'Lumbar extensor hold',
     why: 'Your lower back rounding and tiring in a chair is an endurance problem, not a strength one. Your lifting core work trains resisting extension, which is close to the opposite of holding a tall spine for an hour.',
     unit: 'secs', sets: 3, start: 30, min: 20, max: 60,
     levels: [
@@ -710,7 +695,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'hip-front', group: 'Hips', name: 'Hip flexor length',
+    id: 'hip-front', search: 'half kneeling hip flexor stretch', group: 'Hips', name: 'Hip flexor length',
     why: 'Sitting all day shortens the front of the hip, which tips the pelvis and makes sitting tall harder than it should be.',
     unit: 'secs', sets: 2, start: 40, min: 30, max: 60,
     levels: [
@@ -721,7 +706,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'pec-length', group: 'Chest', name: 'Pec length',
+    id: 'pec-length', search: 'doorway pec stretch pectoralis minor', group: 'Chest', name: 'Pec length',
     why: 'Short pectoralis minor pulls the shoulder blade forward around the ribs. One session measurably changes its length, so this is the quickest win here — but only if the strength work above holds the new position.',
     unit: 'secs', sets: 2, start: 25, min: 20, max: 30,
     levels: [
@@ -732,7 +717,7 @@ export const POSTURE_WORK = [
     ]
   },
   {
-    id: 'sit-tall', group: 'Carryover', name: 'Tall sitting hold',
+    id: 'sit-tall', search: 'seated tall posture thoracic hold', group: 'Carryover', name: 'Tall sitting hold',
     why: 'The thing you actually want to be better at. Practising the position itself is what connects everything above to a working day.',
     unit: 'secs', sets: 2, start: 45, min: 30, max: 90,
     levels: [
@@ -748,16 +733,16 @@ export const POSTURE_WORK = [
    trials used as their outcomes; the second two are the endurance tests, and
    they move much faster, which is why they are logged more often. */
 export const POSTURE_METRICS = [
-  { id: 'wall-occiput', name: 'Head to wall', unit: 'cm', lower: true, cadence: 'monthly',
+  { id: 'wall-occiput', search: 'occiput to wall distance test forward head', name: 'Head to wall', unit: 'cm', lower: true, cadence: 'monthly',
     how: 'Stand with heels, bottom and shoulder blades touching a wall, looking straight ahead — do not tuck the chin for the measurement. Have someone measure, or photograph side-on, the gap from the back of your head to the wall. Touching is 0.',
     note: 'The single most direct read on forward head position at home.' },
-  { id: 'cva', name: 'Neck angle', unit: '°', lower: false, cadence: 'monthly',
+  { id: 'cva', search: 'craniovertebral angle from a photo', name: 'Neck angle', unit: '°', lower: false, cadence: 'monthly',
     how: 'Side-on photo, standing relaxed, phone at shoulder height two metres away, same spot and same clothes each time. Measure the angle between a horizontal line and a line from the bump at the base of your neck to your earlobe. Any protractor app does it.',
     note: 'This is the craniovertebral angle the research reports. Bigger is better; under about 50° is the range usually called forward head.' },
-  { id: 'lumbar-hold', name: 'Back extensor hold', unit: 's', lower: false, cadence: 'weekly',
+  { id: 'lumbar-hold', search: 'Biering-Sorensen back extensor endurance test', name: 'Back extensor hold', unit: 's', lower: false, cadence: 'weekly',
     how: 'Hips on a bench, feet anchored, upper body level and unsupported, arms crossed. Time how long you hold level. Stop when you sag — that is the number.',
     note: 'A six-week home programme produced about a 22% gain in holding time, so this is the one to expect visible movement on.' },
-  { id: 'flexor-hold', name: 'Chin tuck hold', unit: 's', lower: false, cadence: 'weekly',
+  { id: 'flexor-hold', search: 'deep neck flexor endurance test', name: 'Chin tuck hold', unit: 's', lower: false, cadence: 'weekly',
     how: 'On your back, hold the chin tuck with your head one centimetre clear of the floor. Time until the chin pokes forward or the head drops.',
     note: 'Deep neck flexor endurance. Climbs quickly at first.' }
 ];
@@ -836,6 +821,15 @@ export const CUES = {
 export const howToUrl = name =>
   'https://www.youtube.com/results?search_query=' + encodeURIComponent('how to ' + name + ' proper form');
 
+/* Posture work and measurements each carry their own `search` term, because a
+   name generated from the display label searches badly: "Half-kneeling
+   stretch" never finds a hip flexor stretch, and "Extension over a roller"
+   leaves out the word thoracic. The clinical term is what finds a video of
+   the right thing. */
+const ytSearch = q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+export const postureHowToUrl = w => ytSearch('how to ' + (w.search || w.name) + ' exercise');
+export const measureHowToUrl = m => ytSearch('how to measure ' + (m.search || m.name));
+
 /* ── Noise ─────────────────────────────────────────────────
    Fires on a completed set. `clean` shows regardless; `salty` only when
    language is set to gym in Data. */
@@ -878,7 +872,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v43', date: '2026-10-26' };
+export const BUILD = { version: 'v44', date: '2026-10-26' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

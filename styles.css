@@ -240,7 +240,9 @@ select, input[type=number], input[type=text] {
 /* ── Tab bar ─────────────────────────────────────────────── */
 nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  /* Columns from however many buttons there are, rather than a hardcoded
+     count — four became five and the fifth wrapped onto its own row. */
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
   background: rgba(19,21,25,.96);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--edge);
@@ -248,9 +250,12 @@ nav {
 }
 nav button {
   background: none; border: none; border-radius: 0;
-  padding: 10px 4px 11px; min-height: 60px;
+  padding: 10px 2px 11px; min-height: 60px; min-width: 0;
   color: var(--dust-2); font-family: var(--mono);
-  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  /* Shrinks with the screen so the longest label still fits on one line at
+     320px, and never grows past the size it was at four tabs. */
+  font-size: clamp(8px, 2.5vw, 10px);
+  letter-spacing: .05em; text-transform: uppercase; white-space: nowrap;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
 nav button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
@@ -649,7 +654,8 @@ button.mtick.on { background: var(--good); border-color: var(--good); color: #06
 
 /* ── Sub-tabs ────────────────────────────────────────────── */
 .subtabs {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  /* Same reasoning as the bottom nav: from the children, not a fixed count. */
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
   background: var(--steel); border: 1px solid var(--edge);
   border-radius: 999px; padding: 4px; margin: 6px 0 14px;
 }
@@ -868,6 +874,14 @@ details.fbold summary { font-size: 13.5px; color: var(--dust); cursor: pointer; 
 .pcue { font-size: 13.5px; line-height: 1.5; color: var(--chalk); margin: 0 0 8px; }
 .pwhy { font-size: 12.5px; line-height: 1.5; color: var(--dust); margin: 0 0 12px; }
 .pwhy b { color: var(--dust); font-weight: 600; }
+
+/* The how-to link takes the posture accent rather than the lifting blue, so
+   the two tabs stay visually separate right down to the links. */
+#v-posture .watch {
+  display: inline-block; margin: 0 0 12px; font-size: 12px;
+  color: var(--posture); text-decoration: none; font-family: var(--mono);
+}
+.mcard .watch { margin: 9px 0 0; }
 
 .pset {
   display: flex; align-items: center; gap: 10px;

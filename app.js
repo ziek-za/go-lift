@@ -1,8 +1,8 @@
 import {
   BAR, PLATES, PLATE_COLOUR, MAINS, WAVE, ACCESSORIES, PREP,
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
-  DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
-  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
+  DAYS, ADHOC_FOCUS, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
+  GLOSSARY, CUES, howToUrl, postureHowToUrl, measureHowToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
   VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES,
   POSTURE_WORK, POSTURE_METRICS, POSTURE_DOSE, POSTURE_LEVEL_UP
 } from './data.js';
@@ -106,7 +106,7 @@ function seed() {
     v: 2, created: today(), cycleStart: iso(mondayOf(new Date())),
     club: 'Foreshore', clubW: {}, clubOut: {}, records: {}, mains: {}, acc: {}, runs: [],
     coreSeen: [], mobSeen: [], sessions: [], lastSync: null,
-    settings: { swaps: {}, runAdjust: true, coreStart: 'advanced' }
+    settings: { swaps: {}, coreStart: 'advanced' }
   };
   for (const [k, m] of Object.entries(MAINS)) st.mains[k] = { tm: m.tm, misses: 0, hist: [] };
   for (const [k, r] of Object.entries(SEED_RECORDS)) st.records[k] = JSON.parse(JSON.stringify(r));
@@ -115,41 +115,6 @@ function seed() {
   for (const [k, a] of Object.entries(ACCESSORIES))
     st.acc[k] = { w: a.w, reps: a.reps, misses: 0, hist: [], lastDone: null };
   return st;
-}
-
-/* ═══ running load ══════════════════════════════════════════
-   Minutes weighted by effort. The interference literature is
-   consistent that endurance volume, not lifting intensity, is
-   the lever — so this only ever trims accessory sets.        */
-
-const runLoad = r => Math.round(r.mins * (RUN_TYPES[r.type]?.factor || 1));
-
-function loadWindow(days, endStr = today()) {
-  const end = parseDay(endStr), start = new Date(end - days * 864e5);
-  return S.runs.filter(r => { const d = parseDay(r.date); return d > start && d <= end; })
-    .reduce((t, r) => t + runLoad(r), 0);
-}
-
-function runBaseline() {
-  const first = S.runs.length ? parseDay(S.runs[0].date) : null;
-  if (!first || (Date.now() - first) < 14 * 864e5) return RUN_BASELINE;
-  return Math.max(60, Math.round(loadWindow(28) / 4));
-}
-
-/* Was there a hard run in the hours just before now? */
-function hardRunRecently(h = 18) {
-  const cut = Date.now() - h * 36e5;
-  return S.runs.some(r => (r.type === 'hard' || r.type === 'long') &&
-    parseDay(r.date).getTime() > cut);
-}
-
-function runVerdict() {
-  const l7 = loadWindow(7), base = runBaseline(), ratio = l7 / base;
-  let trim = 0, why = null;
-  if (ratio > 1.5) { trim = 2; why = `Running load is ${Math.round((ratio - 1) * 100)}% above your normal week`; }
-  else if (ratio > 1.25) { trim = 1; why = `Running load is ${Math.round((ratio - 1) * 100)}% above your normal week`; }
-  if (!trim && hardRunRecently()) { trim = 1; why = 'Hard run in the last 18 hours'; }
-  return { l7, base, ratio, trim, why };
 }
 
 /* ═══ rest ══════════════════════════════════════════════════ */
@@ -476,7 +441,6 @@ function buildPlanned(dateStr, dayKey) {
   const D = DAYS[dayKey], wk = weekIndex(dateStr), wave = WAVE[wk];
   const atHome = D.venue === 'home';
   const isLower = D.key.startsWith('lower');
-  const verdict = isLower && S.settings.runAdjust ? runVerdict() : { trim: 0 };
   const items = [];
 
   if (D.prepKey && PREP[D.prepKey]) {
@@ -510,12 +474,11 @@ function buildPlanned(dateStr, dayKey) {
   }
 
   const work = [...dayWork];
-  if (verdict.trim >= 2) work.pop();
   const loaded = new Set();
   if (D.main) loaded.add(MAINS[D.main].pattern);
   for (const id of work) {
     const a = ACCESSORIES[id], s = S.acc[id];
-    const n = Math.max(2, setsOf(id) - (verdict.trim ? 1 : 0));
+    const n = setsOf(id);
     const sets = [
       ...accessoryRamp(a, s.w, loaded),
       ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
@@ -526,7 +489,7 @@ function buildPlanned(dateStr, dayKey) {
 
   return { id: `${dateStr}·${dayKey}`, date: dateStr, dayKey, week: wk, wave: wave.name,
     label: D.label, note: D.note, venue: D.venue, club: D.venue === 'home' ? 'Home' : S.club, adhoc: false, easy: false,
-    runTrim: verdict.trim ? verdict : null, items, done: false };
+    items, done: false };
 }
 
 function recentPatterns(h = RECOVERY_WINDOW_H) {
@@ -914,10 +877,8 @@ function applyProgression(sess) {
         reps: logged.map(x => x.reps),
         sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null })) });
       st.hist = st.hist.slice(-12);
-      /* A set trimmed by running load is not a missed set. */
       const working = it.sets.filter(s => !s.warm).length;  /* what was actually prescribed today */
-      const expected = sess.runTrim ? logged.length : working;
-      if (logged.length >= expected && logged.every(s => s.reps >= s.target)) {
+      if (logged.length >= working && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
         if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', ref: it.ref, label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
         else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', ref: it.ref, label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
@@ -1723,7 +1684,7 @@ function renderToday() {
   if (!sess) {
     el.innerHTML = `<p class="eyebrow">${dayName}</p>
       <div class="empty">No session scheduled.<br>Rest, run, or build something.</div>
-      ${runCard()}${adhocForm()}`;
+      ${adhocForm()}`;
     el._sess = null; return;
   }
 
@@ -1736,8 +1697,6 @@ function renderToday() {
         ? 'took ' + Math.round(sess.duration / 60) + ' min'
         : 'about ' + estimateMinutes(sess) + ' min'}</span></p>
 
-    ${sess.runTrim ? `<div class="flag amber"><div class="why mono">${sess.runTrim.why}</div>
-      Accessory sets trimmed, main lift untouched. Intensity keeps strength; volume is what costs you recovery.</div>` : ''}
     ${sess.easy ? `<div class="flag amber"><div class="why mono">Easy day</div>
       Everything at 85%. This session will not move any weights up or down.</div>` : ''}
     ${!sess.done && !sess.adhoc && weeksHeldBack(sess.date) ? (() => {
@@ -1777,31 +1736,8 @@ function renderToday() {
       ${sess.adhoc ? '<button id="discard" class="btn-quiet">Discard</button>'
         : S.reopened === sess.id ? '<button id="discard" class="btn-quiet">Back to today</button>' : ''}
     </div>
-    ${runCard()}
     ${!sess.adhoc ? `<hr class="rule"><p class="eyebrow">Something extra</p>${adhocForm()}` : ''}`;
   el._sess = sess;
-}
-
-function runCard() {
-  const v = runVerdict();
-  const week = S.runs.filter(r => parseDay(r.date) >= mondayOf(new Date()));
-  return `<p class="eyebrow">Running</p>
-    <div class="card" style="padding:14px">
-      <div style="display:flex;gap:10px;align-items:baseline;margin-bottom:8px">
-        <span class="mono" style="font-size:12px;color:var(--dust)">7-day load</span>
-        <span class="display" style="font-size:20px;margin-left:auto">${v.l7}</span>
-        <span class="mono" style="font-size:11px;color:${v.ratio > 1.25 ? 'var(--warn)' : 'var(--dust-2)'}">
-          ${Math.round(v.ratio * 100)}% of normal</span>
-      </div>
-      ${week.length ? `<div class="mono" style="font-size:11.5px;color:var(--dust);margin-bottom:10px">
-        ${week.map(r => `${RUN_TYPES[r.type].label} ${r.mins}min`).join(' · ')}</div>` : ''}
-      <div style="display:flex;gap:6px">
-        <select id="rtype" style="flex:1">${Object.entries(RUN_TYPES).map(([k, t]) =>
-          `<option value="${k}">${t.label}</option>`).join('')}</select>
-        <input type="number" id="rmins" placeholder="min" inputmode="numeric" style="width:82px">
-        <button class="btn-go" id="raddbtn" style="flex:0 0 auto">Log run</button>
-      </div>
-    </div>`;
 }
 
 function adhocForm() {
@@ -1992,6 +1928,8 @@ function postureCard(it, idx) {
     ${open ? `<div class="pbody">
       <p class="pcue">${it.cue}</p>
       <p class="pwhy"><b>Why</b> ${it.why}</p>
+      <a class="watch" href="${postureHowToUrl(POSTURE_WORK.find(w => w.id === it.ref) || { name: it.name })}"
+         target="_blank" rel="noopener">See how it is done →</a>
       ${it.sets.map((_, i) => postureSetRow(it, i, idx)).join('')}
     </div>` : ''}
   </div>`;
@@ -2076,7 +2014,8 @@ function renderPosture() {
           <button class="btn-sm btn-go" data-mlog="${m.id}">Log a reading</button>
           <button class="btn-sm btn-quiet" data-mhow="${m.id}">${openM ? 'Hide' : 'How to measure'}</button>
         </div>
-        ${openM ? `<p class="pcue" style="margin:10px 0 0">${m.how}</p>` : ''}
+        ${openM ? `<p class="pcue" style="margin:10px 0 0">${m.how}</p>
+          <a class="watch" href="${measureHowToUrl(m)}" target="_blank" rel="noopener">See how it is done →</a>` : ''}
       </div>`;
     }).join('')}
 
@@ -2167,7 +2106,6 @@ function progressStatus(done) {
   const durs = done.filter(s => s.duration).map(s => s.duration);
   const avg = durs.length ? Math.round(durs.reduce((a, b) => a + b, 0) / durs.length / 60) : null;
   const week = done.filter(s => parseDay(s.date) >= mondayOf(new Date()));
-  const v = runVerdict();
   const tonnage = week.reduce((t, s) => t + sessionTonnage(s), 0);
 
   return `
@@ -2188,8 +2126,6 @@ function progressStatus(done) {
         <div class="d flat mono">${WAVE[weekIndex(today())].name}</div></div>
       <div class="stat"><div class="k">Typical session</div><div class="v">${avg ?? '—'}<small>${avg ? ' min' : ''}</small></div>
         <div class="d flat mono">${durs.length} timed</div></div>
-      <div class="stat"><div class="k">Running</div><div class="v">${Math.round(v.ratio * 100)}<small>%</small></div>
-        <div class="d ${v.ratio > 1.25 ? 'down' : 'flat'} mono">of a normal week</div></div>
       <div class="stat"><div class="k">Total sessions</div><div class="v">${done.length}</div>
         <div class="d flat mono">since ${S.created}</div></div>
       <div class="stat"><div class="k">Core ladders</div><div class="v">${CORE_TRACKS.reduce((t, x) => t + coreLevel(x.id) + 1, 0)}<small>/${CORE_TRACKS.reduce((t, x) => t + x.levels.length, 0)}</small></div>
@@ -2458,14 +2394,6 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
         <span class="aw mono">tap to put it back</span></button>`).join('')}
     </div>`).join('')}` : ''}
 
-    <p class="eyebrow">Running</p>
-    <div class="card" style="padding:14px">
-      <div class="chips">
-        <button id="ra-on" aria-pressed="${S.settings.runAdjust !== false}">Adjust automatically</button>
-        <button id="ra-off" aria-pressed="${S.settings.runAdjust === false}">Leave sessions alone</button></div>
-      <p class="hint">Trims lower-body accessory sets when your seven-day load runs above normal. Never touches the main lift.</p>
-    </div>
-
     <p class="eyebrow">Cycle</p>
     <div class="card" style="padding:14px">
       <div class="mono" style="font-size:12px;color:var(--dust)">Started ${S.cycleStart}</div>
@@ -2672,7 +2600,7 @@ function importFile() {
     try {
       const p = JSON.parse(await f.text());
       if (!p.mains || !p.acc) throw new Error('not a backup from this app');
-      S = p; S.settings = S.settings || {}; S.runs = S.runs || [];
+      S = p; S.settings = S.settings || {};
       rehydrateSwaps(); await save(); render(); toast('Restored');
     } catch (e) { toast('Could not read that — ' + e.message); }
   };
@@ -2968,14 +2896,6 @@ function wire() {
     const chip = t.closest('#amin button, #awhere button');
     if (chip) { chip.parentElement.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b === chip)); return; }
 
-    if (t.id === 'raddbtn') {
-      const mins = parseInt($('#rmins').value);
-      if (!mins) return toast('How many minutes?');
-      S.runs.push({ date: today(), type: $('#rtype').value, mins });
-      S.runs.sort((a, b) => a.date.localeCompare(b.date));
-      draft = null; await save(); render(); toast('Run logged'); return;
-    }
-
     if (t.id === 'abuild') {
       const atHome = document.querySelector('#awhere button[aria-pressed=true]').dataset.h === '1';
       const m = +document.querySelector('#amin button[aria-pressed=true]').dataset.m;
@@ -3204,7 +3124,6 @@ function wire() {
       S.settings.language = t.id === 'lang-clean' ? 'clean' : 'gym'; await save(); render();
       pop(phraseFor(true)); return;
     }
-    if (t.id === 'ra-on' || t.id === 'ra-off') { S.settings.runAdjust = t.id === 'ra-on'; await save(); render(); return; }
     if (t.id === 'clearerr') { lastError = null; render(); return; }
     if (t.id === 'copyerr') {
       const txt = `${lastError.where}: ${lastError.message}\n${lastError.stack}\napp ${APP_BUILD} data ${BUILD.version}`;
@@ -3348,7 +3267,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v43';
+const APP_BUILD = 'v44';
 
 let lastError = null;
 
@@ -3374,7 +3293,7 @@ if (typeof window !== 'undefined') {
   if (S.v !== 2) S = seed();
   fileHandle = await get('handle') || null;
   S.settings = S.settings || {}; S.settings.swaps = S.settings.swaps || {};
-  S.runs = S.runs || []; S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
+  S.clubW = S.clubW || {}; S.clubOut = S.clubOut || {};
   S.coreClean = S.coreClean || {}; S.coreQ = S.coreQ || []; S.coreHist = S.coreHist || {};
   S.feedback = S.feedback || [];
 
