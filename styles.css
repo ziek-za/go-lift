@@ -22,6 +22,12 @@
   --warn:  #E8B305;
   --stall: #C8202D;
 
+  /* Posture is a different kind of training, so it gets a colour of its own —
+     warm against the blue the lifting side uses, so the two tabs never read
+     as the same thing at a glance. */
+  --posture:   #C98A3C;
+  --posture-d: rgba(201,138,60,.10);
+
   --r: 10px;
   --pad: 16px;
   --tap: 46px;
@@ -542,6 +548,7 @@ header .hright {
 header .cycle { margin-left: 0; }
 .sessionclock {
   display: none;
+  border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
   background: var(--go); color: #fff;
   font-family: var(--display); font-weight: 600; font-size: 15px;
   letter-spacing: .02em; line-height: 1;
@@ -549,6 +556,14 @@ header .cycle { margin-left: 0; }
   white-space: nowrap; flex: 0 0 auto;
 }
 .sessionclock.on { display: block; }
+
+/* A value you can correct in place, styled as text rather than a control so
+   it does not shout, with a dotted underline to say it is tappable. */
+.inlineedit {
+  background: none; border: 0; padding: 0; font: inherit; color: var(--chalk);
+  border-bottom: 1px dotted var(--dust-2); cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
 .sessionclock::before { content: '● '; font-size: 8px; vertical-align: 2px; opacity: .85; }
 
 /* ── RPE, coloured across the scale ──────────────────────── */
@@ -818,3 +833,69 @@ button.mtick.on { background: var(--good); border-color: var(--good); color: #06
 details.fbold { background: var(--steel); border: 1px solid var(--edge); border-radius: var(--r); padding: 12px 14px; margin-bottom: 10px; }
 details.fbold summary { font-size: 13.5px; color: var(--dust); cursor: pointer; }
 .fbver { font-size: 10px; letter-spacing: .1em; color: var(--dust-2); margin: 12px 0 2px; }
+
+/* ── posture ──────────────────────────────────────────────── */
+#v-posture .eyebrow { color: var(--posture); }
+
+.pdose { padding: 14px; border-left: 3px solid var(--posture); background: var(--posture-d); }
+.pdrow { display: flex; align-items: baseline; gap: 8px; }
+.pdrow b { font-size: 26px; color: var(--posture); }
+.pdrow .mono { font-size: 11px; color: var(--dust); letter-spacing: .08em; text-transform: uppercase; }
+.pbar { display: flex; gap: 5px; margin-top: 10px; }
+.pbar i {
+  flex: 1; height: 5px; border-radius: 999px;
+  background: var(--edge); transition: background .18s;
+}
+.pbar i.on { background: var(--posture); }
+
+.pcard { padding: 0; overflow: hidden; }
+.phead {
+  width: 100%; background: none; border: 0; text-align: left;
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  padding: 12px 14px; cursor: pointer; color: inherit;
+}
+.pcard.open .phead { border-bottom: 1px solid var(--edge); }
+.phead .pg {
+  grid-column: 1; font-size: 9.5px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--posture);
+}
+.phead .pn { grid-column: 1; font-family: var(--display); font-size: 16px; font-weight: 600; }
+.phead .pl { grid-column: 1; font-size: 12.5px; color: var(--dust); }
+.phead .pc { grid-column: 2; grid-row: 1 / span 3; align-self: center; font-size: 13px; color: var(--dust-2); }
+.pcard.open .phead .pc { color: var(--posture); }
+
+.pbody { padding: 12px 14px 14px; }
+.pcue { font-size: 13.5px; line-height: 1.5; color: var(--chalk); margin: 0 0 8px; }
+.pwhy { font-size: 12.5px; line-height: 1.5; color: var(--dust); margin: 0 0 12px; }
+.pwhy b { color: var(--dust); font-weight: 600; }
+
+.pset {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-top: 1px solid var(--edge);
+}
+.pset .n { width: 14px; color: var(--dust-2); font-size: 12px; }
+.pset .pt { flex: 1; font-size: 15px; }
+.pset.hit .pt { color: var(--good); }
+.pset.short .pt { color: var(--warn); }
+
+.mcard { padding: 13px 14px; }
+.mrow { display: flex; align-items: baseline; gap: 10px; }
+.mn { flex: 1; font-family: var(--display); font-size: 15.5px; font-weight: 600; }
+.mn i {
+  display: block; font-style: normal; font-size: 9.5px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--dust-2); margin-top: 1px;
+}
+.mv { font-size: 19px; color: var(--posture); }
+.mchart { margin: 10px 0 0; }
+.spark { display: block; width: 100%; height: 46px; overflow: visible; }
+.mends { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--dust-2); margin-top: 2px; }
+.mtrend.good { color: var(--good); }
+
+.plist { display: flex; flex-direction: column; gap: 1px; }
+.prow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px; background: var(--steel); border-radius: var(--r);
+  font-size: 13.5px;
+}
+.prow .mono { color: var(--dust); font-size: 12px; min-width: 92px; }
+.prow span:nth-child(2) { flex: 1; }

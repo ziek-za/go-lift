@@ -3,7 +3,8 @@ import {
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, RUN_TYPES, RUN_BASELINE, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
   GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
-  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES,
+  POSTURE_WORK, POSTURE_METRICS, POSTURE_DOSE, POSTURE_LEVEL_UP
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -52,9 +53,38 @@ const hms = s => {
 };
 
 function mondayOf(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0, 0, 0, 0); return x; }
-const weeksApart = ds => Math.round((mondayOf(parseDay(ds)) - mondayOf(parseDay(S.cycleStart))) / 6048e5);
+const calendarWeeksApart = ds =>
+  Math.round((mondayOf(parseDay(ds)) - mondayOf(parseDay(S.cycleStart))) / 6048e5);
+
+/* The wave advances on weeks you trained, not on weeks that merely passed.
+   Counted off the calendar it marched on through a ten-day layoff and put the
+   heaviest week of the block on the first day back — which is what happened
+   on 26 October, and why the easy toggle had to be reached for by hand.
+
+   A week counts once however many sessions are in it, unplanned sessions do
+   not count (they are not the programme), and weeks before the cycle started
+   are ignored. Someone who never misses a week sees no difference at all. */
+function trainedWeeksBefore(ds) {
+  const here = mondayOf(parseDay(ds)).getTime();
+  const from = mondayOf(parseDay(S.cycleStart)).getTime();
+  const weeks = new Set();
+  for (const s of S.sessions || []) {
+    if (!s.done || s.adhoc) continue;
+    const m = mondayOf(parseDay(s.date)).getTime();
+    if (m >= from && m < here) weeks.add(m);
+  }
+  return weeks.size;
+}
+
+/* Never ahead of the calendar — a week cannot have been trained before it
+   arrived — so this only ever holds the wave back, never pushes it on. */
+const weeksApart = ds => Math.min(calendarWeeksApart(ds), trainedWeeksBefore(ds));
+
 function weekIndex(ds) { const w = weeksApart(ds); return ((w % 4) + 4) % 4; }
 function cycleNo(ds) { return Math.floor(weeksApart(ds) / 4) + 1; }
+
+/* How many weeks the wave is behind the calendar, i.e. how much was missed. */
+const weeksHeldBack = ds => Math.max(0, calendarWeeksApart(ds) - weeksApart(ds));
 
 function toast(m) {
   const t = $('#toast'); t.textContent = m; t.classList.add('on');
@@ -233,6 +263,34 @@ function paintSession() {
   el.textContent = hms(Math.round((Date.now() - S.active.t0) / 1000));
 }
 
+/* A clock that cannot be corrected records whatever it was doing when you
+   forgot about it — a session is logged at 3 minutes and the number is stuck
+   there for good. Either end of it can be set: the time you started, or how
+   long you have been going. */
+function showClockEdit(sess) {
+  const running = S.active && sess && S.active.id === sess.id;
+  const elapsed = running ? Math.round((Date.now() - S.active.t0) / 1000)
+                 : (sess && sess.duration) || 0;
+  const startedAt = new Date(Date.now() - elapsed * 1000);
+  const hhmm = `${String(startedAt.getHours()).padStart(2, '0')}:${String(startedAt.getMinutes()).padStart(2, '0')}`;
+  $('#sheet').innerHTML = `<div class="summary">
+    <h3>Session time</h3>
+    <p class="hint">${running ? 'The clock is running.' : 'This session is finished — correcting it updates the record.'}
+      Right now it reads <b>${hms(elapsed)}</b>.</p>
+    <label class="f">Minutes so far</label>
+    <div class="step" style="margin-bottom:14px">
+      <button data-clockadj="-5">−5</button>
+      <input type="number" inputmode="numeric" id="clockmins" value="${Math.round(elapsed / 60)}" style="width:86px">
+      <button data-clockadj="5">+5</button>
+    </div>
+    <label class="f">or the time you started</label>
+    <input type="time" id="clockstart" value="${hhmm}" style="margin-bottom:14px">
+    <button class="btn-go" data-clocksave="${sess ? sess.id : ''}">Save</button>
+    <button id="sheetclose" style="margin-top:8px">Cancel</button>
+  </div>`;
+  $('#sheet').classList.add('on');
+}
+
 setInterval(() => { paintSession(); if (timer) paintRest(); }, 1000);
 
 
@@ -344,9 +402,19 @@ function nudgeWeight(kind, ref, dir) {
   return st.w;
 }
 
+/* Rounded to the increment the exercise actually moves in. Stored raw, a
+   back-derived number drifts: the farmer's hold ended up at 44.7kg, which is
+   38 divided by 0.85 — a reduced weight turned back into a full one and saved
+   with the division still showing. Nothing loads 44.7kg. */
 function setWeight(kind, ref, value) {
-  const v = Math.max(0, parseFloat(value) || 0);
-  if (kind === 'core') { S.coreW = S.coreW || {}; S.coreW[`${ref}:${coreLevel(ref)}`] = v; return v; }
+  const raw = Math.max(0, parseFloat(value) || 0);
+  if (kind === 'core') {
+    const step = raw >= 40 ? 2.5 : raw >= 10 ? 1 : 0.5;
+    const v = round(raw, step);
+    S.coreW = S.coreW || {}; S.coreW[`${ref}:${coreLevel(ref)}`] = v; return v;
+  }
+  const a = ACCESSORIES[ref];
+  const v = a ? round(raw, a.bar ? BAR_STEP : a.inc || 1.25) : raw;
   if (S.acc[ref]) S.acc[ref].w = v;
   return v;
 }
@@ -361,9 +429,21 @@ function pickRotating(pool, seen, n, filter) {
 }
 
 /* Two ramp sets, not three. The prep block does the general warming;
-   these groove the pattern under load. */
-const warmupRamp = top => top < 60 ? []
-  : [0.5, 0.75].map(p => ({ w: barRound(top * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }));
+   these groove the pattern under load.
+
+   Derived from the FIRST working set, not the top one. Taken off the top set
+   the ramp outgrew the work whenever the two were far apart: on a deload the
+   top set is 75% of the training max while the first working set is 55%, so
+   the second ramp landed at 56% — heavier than the set it was warming up for.
+   The working sets ascend on their own, so the first one is what a ramp has
+   to reach, and the filter keeps that true however the rounding falls. */
+/* Measured against the first working set, so the old floor of 60 — which was
+   measured against the top set — would have cost the press its ramp entirely.
+   A ramp lighter than the empty bar cannot be loaded, so those drop out too,
+   which is what leaves one ramp instead of two on the lightest days. */
+const warmupRamp = first => first < BAR * 1.25 ? []
+  : [0.5, 0.75].map(p => ({ w: barRound(first * p), target: p < 0.6 ? 5 : 3, warm: true, reps: null }))
+      .filter(s => s.w < first && s.w >= BAR);
 
 const RAMP_PATTERNS = ['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'];
 
@@ -421,8 +501,7 @@ function buildPlanned(dateStr, dayKey) {
 
   if (D.main) {
     const M = MAINS[D.main], tm = S.mains[D.main].tm;
-    const top = barRound(tm * wave.sets.at(-1)[0]);
-    const sets = warmupRamp(top);
+    const sets = warmupRamp(barRound(tm * wave.sets[0][0]));
     for (const [pct, reps, isOpen] of wave.sets)
       sets.push({ w: barRound(tm * pct), target: reps, open: isOpen, reps: null, rpe: null });
     for (let i = 0; i < D.backoff.sets; i++)
@@ -505,6 +584,159 @@ function makeEasy(sess, on) {
       else if (s.full != null) { s.w = s.full; delete s.full; }
     }
   }
+}
+
+/* ═══ posture ═══════════════════════════════════════════════
+   Its own state, its own history, its own tab. Nothing here reads or writes
+   the lifting programme: no training maxes, no wave, no volume targets. The
+   two are kept apart on purpose — a posture session is a practice you repeat,
+   not a session you try to beat. */
+
+function postureState() {
+  S.posture = S.posture || {};
+  const p = S.posture;
+  p.levels = p.levels || {};
+  p.clean = p.clean || {};
+  p.hist = p.hist || [];        /* one entry per completed session */
+  p.metrics = p.metrics || [];  /* { d, id, v } measurements */
+  for (const w of POSTURE_WORK) {
+    if (p.levels[w.id] == null) p.levels[w.id] = 0;
+    if (p.clean[w.id] == null) p.clean[w.id] = 0;
+  }
+  p.target = p.target || {};    /* current seconds or reps per movement */
+  for (const w of POSTURE_WORK) if (p.target[w.id] == null) p.target[w.id] = w.start;
+  return p;
+}
+
+const postureLevel = id => {
+  const w = POSTURE_WORK.find(x => x.id === id);
+  return Math.min(postureState().levels[id] || 0, w.levels.length - 1);
+};
+
+/* Monday-anchored, because that is how he reads a training week. */
+function postureWeek(ds = today()) {
+  const p = postureState();
+  const from = mondayOf(parseDay(ds)).getTime();
+  const to = from + 7 * 864e5;
+  return p.hist.filter(h => {
+    const t = parseDay(h.d).getTime();
+    return t >= from && t < to;
+  });
+}
+
+function buildPosture(dateStr) {
+  const p = postureState();
+  return {
+    id: 'pos-' + dateStr, type: 'posture', date: dateStr, done: false,
+    items: POSTURE_WORK.map(w => {
+      const lv = postureLevel(w.id);
+      return {
+        kind: 'posture', ref: w.id, name: w.name, group: w.group, why: w.why,
+        unit: w.unit, level: lv, levelName: w.levels[lv].name, cue: w.levels[lv].cue,
+        sets: Array.from({ length: w.sets }, () => ({ target: p.target[w.id], reps: null }))
+      };
+    })
+  };
+}
+
+function postureSessionFor(ds) {
+  const found = (S.posture?.hist || []).find(h => h.d === ds);
+  if (found && found.items) return { ...found, id: 'pos-' + ds, type: 'posture', date: ds, done: true };
+  return postureDraft && postureDraft.date === ds ? postureDraft : buildPosture(ds);
+}
+
+/* Seconds first, then the next rung. Holding longer and longer forever turns
+   a posture drill into an endurance test; once the top of the range is clean
+   twice, a harder version of the movement is the better progression. */
+function applyPostureProgression(sess) {
+  const p = postureState();
+  const notes = [];
+  for (const it of sess.items) {
+    const w = POSTURE_WORK.find(x => x.id === it.ref);
+    if (!w) continue;
+    const logged = (it.sets || []).filter(x => x.reps != null);
+    if (!logged.length) continue;
+    const clean = logged.length >= it.sets.length && logged.every(x => x.reps >= x.target);
+    if (!clean) { p.clean[w.id] = 0; continue; }
+    p.clean[w.id] = (p.clean[w.id] || 0) + 1;
+    const cur = p.target[w.id];
+    if (cur < w.max) {
+      const step = w.unit === 'secs' ? 5 : 1;
+      p.target[w.id] = Math.min(w.max, cur + step);
+      notes.push({ type: 'posture-up', ref: w.id, label: w.name, from: cur, to: p.target[w.id],
+        unit: w.unit === 'secs' ? 's' : 'reps' });
+      p.clean[w.id] = 0;
+    } else if (p.clean[w.id] >= POSTURE_LEVEL_UP) {
+      const lv = postureLevel(w.id);
+      if (lv < w.levels.length - 1) {
+        p.levels[w.id] = lv + 1;
+        p.target[w.id] = w.min;
+        p.clean[w.id] = 0;
+        notes.push({ type: 'posture-level', ref: w.id, label: w.name,
+          from: w.levels[lv].name, to: w.levels[lv + 1].name });
+      }
+    }
+  }
+  return notes;
+}
+
+function finishPosture(sess) {
+  const p = postureState();
+  const notes = applyPostureProgression(sess);
+  p.hist = [...p.hist.filter(h => h.d !== sess.date), {
+    d: sess.date, notes,
+    mins: sess.mins || null,
+    items: sess.items.map(i => ({ kind: 'posture', ref: i.ref, unit: i.unit, level: i.level,
+      name: i.name, group: i.group, levelName: i.levelName,
+      sets: i.sets.map(x => ({ target: x.target, reps: x.reps })) }))
+  }].sort((a, b) => a.d < b.d ? -1 : 1).slice(-120);
+  return notes;
+}
+
+/* ── metrics ──────────────────────────────────────────────── */
+
+const metricSeries = id => postureState().metrics
+  .filter(m => m.id === id).sort((a, b) => a.d < b.d ? -1 : 1);
+
+function metricTrend(id) {
+  const m = POSTURE_METRICS.find(x => x.id === id);
+  const s = metricSeries(id);
+  if (s.length < 2) return null;
+  const first = s[0], last = s[s.length - 1];
+  const delta = last.v - first.v;
+  /* "Better" is a smaller number for a distance to a wall and a bigger one
+     for an angle or a hold, so the direction has to come from the metric. */
+  const better = m.lower ? delta < 0 : delta > 0;
+  const pct = first.v ? Math.round(Math.abs(delta) / first.v * 100) : 0;
+  return { first, last, delta, better, pct, n: s.length };
+}
+
+/* A sparkline rather than a chart library: eight points of a hold time do not
+   need axes, they need a shape and the two numbers at either end. */
+function metricSpark(id, w = 240, h = 46) {
+  const m = POSTURE_METRICS.find(x => x.id === id);
+  const s = metricSeries(id);
+  if (s.length < 2) return '';
+  const vs = s.map(x => x.v);
+  const lo = Math.min(...vs), hi = Math.max(...vs);
+  const span = hi - lo || 1;
+  const pad = 5;
+  const pts = s.map((x, i) => {
+    const px = pad + (i / (s.length - 1)) * (w - pad * 2);
+    /* y inverted so up is up; and for a metric where lower is better, the
+       line is flipped again so improvement always climbs the page. */
+    const norm = (x.v - lo) / span;
+    const py = pad + (m.lower ? norm : 1 - norm) * (h - pad * 2);
+    return `${px.toFixed(1)},${py.toFixed(1)}`;
+  });
+  const t = metricTrend(id);
+  const col = t && t.better ? 'var(--go)' : 'var(--dust-2)';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
+    <polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"/>
+    ${s.map((x, i) => { const [px, py] = pts[i].split(','); 
+      return `<circle cx="${px}" cy="${py}" r="${i === s.length - 1 ? 3.2 : 1.8}" fill="${col}"/>`; }).join('')}
+  </svg>`;
 }
 
 /* ═══ progression ═══════════════════════════════════════════ */
@@ -1023,6 +1255,24 @@ function noteRecord(lift, w, reps, date) {
   if (!r.w || e1rm(w, reps) > e1rm(r.w, r.reps)) { r.w = w; r.reps = reps; r.date = date; }
 }
 
+/* What the lift is worth NOW. A tested single from seven months ago is not
+   evidence of today's capacity, so recent logged work wins when there is any;
+   the seeded record is the fallback for a lift with no history yet. */
+const CEILING_WINDOW_DAYS = 84;
+
+function currentCeiling(lift) {
+  const st = S.mains[lift];
+  const cut = iso(new Date(Date.now() - CEILING_WINDOW_DAYS * 864e5));
+  const recent = (st?.hist || []).filter(h => h.d >= cut).map(h => h.e1rm).filter(Boolean);
+  if (recent.length) return Math.max(...recent);
+  const r = bestEstimate(lift);
+  return r ? Math.max(r.est || 0, r.tested ? r.tested.w : 0) : 0;
+}
+
+/* Rounded DOWN to the bar's increment. Rounding to nearest keeps the drift:
+   90% of a 137kg bench is 123.3, which rounds up to the 125 you already had. */
+const tmTarget = ceiling => Math.floor(ceiling * 0.9 / BAR_STEP) * BAR_STEP;
+
 const bestEstimate = lift => {
   const r = S.records[lift];
   if (!r) return null;
@@ -1220,11 +1470,25 @@ function applyWeightToSession(sess, idx, w) {
     }
   }
 
+  /* A weight typed while the day is marked easy IS the weight being lifted.
+     Re-applying the discount to it treated the typed number as the full
+     working weight, so 20kg saved itself as 17.5kg. The full weight is
+     back-derived instead, so turning easy off still restores something
+     sensible rather than today's reduced number. */
   if (sess.easy) for (const set of it.sets)
-    if (set.reps == null) {
-      set.full = set.full ?? set.w;
-      set.w = round(set.full * 0.85, (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25);
+    if (set.reps == null && set.w) {
+      const step = (it.kind === 'main' || it.bar) ? BAR_STEP : 1.25;
+      set.full = round(set.w / 0.85, step);
     }
+
+  /* The ramp beneath a hand-set weight still has to stay below it. */
+  for (let i = it.sets.length - 1; i >= 0; i--) {
+    const s = it.sets[i];
+    if (s.warm && s.reps == null && s.w && !s.bodyweight) {
+      const firstWork = it.sets.find(x => !x.warm);
+      if (firstWork && s.w >= firstWork.w) it.sets.splice(i, 1);
+    }
+  }
 }
 
 function redrawItem(sess, idx) {
@@ -1476,6 +1740,14 @@ function renderToday() {
       Accessory sets trimmed, main lift untouched. Intensity keeps strength; volume is what costs you recovery.</div>` : ''}
     ${sess.easy ? `<div class="flag amber"><div class="why mono">Easy day</div>
       Everything at 85%. This session will not move any weights up or down.</div>` : ''}
+    ${!sess.done && !sess.adhoc && weeksHeldBack(sess.date) ? (() => {
+      const n = weeksHeldBack(sess.date);
+      return `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
+        <div class="why mono" style="color:var(--go)">Wave held back ${n} week${n > 1 ? 's' : ''}</div>
+        You missed ${n === 1 ? 'a week' : n + ' weeks'}, so the wave waited rather than running on
+        without you — this is the week you did not get to, not the one the calendar says.
+        It picks up from here.</div>`;
+    })() : ''}
     ${S.reopened === sess.id ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
       <div class="why mono" style="color:var(--go)">Reopened</div>
       Logged sets are untouched and the progressions it had applied are rolled back
@@ -1651,18 +1923,28 @@ function renderPlan() {
     <p class="eyebrow">Training maxes</p>
     ${(() => {
       const hot = Object.entries(MAINS).map(([k, m]) => {
-        const r = bestEstimate(k);
-        const top = r && Math.max(r.est || 0, r.tested ? r.tested.w : 0);
+        const top = currentCeiling(k);
         if (!top) return null;
         const pct = Math.round(S.mains[k].tm / top * 100);
-        return pct >= 95 ? { name: m.name, pct, tm: S.mains[k].tm, want: barRound(top * 0.9) } : null;
-      }).filter(Boolean);
+        /* 92, not 95. A training max belongs at 90% of what you can lift; a
+           warning that waits for 95 lets five points of drift go unmentioned,
+           and by then every top set is an RPE 9. */
+        return pct >= 92 ? { name: m.name, key: k, pct, tm: S.mains[k].tm, want: tmTarget(top) } : null;
+      }).filter(Boolean).filter(h => h.want !== h.tm);
+      /* The warning fires at 92%, but once it has fired the reset puts every
+         lift on 90% — leaving one at 91 because it sat under the threshold
+         would be a strange place to stop. */
+      const wouldMove = Object.keys(MAINS).filter(k => {
+        const top = currentCeiling(k);
+        return top && tmTarget(top) !== S.mains[k].tm;
+      }).length;
       return hot.length ? `<div class="flag" style="border-left-color:var(--stall);background:rgba(200,32,45,.07)">
         <div class="why mono" style="color:var(--stall)">Training max has drifted</div>
         A training max is meant to sit near 90% of what you can actually lift, so the prescribed
         work stays repeatable. ${hot.map(h => `<b>${h.name}</b> is at ${h.pct}% of your best —
         ${h.tm}kg against a suggested ${h.want}kg`).join('; ')}.
         <div class="btn-row" style="margin-top:9px">
+          ${wouldMove > 1 ? `<button class="btn-sm btn-go" data-tmfix="*">Reset all ${wouldMove} to 90%</button>` : ''}
           ${hot.map(h => `<button class="btn-sm" data-tmfix="${h.name}|${h.want}">Set ${h.name.split(' ')[0].toLowerCase()} to ${h.want}kg</button>`).join('')}
         </div>
       </div>` : '';
@@ -1676,6 +1958,186 @@ function renderPlan() {
 }
 
 /* ═══ progress, in sections ═════════════════════════════════ */
+
+
+/* ═══ posture tab ═══════════════════════════════════════════ */
+
+let postureDraft = null, postureOpen = null, metricOpen = null;
+
+function postureSetRow(it, i, idx) {
+  const s = it.sets[i];
+  const done = s.reps != null;
+  const hit = done && s.reps >= s.target;
+  const u = it.unit === 'secs' ? 's' : '';
+  return `<div class="pset ${done ? (hit ? 'hit' : 'short') : ''}">
+    <span class="n mono">${i + 1}</span>
+    <span class="pt mono">${s.target}${u}</span>
+    ${done
+      ? `<button class="result ${hit ? 'hit' : 'miss'}" data-pundo="${idx}|${i}">${s.reps}${u}<span>tap to undo</span></button>`
+      : `<button class="btn-go btn-sm" data-pdone="${idx}|${i}">Done</button>
+         <button class="alt" data-pshort="${idx}|${i}">Less<span>±</span></button>`}
+  </div>`;
+}
+
+function postureCard(it, idx) {
+  const open = postureOpen === idx;
+  const logged = it.sets.filter(x => x.reps != null).length;
+  return `<div class="card pcard ${open ? 'open' : ''}" data-pitem="${idx}">
+    <button class="phead" data-popen="${idx}">
+      <span class="pg mono">${it.group}</span>
+      <span class="pn">${it.name}</span>
+      <span class="pl">${it.levelName}</span>
+      <span class="pc mono">${logged}/${it.sets.length}</span>
+    </button>
+    ${open ? `<div class="pbody">
+      <p class="pcue">${it.cue}</p>
+      <p class="pwhy"><b>Why</b> ${it.why}</p>
+      ${it.sets.map((_, i) => postureSetRow(it, i, idx)).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+function renderPosture() {
+  const p = postureState();
+  const d = today();
+  const el = $('#v-posture');
+  const wk = postureWeek(d);
+  const doneToday = wk.some(h => h.d === d);
+  const sess = postureSessionFor(d);
+  const streak = (() => {
+    let n = 0;
+    for (let i = 0; i < 26; i++) {
+      const ds = iso(new Date(parseDay(d).getTime() - i * 7 * 864e5));
+      if (postureWeek(ds).length >= POSTURE_DOSE.perWeek) n++; else if (i) break;
+    }
+    return n;
+  })();
+
+  const firstEver = p.hist[0];
+  const weeksIn = firstEver
+    ? Math.max(1, Math.round((parseDay(d) - parseDay(firstEver.d)) / 6048e5))
+    : 0;
+
+  el.innerHTML = `
+    <p class="eyebrow">Posture · a separate practice</p>
+    <div class="card pdose">
+      <div class="pdrow">
+        <span><b class="display">${wk.length}</b> of ${POSTURE_DOSE.perWeek}</span>
+        <span class="mono">this week</span>
+      </div>
+      <div class="pbar">${Array.from({ length: POSTURE_DOSE.perWeek }, (_, i) =>
+        `<i class="${i < wk.length ? 'on' : ''}"></i>`).join('')}</div>
+      <p class="hint" style="margin:9px 0 0">
+        ${weeksIn
+          ? `Week ${weeksIn}. ${weeksIn < POSTURE_DOSE.horizonWeeks
+              ? `The research puts measurable change at six to eight weeks, so keep going — ${POSTURE_DOSE.horizonWeeks - weeksIn} to go.`
+              : 'Past the point where the studies saw change. The measurements below are the test.'}`
+          : `Three sessions a week, about ${POSTURE_DOSE.minutes} minutes each. Any days you like,
+             weekends included — only the count matters.`}
+        ${streak > 1 ? ` <b>${streak} weeks</b> at full count.` : ''}
+      </p>
+    </div>
+
+    ${doneToday
+      ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
+          <div class="why mono" style="color:var(--go)">Done today</div>
+          ${wk.length >= POSTURE_DOSE.perWeek
+            ? 'And the week is complete.'
+            : `${POSTURE_DOSE.perWeek - wk.length} more this week.`}
+          <div class="btn-row" style="margin-top:9px">
+            <button class="btn-sm" data-preopen="${d}">Reopen it</button>
+          </div></div>`
+      : `${sess.items.map(postureCard).join('')}
+         <div class="btn-row" style="margin:14px 0 4px">
+           <button class="btn-go" id="pfinish">Finish posture session</button>
+         </div>
+         <p class="hint" style="margin:0 0 20px">Holds are seconds, raises are repetitions.
+            Nothing here should leave you tired — stop a set when the position goes, not when the muscle does.</p>`}
+
+    <p class="eyebrow">Measurements</p>
+    ${POSTURE_METRICS.map(m => {
+      const s = metricSeries(m.id);
+      const t = metricTrend(m.id);
+      const last = s[s.length - 1];
+      const openM = metricOpen === m.id;
+      return `<div class="card mcard">
+        <div class="mrow">
+          <span class="mn">${m.name}<i class="mono">${m.cadence}</i></span>
+          <span class="mv mono">${last ? `${last.v}${m.unit}` : '—'}</span>
+        </div>
+        ${s.length > 1 ? `<div class="mchart">${metricSpark(m.id)}
+          <div class="mends mono"><span>${s[0].v}${m.unit}</span><span>${last.v}${m.unit}</span></div>
+        </div>` : ''}
+        ${t ? `<p class="hint mtrend ${t.better ? 'good' : ''}" style="margin:6px 0 0">
+            ${t.better ? '↑' : '↔'} ${t.delta > 0 ? '+' : ''}${(+t.delta.toFixed(1))}${m.unit} over ${t.n} readings${t.better ? ` — ${t.pct}% better` : ''}.
+            ${m.note}</p>`
+          : `<p class="hint" style="margin:6px 0 0">${s.length ? 'One reading so far — a second makes a line.' : m.note}</p>`}
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn-sm btn-go" data-mlog="${m.id}">Log a reading</button>
+          <button class="btn-sm btn-quiet" data-mhow="${m.id}">${openM ? 'Hide' : 'How to measure'}</button>
+        </div>
+        ${openM ? `<p class="pcue" style="margin:10px 0 0">${m.how}</p>` : ''}
+      </div>`;
+    }).join('')}
+
+    <p class="eyebrow">Recent sessions</p>
+    ${p.hist.length
+      ? `<div class="plist">${p.hist.slice(-10).reverse().map(h => {
+          const n = h.items.reduce((a, i) => a + i.sets.filter(x => x.reps != null).length, 0);
+          const tot = h.items.reduce((a, i) => a + i.sets.length, 0);
+          const ups = (h.notes || []).length;
+          return `<div class="prow">
+            <span class="mono">${parseDay(h.d).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+            <span>${n}/${tot} sets${ups ? ` · ${ups} progressed` : ''}</span>
+            <button class="btn-sm btn-quiet" data-preopen="${h.d}">Reopen</button>
+          </div>`;
+        }).join('')}</div>`
+      : '<div class="empty">Nothing logged yet.<br>The first session is the baseline.</div>'}`;
+  el._sess = sess;
+}
+
+function showPostureSummary(sess, notes) {
+  const logged = sess.items.reduce((n, i) => n + i.sets.filter(x => x.reps != null).length, 0);
+  const tot = sess.items.reduce((n, i) => n + i.sets.length, 0);
+  const wk = postureWeek(sess.date).length;
+  const ups = notes.filter(n => n.type === 'posture-up');
+  const levels = notes.filter(n => n.type === 'posture-level');
+  $('#sheet').innerHTML = `<div class="summary">
+    <div class="finishline">${wk >= POSTURE_DOSE.perWeek
+      ? 'Three for the week. That is the dose.'
+      : wk === 2 ? 'Two down. One more makes the week.' : 'One in. Two to go.'}</div>
+    <div class="sumstats mono">
+      <span><b>${logged}</b>/${tot} sets</span>
+      <span><b>${wk}</b>/${POSTURE_DOSE.perWeek} this week</span>
+    </div>
+    ${levels.length ? `<p class="sumhead">Harder version earned</p>
+      <ul class="rbk">${levels.map(n => `<li>${n.label} — ${n.to}</li>`).join('')}</ul>` : ''}
+    ${ups.length ? `<p class="sumhead">Target up</p>
+      <ul class="rbk">${ups.map(n => `<li>${n.label} ${n.from} → ${n.to}${n.unit}</li>`).join('')}</ul>` : ''}
+    ${!ups.length && !levels.length ? '<p class="hint">Nothing moved up — repeating a rung is how it sticks.</p>' : ''}
+    <button class="btn-go" id="sheetclose">Done</button>
+    <button data-preopen="${sess.date}" style="margin-top:8px">Finished by mistake — reopen</button>
+  </div>`;
+  $('#sheet').classList.add('on');
+}
+
+function showMetricLog(id) {
+  const m = POSTURE_METRICS.find(x => x.id === id);
+  const s = metricSeries(id);
+  const last = s[s.length - 1];
+  $('#sheet').innerHTML = `<div class="summary">
+    <h3>${m.name}</h3>
+    <p class="hint">${m.how}</p>
+    <label class="f">Reading in ${m.unit === '°' ? 'degrees' : m.unit === 'cm' ? 'centimetres' : 'seconds'}</label>
+    <input type="number" inputmode="decimal" step="0.5" id="mval"
+      value="${last ? last.v : ''}" placeholder="${m.unit}" style="margin-bottom:14px">
+    ${last ? `<p class="hint">Last reading ${last.v}${m.unit} on
+      ${parseDay(last.d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}.</p>` : ''}
+    <button class="btn-go" data-msave="${id}">Save reading</button>
+    <button id="sheetclose" style="margin-top:8px">Cancel</button>
+  </div>`;
+  $('#sheet').classList.add('on');
+}
 
 const PROGRESS_TABS = [
   ['status',  'Status'],
@@ -1807,14 +2269,20 @@ function progressHistory(done) {
   }).join('');
 }
 
+const logiCount = s =>
+  (s.items || []).reduce((n, i) => n + (i.sets || []).filter(x => x.reps != null && !x.warm).length, 0);
+
 function sessionDetail(s) {
   const e = effortOf(s);
   return `<button class="btn-sm btn-quiet" id="histback">← All sessions</button>
     <h2 style="font-size:21px;margin:12px 0 2px">${s.label}</h2>
     <p class="hint" style="margin:0 0 12px">${parseDay(s.date).toLocaleDateString('en-ZA', { weekday: 'long', day: 'numeric', month: 'long' })}
-      ${s.duration ? ' · ' + Math.round(s.duration / 60) + ' min' : ''}
+      · <button class="inlineedit" data-clockfix="${s.id}">${s.duration ? Math.round(s.duration / 60) + ' min' : 'no time recorded'}</button>
       · session score <b style="color:${EFFORT_COLOUR[e]}">${e}/5</b>
       · ${(sessionTonnage(s) / 1000).toFixed(1)}t</p>
+    ${s.duration && s.duration < 20 * 60 && logiCount(s) > 15 ? `<div class="flag amber">
+      <div class="why mono">That time looks wrong</div>
+      ${logiCount(s)} sets logged in ${Math.round(s.duration / 60)} minutes. Tap the time to correct it.</div>` : ''}
 
     <div class="card" style="padding:13px 14px">
       <label class="f">Logged at</label>
@@ -2008,7 +2476,8 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
 
 function render() {
   try {
-    ({ today: renderToday, plan: renderPlan, progress: renderProgress, data: renderData })[VIEW]();
+    ({ today: renderToday, plan: renderPlan, posture: renderPosture,
+       progress: renderProgress, data: renderData })[VIEW]();
   } catch (err) {
     /* A thrown render left the tab blank with no way to tell why. Showing the
        failure is the difference between "the app is broken" and a line you can
@@ -2044,7 +2513,15 @@ function repairState() {
   for (const [k, st] of Object.entries(S.acc)) {
     delete st.sets;
     const a = ACCESSORIES[k];
-    if (a && st.reps != null) st.reps = Math.max(a.repMin, Math.min(a.repMax, st.reps));
+    if (!a) continue;
+    if (st.reps != null) st.reps = Math.max(a.repMin, Math.min(a.repMax, st.reps));
+    /* Snap a drifted load back onto something loadable. A weight saved raw
+       could land between plates — 44.7kg on a pair of dumbbells. */
+    if (st.w) {
+      const step = a.bar ? BAR_STEP : a.inc || 1.25;
+      const snapped = round(st.w, step);
+      if (Math.abs(snapped - st.w) > 1e-9) st.w = snapped;
+    }
   }
   for (const [k, m] of Object.entries(MAINS))
     if (!S.mains[k]) S.mains[k] = { tm: m.tm, misses: 0, hist: [] };
@@ -2059,6 +2536,20 @@ function repairState() {
       .filter(x => Array.isArray(x) ? x.length : ACCESSORIES[x]);
   S.settings.swaps = Object.fromEntries(
     Object.entries(S.settings.swaps || {}).filter(([a, b]) => ACCESSORIES[a] && ACCESSORIES[b]));
+
+  /* Posture keeps its own corner of the save. Backfilled here so a save made
+     before it existed opens on the new tab without anything missing, and so a
+     movement dropped from the programme later does not strand its state. */
+  const p = postureState();
+  const known = new Set(POSTURE_WORK.map(w => w.id));
+  for (const k of Object.keys(p.levels)) if (!known.has(k)) { delete p.levels[k]; delete p.clean[k]; delete p.target[k]; }
+  for (const w of POSTURE_WORK) {
+    const cap = w.levels.length - 1;
+    p.levels[w.id] = Math.max(0, Math.min(cap, p.levels[w.id] ?? 0));
+    p.target[w.id] = Math.max(w.min, Math.min(w.max, p.target[w.id] ?? w.start));
+  }
+  const metricIds = new Set(POSTURE_METRICS.map(m => m.id));
+  p.metrics = (p.metrics || []).filter(m => metricIds.has(m.id) && isFinite(m.v));
 }
 
 /* ═══ build ═════════════════════════════════════════════════
@@ -2446,6 +2937,19 @@ function wire() {
 
     const tf = t.closest('[data-tmfix]');
     if (tf) {
+      if (tf.dataset.tmfix === '*') {
+        const moved = [];
+        for (const k of Object.keys(MAINS)) {
+          const top = currentCeiling(k), want = top && tmTarget(top);
+          if (want && want !== S.mains[k].tm) {
+            moved.push(`${MAINS[k].name.split(' ')[0]} ${S.mains[k].tm}→${want}`);
+            S.mains[k].tm = want; S.mains[k].misses = 0;
+          }
+        }
+        await save(); render();
+        toast(moved.length ? moved.join(' · ') : 'Nothing needed moving');
+        return;
+      }
       const [name, want] = tf.dataset.tmfix.split('|');
       const key = Object.entries(MAINS).find(([, m]) => m.name === name)?.[0];
       if (key) { S.mains[key].tm = +want; S.mains[key].misses = 0; await save(); render(); toast(`${name} training max → ${want}kg`); }
@@ -2488,6 +2992,170 @@ function wire() {
       render(); toast('Clock running'); return;
     }
     if (t.id === 'endsession') { endSession(); render(); return; }
+
+    /* ── posture ─────────────────────────────────────────── */
+    const po = t.closest('[data-popen]');
+    if (po) { const i = +po.dataset.popen; postureOpen = postureOpen === i ? null : i; renderPosture(); return; }
+
+    const mh = t.closest('[data-mhow]');
+    if (mh) { const id = mh.dataset.mhow; metricOpen = metricOpen === id ? null : id; renderPosture(); return; }
+
+    const ml = t.closest('[data-mlog]');
+    if (ml) { showMetricLog(ml.dataset.mlog); return; }
+
+    const ms = t.closest('[data-msave]');
+    if (ms) {
+      const id = ms.dataset.msave;
+      const v = parseFloat($('#mval').value);
+      if (!isFinite(v) || v < 0) return toast('Put a number in first');
+      const p = postureState();
+      const d = today();
+      /* One reading per metric per day — a second one the same day replaces
+         the first rather than making the line jitter. */
+      p.metrics = [...p.metrics.filter(x => !(x.id === id && x.d === d)), { d, id, v }];
+      $('#sheet').classList.remove('on');
+      await save(); renderPosture();
+      const t2 = metricTrend(id);
+      toast(t2 && t2.better ? `Logged · ${t2.pct}% better than your first` : 'Reading logged');
+      return;
+    }
+
+    const pd = t.closest('[data-pdone]');
+    if (pd) {
+      const [idx, i] = pd.dataset.pdone.split('|').map(Number);
+      const sess = $('#v-posture')._sess;
+      const set = sess.items[idx].sets[i];
+      set.reps = set.target;
+      postureDraft = sess;
+      navigator.vibrate?.(12);
+      await save(); renderPosture(); return;
+    }
+
+    const ps = t.closest('[data-pshort]');
+    if (ps) {
+      const [idx, i] = ps.dataset.pshort.split('|').map(Number);
+      const sess = $('#v-posture')._sess;
+      const it = sess.items[idx], set = it.sets[i];
+      const u = it.unit === 'secs' ? 's' : '';
+      $('#sheet').innerHTML = `<div class="summary">
+        <h3>${it.name}</h3>
+        <p class="hint">Target was ${set.target}${u}. What did you actually hold?</p>
+        <input type="number" inputmode="numeric" id="pshortv" value="${set.target}" style="margin-bottom:14px">
+        <button class="btn-go" data-pshortsave="${idx}|${i}">Log it</button>
+        <button id="sheetclose" style="margin-top:8px">Cancel</button>
+      </div>`;
+      $('#sheet').classList.add('on');
+      return;
+    }
+
+    const pss = t.closest('[data-pshortsave]');
+    if (pss) {
+      const [idx, i] = pss.dataset.pshortsave.split('|').map(Number);
+      const sess = $('#v-posture')._sess;
+      sess.items[idx].sets[i].reps = Math.max(0, parseInt($('#pshortv').value, 10) || 0);
+      postureDraft = sess;
+      $('#sheet').classList.remove('on');
+      await save(); renderPosture(); return;
+    }
+
+    const pu = t.closest('[data-pundo]');
+    if (pu) {
+      const [idx, i] = pu.dataset.pundo.split('|').map(Number);
+      const sess = $('#v-posture')._sess;
+      sess.items[idx].sets[i].reps = null;
+      postureDraft = sess;
+      await save(); renderPosture(); return;
+    }
+
+    if (t.id === 'pfinish') {
+      const sess = $('#v-posture')._sess;
+      const logged = sess.items.reduce((n, i) => n + i.sets.filter(x => x.reps != null).length, 0);
+      if (!logged) return toast('Nothing logged yet');
+      const notes = finishPosture(sess);
+      postureDraft = null; postureOpen = null;
+      await save(); renderPosture();
+      showPostureSummary(sess, notes);
+      return;
+    }
+
+    const pr = t.closest('[data-preopen]');
+    if (pr) {
+      const ds = pr.dataset.preopen;
+      const p = postureState();
+      const h = p.hist.find(x => x.d === ds);
+      if (!h) return toast('Nothing to reopen');
+      /* Same bargain as a lifting session: the progressions it applied are
+         rolled back from its own ledger before it reopens. */
+      for (const n of h.notes || []) {
+        if (n.type === 'posture-up') p.target[n.ref] = n.from;
+        if (n.type === 'posture-level') {
+          const w = POSTURE_WORK.find(x => x.id === n.ref);
+          const lv = w && w.levels.findIndex(l => l.name === n.from);
+          if (lv >= 0) { p.levels[n.ref] = lv; p.target[n.ref] = p.target[n.ref]; }
+        }
+      }
+      p.hist = p.hist.filter(x => x.d !== ds);
+      postureDraft = { id: 'pos-' + ds, type: 'posture', date: ds, done: false,
+        items: h.items.map(i => {
+          const w = POSTURE_WORK.find(x => x.id === i.ref);
+          const lv = Math.min(i.level ?? 0, w.levels.length - 1);
+          return { kind: 'posture', ref: i.ref, name: w.name, group: w.group, why: w.why,
+            unit: w.unit, level: lv, levelName: w.levels[lv].name, cue: w.levels[lv].cue,
+            sets: i.sets.map(x => ({ target: x.target, reps: x.reps })) };
+        }) };
+      await save(); VIEW = 'posture'; render();
+      toast('Reopened — your sets are as you left them');
+      return;
+    }
+
+
+    if (t.id === 'sessionclock') {
+      /* Whatever Today is showing is the session this clock belongs to. */
+      const sess = $('#v-today')._sess;
+      if (!sess) return;
+      if (!S.active && !sess.done) return toast('Start the session first');
+      showClockEdit(sess);
+      return;
+    }
+
+    const cfx = t.closest('[data-clockfix]');
+    if (cfx) {
+      const sess = S.sessions.find(x => x.id === cfx.dataset.clockfix);
+      if (sess) showClockEdit(sess);
+      return;
+    }
+
+    const ca = t.closest('[data-clockadj]');
+    if (ca) {
+      const box = $('#clockmins');
+      box.value = Math.max(0, (parseInt(box.value, 10) || 0) + +ca.dataset.clockadj);
+      return;
+    }
+
+    const csv = t.closest('[data-clocksave]');
+    if (csv) {
+      const sess = S.sessions.find(x => x.id === csv.dataset.clocksave) || $('#v-today')._sess;
+      if (!sess) return;
+      /* A start time is the more precise of the two, so it wins when it has
+         been moved; otherwise the minute box is what the person typed. */
+      const mins = Math.max(0, parseInt($('#clockmins').value, 10) || 0);
+      const tv = ($('#clockstart').value || '').match(/^(\d{1,2}):(\d{2})$/);
+      let secs = mins * 60;
+      if (tv) {
+        const started = new Date();
+        started.setHours(+tv[1], +tv[2], 0, 0);
+        /* A start time later than now means it was yesterday evening. */
+        if (started > new Date()) started.setDate(started.getDate() - 1);
+        const fromClock = Math.round((Date.now() - started) / 1000);
+        if (Math.abs(fromClock - secs) > 60) secs = fromClock;
+      }
+      if (S.active && S.active.id === sess.id) S.active.t0 = Date.now() - secs * 1000;
+      if (sess.done) sess.duration = secs;
+      $('#sheet').classList.remove('on');
+      await save(); render(); paintSession();
+      toast('Session time set to ' + Math.round(secs / 60) + ' min');
+      return;
+    }
 
     const rp = t.closest('[data-reopen]');
     if (rp) {
@@ -2680,7 +3348,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v42';
+const APP_BUILD = 'v43';
 
 let lastError = null;
 

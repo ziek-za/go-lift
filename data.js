@@ -376,8 +376,10 @@ export const DAYS = {
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    work: [['pushup', 'pushup-deficit'], ['bandpullover', 'bandlat'], ['bbcurl', 'dragcurl'], 'seatedhammer',
-           'bandlateral', ['bandpullapart', 'bandfacepull'], 'dbohext', 'bandpushdown'],
+    /* Anchored: 'pushup-deficit' (chest), 'bbcurl' (biceps, mid-range) and
+        'bandpullapart' (rear delts). The lat slot still rotates. */
+    work: ['pushup-deficit', ['bandpullover', 'bandlat'], 'bbcurl', 'seatedhammer',
+           'bandlateral', 'bandpullapart', 'dbohext', 'bandpushdown'],
     prepKey: 'home', prep: 3,
     core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
@@ -385,7 +387,9 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    work: ['bbrow', 'dip', ['inclinedb', 'smithincline', 'inclinebb'], ['pullup', 'latpull'], 'leancable', 'cablerear', ['inclinecurl', 'inclinehammer']],
+    /* Anchored: 'inclinedb' (chest, incline) and 'inclinecurl' (biceps in the
+        stretched position, which biases the long head). Pulling still rotates. */
+    work: ['bbrow', 'dip', 'inclinedb', ['pullup', 'latpull'], 'leancable', 'cablerear', 'inclinecurl'],
     /* Three, not two: the activator takes one of them and a rotating item
        still gets a slot. Roughly ninety seconds more prep. */
     prepKey: 'bench', prep: 3,
@@ -409,9 +413,14 @@ export const DAYS = {
        what builds a bench, so the second press sits here. It takes the slot
        straight-arm pulldowns had: vertical pulling was running three sets over
        target while this day had no real push at all. */
-    work: [['dbrow', 'seatedrow', 'csrow'], ['fixedlat', 'pullup'], ['chestpress', 'flatdb', 'declinedb'],
-           'cablelat-light', 'facepull', ['ezpreacher', 'dbpreacher'], ['ropepush', 'rollingbar'],
-           ['cableflye', 'dbflye', 'pecdeck']],
+    /* Anchored: 'chestpress' (flat, and a machine he can take to failure
+        without a spotter), 'pecdeck' (the flye — cable flye is not available at
+        Wembley Square, so anchoring it would have meant a substitution every
+        week) and 'ezpreacher' (biceps in the contracted position). Rowing and
+        the triceps slot still rotate. */
+    work: [['dbrow', 'seatedrow', 'csrow'], ['fixedlat', 'pullup'], 'chestpress',
+           'cablelat-light', 'facepull', 'ezpreacher', ['ropepush', 'rollingbar'],
+           'pecdeck'],
     prepKey: 'ohp', prep: 2, core: 0
   }
 };
@@ -618,6 +627,143 @@ export const PREP = {
 
 /* ── What the words mean ───────────────────────────────────
    Shown against the set type it describes, not buried in a help screen. */
+/* ═══ posture ═══════════════════════════════════════════════
+   A separate practice, not a lifting day — it never touches the wave, the
+   volume targets or the training maxes, and it keeps its own history.
+
+   Three sessions a week of about twenty minutes is the dose the trials
+   actually used: Kim ran 20-minute home sessions three times a week for four
+   weeks, Lee 25 minutes three times a week for eight, Szczygiel three times a
+   week for four. Holds of seven to ten seconds for ten to twenty repetitions
+   is the common rep scheme across all of them — low load, high repetition,
+   almost no fatigue. The review of that literature notes that rounded-shoulder
+   studies running under six weeks often failed to show any change, so six to
+   twelve weeks is the honest horizon.
+
+   The content deliberately avoids what the lifting programme already covers.
+   Eleven sets a week of rear delts are already in there; what is missing is
+   the deep neck flexors, the lower trapezius and serratus specifically,
+   thoracic extension, length through the front of the hip, and endurance
+   rather than strength in the lumbar extensors — his lifting core work trains
+   resisting extension, which is close to the opposite of holding a tall spine
+   for an hour in a chair. */
+
+export const POSTURE_DOSE = { perWeek: 3, minutes: 22, horizonWeeks: 8 };
+
+/* `hold` work progresses in seconds, `reps` work in repetitions. Each has a
+   ladder of its own: once the top of the range is held cleanly twice, the
+   next rung is harder rather than simply longer. */
+export const POSTURE_WORK = [
+  {
+    id: 'deep-flexor', group: 'Neck', name: 'Deep neck flexor hold',
+    why: 'The muscles that hold your head back over your shoulders rather than in front of them. Nothing in your lifting touches them.',
+    unit: 'secs', sets: 3, start: 8, min: 5, max: 12,
+    levels: [
+      { name: 'Chin tuck, lying', cue: 'On your back, knees bent. Nod as if saying yes with just the top of your neck, lengthening the back of it. The jaw stays soft and the big neck muscles at the front must not pop out — if they do, nod less hard.' },
+      { name: 'Chin tuck, head lifted', cue: 'Same nod, then lift the head a centimetre off the floor keeping the tuck. The moment the chin pokes forward, the set is over.' },
+      { name: 'Chin tuck, head lifted and held', cue: 'Head held two centimetres clear throughout, tuck maintained. This is the one that carries over to sitting.' },
+      { name: 'Chin tuck against a band', cue: 'Band around the back of the head, anchored in front. Hold the tuck against it.' }
+    ]
+  },
+  {
+    id: 'lower-trap', group: 'Shoulders', name: 'Lower trapezius raise',
+    why: 'The lower trap pulls the shoulder blade down and back. Face pulls and rear delt work hit the muscles above it, not this one.',
+    unit: 'reps', sets: 3, start: 12, min: 10, max: 18,
+    levels: [
+      { name: 'Prone Y, no weight', cue: 'Face down, arms overhead in a Y, thumbs up. Lift the arms using the muscle below the shoulder blade, not the shoulder itself. Hold a beat at the top.' },
+      { name: 'Prone Y, 2kg', cue: 'Same, with the lightest thing you own. Two kilos is plenty — this is not a strength lift.' },
+      { name: 'Prone Y off a bench', cue: 'Chest on a bench so the arms hang below. Longer range, same muscle.' },
+      { name: 'Prone Y off a bench, 2kg', cue: 'The full version: chest on the bench, arms hanging below in a Y, two kilos in each hand. Three seconds on the way down, which is where most of the work is. If the shoulders creep up towards the ears, the lower trap has stopped doing it and the set is finished.' }
+    ]
+  },
+  {
+    id: 'serratus', group: 'Shoulders', name: 'Serratus wall slide',
+    why: 'The serratus rotates the shoulder blade up and around the ribcage. Without it the shoulder cannot sit wide, which is exactly the look you are after.',
+    unit: 'reps', sets: 3, start: 10, min: 8, max: 15,
+    levels: [
+      { name: 'Wall slide', cue: 'Forearms on the wall, elbows at shoulder height, ribs down. Slide up keeping contact, and at the top push the forearms into the wall and reach a little further.' },
+      { name: 'Wall slide with a band', cue: 'Band around both wrists, pushing out against it the whole way up.' },
+      { name: 'Wall slide, foam roller', cue: 'Roller between the forearms and the wall. Roll it up without letting it drop.' },
+      { name: 'Standing band reach', cue: 'Band anchored behind, arms overhead, reach up and slightly forward at the top.' }
+    ]
+  },
+  {
+    id: 'thoracic', group: 'Spine', name: 'Thoracic extension',
+    why: 'A stiff upper back is what forces the shoulders forward and the head with them. Mobility here responds faster than anything else on this list.',
+    unit: 'secs', sets: 3, start: 30, min: 20, max: 45,
+    levels: [
+      { name: 'Extension over a roller', cue: 'Roller across the mid-back, hands behind the head, sink back over it. Breathe out at the bottom — that is where the range comes from.' },
+      { name: 'Extension over a roller, arms overhead', cue: 'Same, arms reaching overhead to take the range further.' },
+      { name: 'Segmental extension', cue: 'Move the roller up two centimetres at a time and sink over each spot. Slower, more thorough.' },
+      { name: 'Extension off a bench', cue: 'Upper back on the edge of a bench, hands behind the head, extend back and hold.' }
+    ]
+  },
+  {
+    id: 'lumbar-endurance', group: 'Spine', name: 'Lumbar extensor hold',
+    why: 'Your lower back rounding and tiring in a chair is an endurance problem, not a strength one. Your lifting core work trains resisting extension, which is close to the opposite of holding a tall spine for an hour.',
+    unit: 'secs', sets: 3, start: 30, min: 20, max: 60,
+    levels: [
+      { name: 'Prone extension, arms at sides', cue: 'Face down, lift the chest a few centimetres and hold. Look at the floor, not forward — the neck stays long.' },
+      { name: 'Prone extension, hands at temples', cue: 'Same, hands lightly at the temples. Longer lever, harder hold.' },
+      { name: 'Prone extension, arms overhead', cue: 'Arms reaching straight forward past your head, which lengthens the lever and makes the hold considerably harder. Chest a few centimetres clear, eyes down so the neck stays long. Breathe normally — if you are holding your breath to hold the position, drop back a rung.' },
+      { name: 'Hips off a bench', cue: 'Hips on a bench, feet anchored, upper body unsupported and held level. This is the test position in the research, so this rung is also the one your hold-time measurement uses.' }
+    ]
+  },
+  {
+    id: 'hip-front', group: 'Hips', name: 'Hip flexor length',
+    why: 'Sitting all day shortens the front of the hip, which tips the pelvis and makes sitting tall harder than it should be.',
+    unit: 'secs', sets: 2, start: 40, min: 30, max: 60,
+    levels: [
+      { name: 'Half-kneeling stretch', cue: 'Back knee down, squeeze that glute hard first — the squeeze is what makes it work — then shift forward. Do not arch the lower back to get further.' },
+      { name: 'Half-kneeling, arm overhead', cue: 'Same, with the arm on the kneeling side reaching up and over.' },
+      { name: 'Couch stretch', cue: 'Back foot elevated against something. Considerably more range.' },
+      { name: 'Couch stretch, upright', cue: 'Back foot up against something, back knee close to the wall, then bring the torso fully vertical. Squeeze the glute on the kneeling side first and keep squeezing — that is what stops the lower back arching to fake the range. The full version, and it is a lot.' }
+    ]
+  },
+  {
+    id: 'pec-length', group: 'Chest', name: 'Pec length',
+    why: 'Short pectoralis minor pulls the shoulder blade forward around the ribs. One session measurably changes its length, so this is the quickest win here — but only if the strength work above holds the new position.',
+    unit: 'secs', sets: 2, start: 25, min: 20, max: 30,
+    levels: [
+      { name: 'Doorway stretch, low', cue: 'Forearm on the frame just below shoulder height, step through gently. Twenty to thirty seconds a side — longer static holds cost you force and buy nothing extra here.' },
+      { name: 'Doorway stretch, shoulder height', cue: 'Forearm flat on the frame with the elbow level with the shoulder, then step through and rotate the chest away. You should feel it across the front of the shoulder, not in the joint itself. Twenty to thirty seconds a side, no pushing into pain.' },
+      { name: 'Doorway stretch, high', cue: 'Forearm above shoulder height, which biases the lower pec fibres.' },
+      { name: 'Floor pec stretch', cue: 'Face down, one arm straight out to the side, roll onto it.' }
+    ]
+  },
+  {
+    id: 'sit-tall', group: 'Carryover', name: 'Tall sitting hold',
+    why: 'The thing you actually want to be better at. Practising the position itself is what connects everything above to a working day.',
+    unit: 'secs', sets: 2, start: 45, min: 30, max: 90,
+    levels: [
+      { name: 'Tall sit against a wall', cue: 'Sit on the floor, back against a wall, legs out. Lengthen up through the crown of the head and hold. You will feel exactly which bit gives out first.' },
+      { name: 'Tall sit, no wall', cue: 'Same position with nothing behind you, so the upper back holds itself. Legs out, lengthen up through the crown of the head, shoulders wide. Without the wall to lean on you will feel exactly where it gives out first — usually somewhere between the shoulder blades.' },
+      { name: 'Tall sit, arms overhead', cue: 'Arms reaching up. The upper back has to do more.' },
+      { name: 'Tall sit on a stool, arms overhead', cue: 'On a stool with feet flat, as close to a desk as this gets.' }
+    ]
+  }
+];
+
+/* Measured at home, standardised enough to plot. The first two are what the
+   trials used as their outcomes; the second two are the endurance tests, and
+   they move much faster, which is why they are logged more often. */
+export const POSTURE_METRICS = [
+  { id: 'wall-occiput', name: 'Head to wall', unit: 'cm', lower: true, cadence: 'monthly',
+    how: 'Stand with heels, bottom and shoulder blades touching a wall, looking straight ahead — do not tuck the chin for the measurement. Have someone measure, or photograph side-on, the gap from the back of your head to the wall. Touching is 0.',
+    note: 'The single most direct read on forward head position at home.' },
+  { id: 'cva', name: 'Neck angle', unit: '°', lower: false, cadence: 'monthly',
+    how: 'Side-on photo, standing relaxed, phone at shoulder height two metres away, same spot and same clothes each time. Measure the angle between a horizontal line and a line from the bump at the base of your neck to your earlobe. Any protractor app does it.',
+    note: 'This is the craniovertebral angle the research reports. Bigger is better; under about 50° is the range usually called forward head.' },
+  { id: 'lumbar-hold', name: 'Back extensor hold', unit: 's', lower: false, cadence: 'weekly',
+    how: 'Hips on a bench, feet anchored, upper body level and unsupported, arms crossed. Time how long you hold level. Stop when you sag — that is the number.',
+    note: 'A six-week home programme produced about a 22% gain in holding time, so this is the one to expect visible movement on.' },
+  { id: 'flexor-hold', name: 'Chin tuck hold', unit: 's', lower: false, cadence: 'weekly',
+    how: 'On your back, hold the chin tuck with your head one centimetre clear of the floor. Time until the chin pokes forward or the head drops.',
+    note: 'Deep neck flexor endurance. Climbs quickly at first.' }
+];
+
+export const POSTURE_LEVEL_UP = 2;   /* clean sessions on a rung before the next */
+
 export const GLOSSARY = {
   warm: {
     title: 'Warm-up set',
@@ -732,7 +878,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v42', date: '2026-10-06' };
+export const BUILD = { version: 'v43', date: '2026-10-26' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
