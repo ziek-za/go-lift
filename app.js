@@ -1,10 +1,9 @@
 import {
   BAR, PLATES, PLATE_COLOUR, MAINS, WAVE, ACCESSORIES, PREP,
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
-  DAYS, ADHOC_FOCUS, REST, REST_FLOOR, RECOVERY_WINDOW_H, CLUBS,
-  GLOSSARY, CUES, howToUrl, postureHowToUrl, measureHowToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
-  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES,
-  POSTURE_WORK, POSTURE_METRICS, POSTURE_DOSE, POSTURE_LEVEL_UP
+  DAYS, ADHOC_FOCUS, REST, REST_FLOOR, SHORT_REST_PATTERNS, RECOVERY_WINDOW_H, CLUBS,
+  GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -120,6 +119,11 @@ function seed() {
 /* ═══ rest ══════════════════════════════════════════════════ */
 
 function restFor(item, set) {
+  /* Inside a superset the only pause is the walk to the partner. The two
+     work opposing muscles, so each rests while the other works: a curl
+     followed by a pushdown leaves the biceps two and a half minutes between
+     its own sets, which is more than the curl got on its own. */
+  if (item.ss && item.ss.pos < item.ss.of && !set.warm) return REST.supersetGap;
   let r;
   if (item.kind === 'core') r = REST.core;
   else if (item.kind === 'main') {
@@ -128,8 +132,12 @@ function restFor(item, set) {
       : pct >= 0.85 ? REST.mainHeavy : REST.mainMid;
   } else {
     const a = ACCESSORIES[item.ref] || {};
-    const compound = ['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'].includes(a.pattern);
-    r = set.target > 12 ? REST.highRep : compound ? REST.compound : REST.isolation;
+    /* Pattern alone says a leg extension is a squat and a pec deck is a press,
+       which handed single-joint isolations two minutes of compound rest. The
+       `iso` flag on those exercises puts them back where they belong. */
+    const compound = !a.iso && ['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull'].includes(a.pattern);
+    r = SHORT_REST_PATTERNS.includes(a.pattern) ? REST.smallMuscle
+      : set.target > 12 ? REST.highRep : compound ? REST.compound : REST.isolation;
   }
   if (set.warm) r = REST.warm;
   if (set.reps != null && set.reps < set.target) r += 30;
@@ -339,6 +347,43 @@ function coreItem(track) {
   };
 }
 
+/* Free text going into innerHTML. Escaping only `<` stopped tags but made
+   `&` round-trip wrong — a note saying "R&D" would come back as itself, and
+   one saying "&lt;" would come back as "<". */
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* ═══ exercise notes ════════════════════════════════════════
+   A note belongs to the exercise, not the session, so it is there every time
+   that exercise is — on any day, in any cycle, or when it is substituted in.
+   Core is keyed to the rung as well as the track: what you note about a
+   kneeling rollout should not follow you up to a standing one. */
+function noteKey(it) {
+  if (!it || !it.ref) return null;
+  if (it.kind === 'core') return `core:${it.ref}:${it.level}`;
+  if (it.kind === 'main' || it.kind === 'acc') return `${it.kind}:${it.ref}`;
+  return null;
+}
+const exNote = it => { const k = noteKey(it); return k ? (S.exNotes || {})[k] : null; };
+
+function showNoteEdit(it, idx) {
+  const n = exNote(it);
+  $('#sheet').innerHTML = `<div class="summary">
+    <h3>${it.name}</h3>
+    <p class="hint">${it.kind === 'core'
+      ? 'Saved against this rung of the ladder. It shows here every time you do this one.'
+      : 'Saved against the exercise, so it shows every time it comes up — whichever day it is on.'}</p>
+    <textarea id="exnote" rows="5" maxlength="600"
+      placeholder="Seat on 4, handles one notch out. Left shoulder pinches if the elbow flares."
+      style="width:100%;margin-bottom:12px">${n ? esc(n.text) : ''}</textarea>
+    <button class="btn-go" data-notesave="${idx}">Save note</button>
+    ${n ? `<button data-noteclear="${idx}" style="margin-top:8px">Remove note</button>` : ''}
+    <button id="sheetclose" style="margin-top:8px">Cancel</button>
+  </div>`;
+  $('#sheet').classList.add('on');
+  setTimeout(() => { const t = $('#exnote'); t && t.focus && t.focus(); }, 60);
+}
+
 /* Set counts belong to the programme, not to your saved progress. Storing
    them alongside weight and reps froze them at whatever they were when an
    exercise was first seeded, so every later change to the programme never
@@ -446,9 +491,9 @@ function buildPlanned(dateStr, dayKey) {
   if (D.prepKey && PREP[D.prepKey]) {
     const P = PREP[D.prepKey];
     const rank = id => { const i = (S.mobSeen || []).indexOf(id); return i === -1 ? Infinity : i; };
-    /* The activator is not part of the rotation — it runs every time, and the
-       rotating slots are counted after it. */
-    const fixed = [P.opener, P.activator].filter(Boolean);
+    /* The activator and the posture drill are not part of the rotation — they
+       run every time, and the rotating slots are counted after them. */
+    const fixed = [P.opener, P.posture, P.activator].filter(Boolean);
     const rest = [...P.pool].sort((a, b) => rank(b.id) - rank(a.id)).slice(0, Math.max(0, D.prep - fixed.length));
     const list = [...fixed, ...rest];
     items.push({ kind: 'prep', ref: D.prepKey,
@@ -459,7 +504,17 @@ function buildPlanned(dateStr, dayKey) {
   /* Two grip-dominant exercises in one session means the second is limited by
      forearms that are already done, not by the muscle it is meant to train.
      Both stay in the programme; a carry just lands on a day without a hold. */
-  const dayWork = resolveWork(slotsFor(D, cycleNo(dateStr)), atHome);
+  const slots = resolveSlots(slotsFor(D, cycleNo(dateStr)), atHome);
+  const dayWork = slots.map(r => r.id);
+  /* A superset whose partner was dropped at this club is just an exercise. */
+  const tags = supersetTags(D);
+  const live = new Set(slots.map(r => r.slot));
+  const ssFor = slot => {
+    const t = tags[slot];
+    if (!t) return null;
+    const partners = tags.map((x, i) => x && x.group === t.group ? i : -1).filter(i => i >= 0);
+    return partners.every(i => live.has(i)) ? t : null;
+  };
   const gripTaken = dayWork.some(id => ACCESSORIES[id]?.grip);
   if (D.core) for (const t of pickCore(D.core, atHome, D.coreQ, tr => gripTaken && tr.grip)) items.push(coreItem(t));
 
@@ -473,18 +528,25 @@ function buildPlanned(dateStr, dayKey) {
     items.push({ kind: 'main', ref: D.main, name: M.name, wave: wave.name, sets });
   }
 
-  const work = [...dayWork];
   const loaded = new Set();
   if (D.main) loaded.add(MAINS[D.main].pattern);
-  for (const id of work) {
+  for (const { id, slot } of slots) {
     const a = ACCESSORIES[id], s = S.acc[id];
     const n = setsOf(id);
     const sets = [
       ...accessoryRamp(a, s.w, loaded),
       ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
     ];
-    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets });
+    const ss = ssFor(slot);
+    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets,
+      ...(ss ? { ss } : {}) });
     loaded.add(a.pattern);
+  }
+
+  /* Name each superset member's partner, now that every item exists. */
+  for (const it of items) if (it.ss) {
+    const mate = items.find(x => x !== it && x.ss && x.ss.group === it.ss.group);
+    if (mate) it.ss.with = mate.name;
   }
 
   return { id: `${dateStr}·${dayKey}`, date: dateStr, dayKey, week: wk, wave: wave.name,
@@ -549,158 +611,6 @@ function makeEasy(sess, on) {
   }
 }
 
-/* ═══ posture ═══════════════════════════════════════════════
-   Its own state, its own history, its own tab. Nothing here reads or writes
-   the lifting programme: no training maxes, no wave, no volume targets. The
-   two are kept apart on purpose — a posture session is a practice you repeat,
-   not a session you try to beat. */
-
-function postureState() {
-  S.posture = S.posture || {};
-  const p = S.posture;
-  p.levels = p.levels || {};
-  p.clean = p.clean || {};
-  p.hist = p.hist || [];        /* one entry per completed session */
-  p.metrics = p.metrics || [];  /* { d, id, v } measurements */
-  for (const w of POSTURE_WORK) {
-    if (p.levels[w.id] == null) p.levels[w.id] = 0;
-    if (p.clean[w.id] == null) p.clean[w.id] = 0;
-  }
-  p.target = p.target || {};    /* current seconds or reps per movement */
-  for (const w of POSTURE_WORK) if (p.target[w.id] == null) p.target[w.id] = w.start;
-  return p;
-}
-
-const postureLevel = id => {
-  const w = POSTURE_WORK.find(x => x.id === id);
-  return Math.min(postureState().levels[id] || 0, w.levels.length - 1);
-};
-
-/* Monday-anchored, because that is how he reads a training week. */
-function postureWeek(ds = today()) {
-  const p = postureState();
-  const from = mondayOf(parseDay(ds)).getTime();
-  const to = from + 7 * 864e5;
-  return p.hist.filter(h => {
-    const t = parseDay(h.d).getTime();
-    return t >= from && t < to;
-  });
-}
-
-function buildPosture(dateStr) {
-  const p = postureState();
-  return {
-    id: 'pos-' + dateStr, type: 'posture', date: dateStr, done: false,
-    items: POSTURE_WORK.map(w => {
-      const lv = postureLevel(w.id);
-      return {
-        kind: 'posture', ref: w.id, name: w.name, group: w.group, why: w.why,
-        unit: w.unit, level: lv, levelName: w.levels[lv].name, cue: w.levels[lv].cue,
-        sets: Array.from({ length: w.sets }, () => ({ target: p.target[w.id], reps: null }))
-      };
-    })
-  };
-}
-
-function postureSessionFor(ds) {
-  const found = (S.posture?.hist || []).find(h => h.d === ds);
-  if (found && found.items) return { ...found, id: 'pos-' + ds, type: 'posture', date: ds, done: true };
-  return postureDraft && postureDraft.date === ds ? postureDraft : buildPosture(ds);
-}
-
-/* Seconds first, then the next rung. Holding longer and longer forever turns
-   a posture drill into an endurance test; once the top of the range is clean
-   twice, a harder version of the movement is the better progression. */
-function applyPostureProgression(sess) {
-  const p = postureState();
-  const notes = [];
-  for (const it of sess.items) {
-    const w = POSTURE_WORK.find(x => x.id === it.ref);
-    if (!w) continue;
-    const logged = (it.sets || []).filter(x => x.reps != null);
-    if (!logged.length) continue;
-    const clean = logged.length >= it.sets.length && logged.every(x => x.reps >= x.target);
-    if (!clean) { p.clean[w.id] = 0; continue; }
-    p.clean[w.id] = (p.clean[w.id] || 0) + 1;
-    const cur = p.target[w.id];
-    if (cur < w.max) {
-      const step = w.unit === 'secs' ? 5 : 1;
-      p.target[w.id] = Math.min(w.max, cur + step);
-      notes.push({ type: 'posture-up', ref: w.id, label: w.name, from: cur, to: p.target[w.id],
-        unit: w.unit === 'secs' ? 's' : 'reps' });
-      p.clean[w.id] = 0;
-    } else if (p.clean[w.id] >= POSTURE_LEVEL_UP) {
-      const lv = postureLevel(w.id);
-      if (lv < w.levels.length - 1) {
-        p.levels[w.id] = lv + 1;
-        p.target[w.id] = w.min;
-        p.clean[w.id] = 0;
-        notes.push({ type: 'posture-level', ref: w.id, label: w.name,
-          from: w.levels[lv].name, to: w.levels[lv + 1].name });
-      }
-    }
-  }
-  return notes;
-}
-
-function finishPosture(sess) {
-  const p = postureState();
-  const notes = applyPostureProgression(sess);
-  p.hist = [...p.hist.filter(h => h.d !== sess.date), {
-    d: sess.date, notes,
-    mins: sess.mins || null,
-    items: sess.items.map(i => ({ kind: 'posture', ref: i.ref, unit: i.unit, level: i.level,
-      name: i.name, group: i.group, levelName: i.levelName,
-      sets: i.sets.map(x => ({ target: x.target, reps: x.reps })) }))
-  }].sort((a, b) => a.d < b.d ? -1 : 1).slice(-120);
-  return notes;
-}
-
-/* ── metrics ──────────────────────────────────────────────── */
-
-const metricSeries = id => postureState().metrics
-  .filter(m => m.id === id).sort((a, b) => a.d < b.d ? -1 : 1);
-
-function metricTrend(id) {
-  const m = POSTURE_METRICS.find(x => x.id === id);
-  const s = metricSeries(id);
-  if (s.length < 2) return null;
-  const first = s[0], last = s[s.length - 1];
-  const delta = last.v - first.v;
-  /* "Better" is a smaller number for a distance to a wall and a bigger one
-     for an angle or a hold, so the direction has to come from the metric. */
-  const better = m.lower ? delta < 0 : delta > 0;
-  const pct = first.v ? Math.round(Math.abs(delta) / first.v * 100) : 0;
-  return { first, last, delta, better, pct, n: s.length };
-}
-
-/* A sparkline rather than a chart library: eight points of a hold time do not
-   need axes, they need a shape and the two numbers at either end. */
-function metricSpark(id, w = 240, h = 46) {
-  const m = POSTURE_METRICS.find(x => x.id === id);
-  const s = metricSeries(id);
-  if (s.length < 2) return '';
-  const vs = s.map(x => x.v);
-  const lo = Math.min(...vs), hi = Math.max(...vs);
-  const span = hi - lo || 1;
-  const pad = 5;
-  const pts = s.map((x, i) => {
-    const px = pad + (i / (s.length - 1)) * (w - pad * 2);
-    /* y inverted so up is up; and for a metric where lower is better, the
-       line is flipped again so improvement always climbs the page. */
-    const norm = (x.v - lo) / span;
-    const py = pad + (m.lower ? norm : 1 - norm) * (h - pad * 2);
-    return `${px.toFixed(1)},${py.toFixed(1)}`;
-  });
-  const t = metricTrend(id);
-  const col = t && t.better ? 'var(--go)' : 'var(--dust-2)';
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">
-    <polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round"/>
-    ${s.map((x, i) => { const [px, py] = pts[i].split(','); 
-      return `<circle cx="${px}" cy="${py}" r="${i === s.length - 1 ? 3.2 : 1.8}" fill="${col}"/>`; }).join('')}
-  </svg>`;
-}
 
 /* ═══ progression ═══════════════════════════════════════════ */
 
@@ -773,6 +683,20 @@ function pruneSnapshots(keepId) {
    cannot be recovered that way is reported rather than guessed at — records
    only ever move up, so leaving one alone costs nothing, and a reset clean
    count costs at most one extra clean session before the next rung. */
+/* A session is under way if its clock is running or it has sets logged and
+   has not been finished. Reopening a different one while that is true would
+   put two half-done sessions in play and leave Today showing only one. */
+function sessionInProgress(exceptId) {
+  if (S.active && S.active.id !== exceptId) {
+    const s = S.sessions.find(x => x.id === S.active.id) || $('#v-today')?._sess;
+    if (!s || !s.done) return s || { label: 'the session you have running' };
+  }
+  const live = [...S.sessions, $('#v-today')?._sess].filter(Boolean).find(s =>
+    s.id !== exceptId && !s.done &&
+    (s.items || []).some(i => (i.sets || []).some(x => x.reps != null && !x.warm)));
+  return live || null;
+}
+
 function legacyRollback(sess) {
   const did = [], cannot = [];
   /* Notes carry their ref from v42 on. Older ones carry only the display name,
@@ -1056,13 +980,13 @@ function feedbackSection() {
       <div class="btn-row"><button class="btn-go" id="fbadd">Add note</button></div>
       ${live.length ? `<div class="fblist">${live.map(f => fbEdit === f.id
         ? `<div class="fbitem editing">
-            <textarea id="fbedit" rows="3">${f.text.replace(/</g, '&lt;')}</textarea>
+            <textarea id="fbedit" rows="3">${esc(f.text)}</textarea>
             <div class="btn-row">
               <button class="btn-sm btn-go" data-fbsave="${f.id}">Save</button>
               <button class="btn-sm" data-fbcancel="1">Cancel</button>
             </div></div>`
         : `<div class="fbitem">
-            <p>${f.text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>
+            <p>${esc(f.text).replace(/\n/g, '<br>')}</p>
             <div class="fbmeta mono">${when(f.created)}${f.updated ? ' · edited' : ''}</div>
             <div class="fbacts">
               <button class="btn-sm" data-fbedit="${f.id}">Edit</button>
@@ -1074,7 +998,7 @@ function feedbackSection() {
     ${old.length ? `<details class="fbold" ${fbOld ? 'open' : ''}>
       <summary data-fbold="1">Earlier builds · ${old.length} note${old.length > 1 ? 's' : ''}</summary>
       ${vers.map(v => `<div class="fbver mono">${v}</div>
-        ${byVer[v].map(f => `<div class="fbitem readonly"><p>${f.text.replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>
+        ${byVer[v].map(f => `<div class="fbitem readonly"><p>${esc(f.text).replace(/\n/g, '<br>')}</p>
           <div class="fbmeta mono">${when(f.created)}</div></div>`).join('')}`).join('')}
     </details>` : ''}`;
 }
@@ -1199,14 +1123,34 @@ function substituteFor(id, taken = new Set(), homeOnly = false) {
   return same[0] || null;
 }
 
-function resolveWork(ids, homeOnly) {
+/* Each resolved exercise keeps the index of the slot it came from. A slot can
+   be dropped when nothing at this club substitutes for it, which shifts every
+   later position — so anything keyed to a slot (a superset) has to follow the
+   slot, not the position in the resolved list. */
+function resolveSlots(ids, homeOnly) {
   const out = outAt(), taken = new Set(), resolved = [];
-  for (const id of ids) {
-    if (!out.includes(id)) { taken.add(id); resolved.push(id); continue; }
+  ids.forEach((id, slot) => {
+    if (!out.includes(id)) { taken.add(id); resolved.push({ id, slot }); return; }
     const sub = substituteFor(id, taken, homeOnly);
-    if (sub) { taken.add(sub); resolved.push(sub); }
-  }
+    if (sub) { taken.add(sub); resolved.push({ id: sub, slot }); }
+  });
   return resolved;
+}
+const resolveWork = (ids, homeOnly) => resolveSlots(ids, homeOnly).map(r => r.id);
+
+/* Which superset each work slot belongs to. A member names any exercise in
+   its slot, so a rotating slot pairs whichever exercise it resolves to that
+   cycle, and a substitution keeps the pairing too. */
+function supersetTags(D) {
+  const tags = new Array(D.work.length).fill(null);
+  (D.supersets || []).forEach((pair, g) => {
+    const group = String.fromCharCode(65 + g);   // A, B, …
+    pair.forEach((member, k) => {
+      const slot = D.work.findIndex(w => [].concat(w).includes(member));
+      if (slot >= 0) tags[slot] = { group, pos: k + 1, of: pair.length };
+    });
+  });
+  return tags;
 }
 
 /* ═══ records ═══════════════════════════════════════════════ */
@@ -1402,7 +1346,11 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
   if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
   await save();
   redrawItem(sess, itemIdx);
-  startRest(restFor(it, s), `${it.name} · set ${setIdx + 1} done`);
+  /* Mid-superset the timer is a countdown to the partner, so it says which. */
+  const toMate = it.ss && it.ss.pos < it.ss.of && !s.warm && it.ss.with;
+  startRest(restFor(it, s), toMate
+    ? `Superset ${it.ss.group} · now ${it.ss.with}`
+    : `${it.name} · set ${setIdx + 1} done`);
 }
 
 /* Changing a working weight has to rebuild the ramp underneath it. Leaving
@@ -1585,12 +1533,23 @@ function itemCard(it, idx) {
         const r = it.sets.length - w.length;
         return `${w.length} × ${w[0].target} · ${w[0].w}kg${it.dbl ? ' each hand' : ''}${r ? ' · ' + r + ' ramp' : ''}`; })();
 
-  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
-    <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
-      <span class="nm"><span class="t">${it.name}</span>
+  /* A1/A2 in place of the running number, and a line saying how to run it. */
+  const ssTag = it.ss ? `${it.ss.group}${it.ss.pos}` : null;
+  const myNote = exNote(it);
+  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''} ${it.ss ? 'ss ss-' + it.ss.pos : ''}" data-item="${idx}">
+    <div class="head"><span class="idx mono">${ssTag || String(idx + 1).padStart(2, '0')}</span>
+      <span class="nm"><span class="t">${it.name}${myNote ? '<span class="hasnote" aria-label="Has a note">✎</span>' : ''}</span>
         <span class="s mono">${sub}${logged && !done ? ` · ${logged}/${it.sets.length}` : ''}</span></span>
       <span class="tick">✓</span></div>
     <div class="body">
+      ${myNote
+        ? `<div class="exnote"><p>${esc(myNote.text).replace(/\n/g, '<br>')}</p>
+            <button class="btn-sm btn-quiet" data-noteedit="${idx}">Edit note</button></div>`
+        : `<button class="addnote" data-noteedit="${idx}">+ Add a note to this exercise</button>`}
+      ${it.ss ? `<p class="ssnote mono">Superset ${it.ss.group} with ${it.ss.with || 'its partner'} — ${
+        it.ss.pos < it.ss.of
+          ? 'one set here, then straight to the partner. The rest comes after both.'
+          : 'one set here after each set of the partner, then the full rest.'}</p>` : ''}
       ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.filter(s => !s.warm).at(-1) || it.sets.at(-1)).w) : ''}
       <div class="howto">
         <p class="cue">${it.cue || cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
@@ -1895,188 +1854,6 @@ function renderPlan() {
 
 /* ═══ progress, in sections ═════════════════════════════════ */
 
-
-/* ═══ posture tab ═══════════════════════════════════════════ */
-
-let postureDraft = null, postureOpen = null, metricOpen = null;
-
-function postureSetRow(it, i, idx) {
-  const s = it.sets[i];
-  const done = s.reps != null;
-  const hit = done && s.reps >= s.target;
-  const u = it.unit === 'secs' ? 's' : '';
-  return `<div class="pset ${done ? (hit ? 'hit' : 'short') : ''}">
-    <span class="n mono">${i + 1}</span>
-    <span class="pt mono">${s.target}${u}</span>
-    ${done
-      ? `<button class="result ${hit ? 'hit' : 'miss'}" data-pundo="${idx}|${i}">${s.reps}${u}<span>tap to undo</span></button>`
-      : `<button class="btn-go btn-sm" data-pdone="${idx}|${i}">Done</button>
-         <button class="alt" data-pshort="${idx}|${i}">Less<span>±</span></button>`}
-  </div>`;
-}
-
-function postureCard(it, idx) {
-  const open = postureOpen === idx;
-  const logged = it.sets.filter(x => x.reps != null).length;
-  return `<div class="card pcard ${open ? 'open' : ''}" data-pitem="${idx}">
-    <button class="phead" data-popen="${idx}">
-      <span class="pg mono">${it.group}</span>
-      <span class="pn">${it.name}</span>
-      <span class="pl">${it.levelName}</span>
-      <span class="pc mono">${logged}/${it.sets.length}</span>
-    </button>
-    ${open ? `<div class="pbody">
-      <p class="pcue">${it.cue}</p>
-      <p class="pwhy"><b>Why</b> ${it.why}</p>
-      <a class="watch" href="${postureHowToUrl(POSTURE_WORK.find(w => w.id === it.ref) || { name: it.name })}"
-         target="_blank" rel="noopener">See how it is done →</a>
-      ${it.sets.map((_, i) => postureSetRow(it, i, idx)).join('')}
-    </div>` : ''}
-  </div>`;
-}
-
-function renderPosture() {
-  const p = postureState();
-  const d = today();
-  const el = $('#v-posture');
-  const wk = postureWeek(d);
-  const doneToday = wk.some(h => h.d === d);
-  const sess = postureSessionFor(d);
-  const streak = (() => {
-    let n = 0;
-    for (let i = 0; i < 26; i++) {
-      const ds = iso(new Date(parseDay(d).getTime() - i * 7 * 864e5));
-      if (postureWeek(ds).length >= POSTURE_DOSE.perWeek) n++; else if (i) break;
-    }
-    return n;
-  })();
-
-  const firstEver = p.hist[0];
-  const weeksIn = firstEver
-    ? Math.max(1, Math.round((parseDay(d) - parseDay(firstEver.d)) / 6048e5))
-    : 0;
-
-  el.innerHTML = `
-    <p class="eyebrow">Posture · a separate practice</p>
-    <div class="card pdose">
-      <div class="pdrow">
-        <span><b class="display">${wk.length}</b> of ${POSTURE_DOSE.perWeek}</span>
-        <span class="mono">this week</span>
-      </div>
-      <div class="pbar">${Array.from({ length: POSTURE_DOSE.perWeek }, (_, i) =>
-        `<i class="${i < wk.length ? 'on' : ''}"></i>`).join('')}</div>
-      <p class="hint" style="margin:9px 0 0">
-        ${weeksIn
-          ? `Week ${weeksIn}. ${weeksIn < POSTURE_DOSE.horizonWeeks
-              ? `The research puts measurable change at six to eight weeks, so keep going — ${POSTURE_DOSE.horizonWeeks - weeksIn} to go.`
-              : 'Past the point where the studies saw change. The measurements below are the test.'}`
-          : `Three sessions a week, about ${POSTURE_DOSE.minutes} minutes each. Any days you like,
-             weekends included — only the count matters.`}
-        ${streak > 1 ? ` <b>${streak} weeks</b> at full count.` : ''}
-      </p>
-    </div>
-
-    ${doneToday
-      ? `<div class="flag" style="border-left-color:var(--go);background:rgba(59,130,246,.07)">
-          <div class="why mono" style="color:var(--go)">Done today</div>
-          ${wk.length >= POSTURE_DOSE.perWeek
-            ? 'And the week is complete.'
-            : `${POSTURE_DOSE.perWeek - wk.length} more this week.`}
-          <div class="btn-row" style="margin-top:9px">
-            <button class="btn-sm" data-preopen="${d}">Reopen it</button>
-          </div></div>`
-      : `${sess.items.map(postureCard).join('')}
-         <div class="btn-row" style="margin:14px 0 4px">
-           <button class="btn-go" id="pfinish">Finish posture session</button>
-         </div>
-         <p class="hint" style="margin:0 0 20px">Holds are seconds, raises are repetitions.
-            Nothing here should leave you tired — stop a set when the position goes, not when the muscle does.</p>`}
-
-    <p class="eyebrow">Measurements</p>
-    ${POSTURE_METRICS.map(m => {
-      const s = metricSeries(m.id);
-      const t = metricTrend(m.id);
-      const last = s[s.length - 1];
-      const openM = metricOpen === m.id;
-      return `<div class="card mcard">
-        <div class="mrow">
-          <span class="mn">${m.name}<i class="mono">${m.cadence}</i></span>
-          <span class="mv mono">${last ? `${last.v}${m.unit}` : '—'}</span>
-        </div>
-        ${s.length > 1 ? `<div class="mchart">${metricSpark(m.id)}
-          <div class="mends mono"><span>${s[0].v}${m.unit}</span><span>${last.v}${m.unit}</span></div>
-        </div>` : ''}
-        ${t ? `<p class="hint mtrend ${t.better ? 'good' : ''}" style="margin:6px 0 0">
-            ${t.better ? '↑' : '↔'} ${t.delta > 0 ? '+' : ''}${(+t.delta.toFixed(1))}${m.unit} over ${t.n} readings${t.better ? ` — ${t.pct}% better` : ''}.
-            ${m.note}</p>`
-          : `<p class="hint" style="margin:6px 0 0">${s.length ? 'One reading so far — a second makes a line.' : m.note}</p>`}
-        <div class="btn-row" style="margin-top:10px">
-          <button class="btn-sm btn-go" data-mlog="${m.id}">Log a reading</button>
-          <button class="btn-sm btn-quiet" data-mhow="${m.id}">${openM ? 'Hide' : 'How to measure'}</button>
-        </div>
-        ${openM ? `<p class="pcue" style="margin:10px 0 0">${m.how}</p>
-          <a class="watch" href="${measureHowToUrl(m)}" target="_blank" rel="noopener">See how it is done →</a>` : ''}
-      </div>`;
-    }).join('')}
-
-    <p class="eyebrow">Recent sessions</p>
-    ${p.hist.length
-      ? `<div class="plist">${p.hist.slice(-10).reverse().map(h => {
-          const n = h.items.reduce((a, i) => a + i.sets.filter(x => x.reps != null).length, 0);
-          const tot = h.items.reduce((a, i) => a + i.sets.length, 0);
-          const ups = (h.notes || []).length;
-          return `<div class="prow">
-            <span class="mono">${parseDay(h.d).toLocaleDateString('en-ZA', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-            <span>${n}/${tot} sets${ups ? ` · ${ups} progressed` : ''}</span>
-            <button class="btn-sm btn-quiet" data-preopen="${h.d}">Reopen</button>
-          </div>`;
-        }).join('')}</div>`
-      : '<div class="empty">Nothing logged yet.<br>The first session is the baseline.</div>'}`;
-  el._sess = sess;
-}
-
-function showPostureSummary(sess, notes) {
-  const logged = sess.items.reduce((n, i) => n + i.sets.filter(x => x.reps != null).length, 0);
-  const tot = sess.items.reduce((n, i) => n + i.sets.length, 0);
-  const wk = postureWeek(sess.date).length;
-  const ups = notes.filter(n => n.type === 'posture-up');
-  const levels = notes.filter(n => n.type === 'posture-level');
-  $('#sheet').innerHTML = `<div class="summary">
-    <div class="finishline">${wk >= POSTURE_DOSE.perWeek
-      ? 'Three for the week. That is the dose.'
-      : wk === 2 ? 'Two down. One more makes the week.' : 'One in. Two to go.'}</div>
-    <div class="sumstats mono">
-      <span><b>${logged}</b>/${tot} sets</span>
-      <span><b>${wk}</b>/${POSTURE_DOSE.perWeek} this week</span>
-    </div>
-    ${levels.length ? `<p class="sumhead">Harder version earned</p>
-      <ul class="rbk">${levels.map(n => `<li>${n.label} — ${n.to}</li>`).join('')}</ul>` : ''}
-    ${ups.length ? `<p class="sumhead">Target up</p>
-      <ul class="rbk">${ups.map(n => `<li>${n.label} ${n.from} → ${n.to}${n.unit}</li>`).join('')}</ul>` : ''}
-    ${!ups.length && !levels.length ? '<p class="hint">Nothing moved up — repeating a rung is how it sticks.</p>' : ''}
-    <button class="btn-go" id="sheetclose">Done</button>
-    <button data-preopen="${sess.date}" style="margin-top:8px">Finished by mistake — reopen</button>
-  </div>`;
-  $('#sheet').classList.add('on');
-}
-
-function showMetricLog(id) {
-  const m = POSTURE_METRICS.find(x => x.id === id);
-  const s = metricSeries(id);
-  const last = s[s.length - 1];
-  $('#sheet').innerHTML = `<div class="summary">
-    <h3>${m.name}</h3>
-    <p class="hint">${m.how}</p>
-    <label class="f">Reading in ${m.unit === '°' ? 'degrees' : m.unit === 'cm' ? 'centimetres' : 'seconds'}</label>
-    <input type="number" inputmode="decimal" step="0.5" id="mval"
-      value="${last ? last.v : ''}" placeholder="${m.unit}" style="margin-bottom:14px">
-    ${last ? `<p class="hint">Last reading ${last.v}${m.unit} on
-      ${parseDay(last.d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })}.</p>` : ''}
-    <button class="btn-go" data-msave="${id}">Save reading</button>
-    <button id="sheetclose" style="margin-top:8px">Cancel</button>
-  </div>`;
-  $('#sheet').classList.add('on');
-}
 
 const PROGRESS_TABS = [
   ['status',  'Status'],
@@ -2404,8 +2181,7 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
 
 function render() {
   try {
-    ({ today: renderToday, plan: renderPlan, posture: renderPosture,
-       progress: renderProgress, data: renderData })[VIEW]();
+    ({ today: renderToday, plan: renderPlan, progress: renderProgress, data: renderData })[VIEW]();
   } catch (err) {
     /* A thrown render left the tab blank with no way to tell why. Showing the
        failure is the difference between "the app is broken" and a line you can
@@ -2465,19 +2241,9 @@ function repairState() {
   S.settings.swaps = Object.fromEntries(
     Object.entries(S.settings.swaps || {}).filter(([a, b]) => ACCESSORIES[a] && ACCESSORIES[b]));
 
-  /* Posture keeps its own corner of the save. Backfilled here so a save made
-     before it existed opens on the new tab without anything missing, and so a
-     movement dropped from the programme later does not strand its state. */
-  const p = postureState();
-  const known = new Set(POSTURE_WORK.map(w => w.id));
-  for (const k of Object.keys(p.levels)) if (!known.has(k)) { delete p.levels[k]; delete p.clean[k]; delete p.target[k]; }
-  for (const w of POSTURE_WORK) {
-    const cap = w.levels.length - 1;
-    p.levels[w.id] = Math.max(0, Math.min(cap, p.levels[w.id] ?? 0));
-    p.target[w.id] = Math.max(w.min, Math.min(w.max, p.target[w.id] ?? w.start));
-  }
-  const metricIds = new Set(POSTURE_METRICS.map(m => m.id));
-  p.metrics = (p.metrics || []).filter(m => metricIds.has(m.id) && isFinite(m.v));
+  /* S.posture, from the v43–v44 posture tab, is left exactly as it is. The
+     practice was folded into the lifting programme, but three sessions and
+     four measurements are the person's record, not clutter to tidy away. */
 }
 
 /* ═══ build ═════════════════════════════════════════════════
@@ -2903,7 +2669,26 @@ function wire() {
       if (!draft.items.length) draft = buildAdhoc(today(), $('#af').value, m, atHome, true);
       VIEW = 'today'; render(); scrollTo({ top: 0, behavior: 'smooth' }); return;
     }
-    if (t.id === 'discard') { draft = null; delete S.reopened; await save(); render(); return; }
+    /* Leaving a session is closing it too, so it asks when that costs
+       something: a reopened session left behind stays unfinished with its
+       progression rolled back, and an unplanned one with sets in it is lost. */
+    if (t.id === 'discard') {
+      const sess = $('#v-today')._sess;
+      const logged = sess ? sess.items.reduce((n, i) => n + (i.sets || []).filter(x => x.reps != null && !x.warm).length, 0) : 0;
+      if (sess && S.reopened === sess.id) {
+        askConfirm({ title: 'Leave this session unfinished?',
+          body: `It stays in History as it is, with ${logged} set${logged === 1 ? '' : 's'} logged — but the progressions it had were rolled back when you reopened it, and they only come back when you finish it.`,
+          label: 'Back to today', act: 'leave' });
+        return;
+      }
+      if (sess && sess.adhoc && logged) {
+        askConfirm({ title: 'Discard this session?',
+          body: `${logged} set${logged === 1 ? '' : 's'} logged in it will be thrown away. This cannot be undone.`,
+          label: 'Discard', act: 'leave' });
+        return;
+      }
+      draft = null; delete S.reopened; await save(); render(); return;
+    }
 
     if (t.id === 'startsession') {
       const sess = $('#v-today')._sess; if (!sess) return;
@@ -2913,121 +2698,28 @@ function wire() {
     }
     if (t.id === 'endsession') { endSession(); render(); return; }
 
-    /* ── posture ─────────────────────────────────────────── */
-    const po = t.closest('[data-popen]');
-    if (po) { const i = +po.dataset.popen; postureOpen = postureOpen === i ? null : i; renderPosture(); return; }
-
-    const mh = t.closest('[data-mhow]');
-    if (mh) { const id = mh.dataset.mhow; metricOpen = metricOpen === id ? null : id; renderPosture(); return; }
-
-    const ml = t.closest('[data-mlog]');
-    if (ml) { showMetricLog(ml.dataset.mlog); return; }
-
-    const ms = t.closest('[data-msave]');
-    if (ms) {
-      const id = ms.dataset.msave;
-      const v = parseFloat($('#mval').value);
-      if (!isFinite(v) || v < 0) return toast('Put a number in first');
-      const p = postureState();
-      const d = today();
-      /* One reading per metric per day — a second one the same day replaces
-         the first rather than making the line jitter. */
-      p.metrics = [...p.metrics.filter(x => !(x.id === id && x.d === d)), { d, id, v }];
+    /* ── exercise notes ──────────────────────────────────── */
+    const ne = t.closest('[data-noteedit]');
+    if (ne) {
+      const it = $('#v-today')._sess?.items[+ne.dataset.noteedit];
+      if (it && noteKey(it)) showNoteEdit(it, +ne.dataset.noteedit);
+      return;
+    }
+    const ns = t.closest('[data-notesave], [data-noteclear]');
+    if (ns) {
+      const idx = +(ns.dataset.notesave ?? ns.dataset.noteclear);
+      const sess = $('#v-today')._sess, it = sess?.items[idx];
+      const k = noteKey(it);
+      if (!k) return;
+      S.exNotes = S.exNotes || {};
+      const text = ns.dataset.notesave != null ? ($('#exnote').value || '').trim() : '';
+      if (text) S.exNotes[k] = { text, updated: new Date().toISOString() };
+      else delete S.exNotes[k];
       $('#sheet').classList.remove('on');
-      await save(); renderPosture();
-      const t2 = metricTrend(id);
-      toast(t2 && t2.better ? `Logged · ${t2.pct}% better than your first` : 'Reading logged');
+      await save(); redrawItem(sess, idx);
+      toast(text ? 'Note saved — it shows every time this comes up' : 'Note removed');
       return;
     }
-
-    const pd = t.closest('[data-pdone]');
-    if (pd) {
-      const [idx, i] = pd.dataset.pdone.split('|').map(Number);
-      const sess = $('#v-posture')._sess;
-      const set = sess.items[idx].sets[i];
-      set.reps = set.target;
-      postureDraft = sess;
-      navigator.vibrate?.(12);
-      await save(); renderPosture(); return;
-    }
-
-    const ps = t.closest('[data-pshort]');
-    if (ps) {
-      const [idx, i] = ps.dataset.pshort.split('|').map(Number);
-      const sess = $('#v-posture')._sess;
-      const it = sess.items[idx], set = it.sets[i];
-      const u = it.unit === 'secs' ? 's' : '';
-      $('#sheet').innerHTML = `<div class="summary">
-        <h3>${it.name}</h3>
-        <p class="hint">Target was ${set.target}${u}. What did you actually hold?</p>
-        <input type="number" inputmode="numeric" id="pshortv" value="${set.target}" style="margin-bottom:14px">
-        <button class="btn-go" data-pshortsave="${idx}|${i}">Log it</button>
-        <button id="sheetclose" style="margin-top:8px">Cancel</button>
-      </div>`;
-      $('#sheet').classList.add('on');
-      return;
-    }
-
-    const pss = t.closest('[data-pshortsave]');
-    if (pss) {
-      const [idx, i] = pss.dataset.pshortsave.split('|').map(Number);
-      const sess = $('#v-posture')._sess;
-      sess.items[idx].sets[i].reps = Math.max(0, parseInt($('#pshortv').value, 10) || 0);
-      postureDraft = sess;
-      $('#sheet').classList.remove('on');
-      await save(); renderPosture(); return;
-    }
-
-    const pu = t.closest('[data-pundo]');
-    if (pu) {
-      const [idx, i] = pu.dataset.pundo.split('|').map(Number);
-      const sess = $('#v-posture')._sess;
-      sess.items[idx].sets[i].reps = null;
-      postureDraft = sess;
-      await save(); renderPosture(); return;
-    }
-
-    if (t.id === 'pfinish') {
-      const sess = $('#v-posture')._sess;
-      const logged = sess.items.reduce((n, i) => n + i.sets.filter(x => x.reps != null).length, 0);
-      if (!logged) return toast('Nothing logged yet');
-      const notes = finishPosture(sess);
-      postureDraft = null; postureOpen = null;
-      await save(); renderPosture();
-      showPostureSummary(sess, notes);
-      return;
-    }
-
-    const pr = t.closest('[data-preopen]');
-    if (pr) {
-      const ds = pr.dataset.preopen;
-      const p = postureState();
-      const h = p.hist.find(x => x.d === ds);
-      if (!h) return toast('Nothing to reopen');
-      /* Same bargain as a lifting session: the progressions it applied are
-         rolled back from its own ledger before it reopens. */
-      for (const n of h.notes || []) {
-        if (n.type === 'posture-up') p.target[n.ref] = n.from;
-        if (n.type === 'posture-level') {
-          const w = POSTURE_WORK.find(x => x.id === n.ref);
-          const lv = w && w.levels.findIndex(l => l.name === n.from);
-          if (lv >= 0) { p.levels[n.ref] = lv; p.target[n.ref] = p.target[n.ref]; }
-        }
-      }
-      p.hist = p.hist.filter(x => x.d !== ds);
-      postureDraft = { id: 'pos-' + ds, type: 'posture', date: ds, done: false,
-        items: h.items.map(i => {
-          const w = POSTURE_WORK.find(x => x.id === i.ref);
-          const lv = Math.min(i.level ?? 0, w.levels.length - 1);
-          return { kind: 'posture', ref: i.ref, name: w.name, group: w.group, why: w.why,
-            unit: w.unit, level: lv, levelName: w.levels[lv].name, cue: w.levels[lv].cue,
-            sets: i.sets.map(x => ({ target: x.target, reps: x.reps })) };
-        }) };
-      await save(); VIEW = 'posture'; render();
-      toast('Reopened — your sets are as you left them');
-      return;
-    }
-
 
     if (t.id === 'sessionclock') {
       /* Whatever Today is showing is the session this clock belongs to. */
@@ -3081,6 +2773,17 @@ function wire() {
     if (rp) {
       const sess = S.sessions.find(x => x.id === rp.dataset.reopen);
       if (!sess) return;
+      const busy = sessionInProgress(sess.id);
+      if (busy) {
+        $('#sheet').innerHTML = `<div class="summary">
+          <h3>Finish the current one first</h3>
+          <p class="hint">${esc(busy.label || 'A session')} is still under way. Reopening another now
+            would leave two half-done sessions and only one of them on Today. Finish it — or, if it
+            was a mistake, clear its sets — then come back to this.</p>
+          <button class="btn-go" id="sheetclose">Got it</button></div>`;
+        $('#sheet').classList.add('on');
+        return;
+      }
       const gains = (sess.notes || []).filter(isGain).length;
       const common = 'Your logged sets stay exactly as they are and the clock picks up where it stopped.';
       askConfirm({
@@ -3105,19 +2808,28 @@ function wire() {
       await save(); render(); return;
     }
 
+    /* Finishing asks first. Reopening already existed as the way back from a
+       mis-tap, but a confirmation is the cheaper fix — and it can show how
+       much of the session is actually logged, which is the number that tells
+       you whether the tap was a mistake. */
     if (t.id === 'finish') {
       const sess = $('#v-today')._sess; if (!sess || sess.done) return;
-      /* Taken before anything moves, so a mis-tap is recoverable. */
-      const snap = progressionSnapshot(sess);
-      sess.done = true; sess.completedAt = new Date().toISOString();
-      if (S.active?.id === sess.id) { sess.duration = Math.round((Date.now() - S.active.t0) / 1000); endSession(); }
-      const notes = applyProgression(sess);
-      sess.notes = notes;
-      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
-      sess.undoProg = snap; pruneSnapshots(sess.id);
-      draft = null; delete S.reopened; stopRest(); stopSetClock();
-      await save(); await syncNow(true); render();
-      showSummary(sess, notes); return;
+      const work = sess.items.filter(i => i.kind === 'main' || i.kind === 'acc' || i.kind === 'core');
+      const all = work.flatMap(i => i.sets.filter(x => !x.warm));
+      const logged = all.filter(x => x.reps != null).length;
+      const untouched = work.filter(i => !i.sets.some(x => x.reps != null && !x.warm)).map(i => i.name);
+      askConfirm({
+        title: logged < all.length ? 'Finish with sets left?' : 'Finish this session?',
+        body: logged < all.length
+          ? `${logged} of ${all.length} sets logged.`
+            + (untouched.length ? ` Nothing logged yet for ${untouched.length > 3
+                ? untouched.slice(0, 3).join(', ') + ' and ' + (untouched.length - 3) + ' more'
+                : untouched.join(', ')}.` : '')
+            + ' Unlogged sets simply do not count — nothing moves up or down for an exercise you did not log.'
+          : `All ${all.length} sets logged. Progression is worked out now.`,
+        label: 'Finish', act: 'finish'
+      });
+      return;
     }
 
     if (t.id === 'lang-gym' || t.id === 'lang-clean') {
@@ -3151,7 +2863,7 @@ function wire() {
     const fd = t.closest('[data-fbdel]');
     if (fd) {
       const f = (S.feedback || []).find(x => x.id === fd.dataset.fbdel);
-      if (f && fbLive(f)) askConfirm({ title: 'Remove this note?', body: f.text.replace(/</g, '&lt;'),
+      if (f && fbLive(f)) askConfirm({ title: 'Remove this note?', body: esc(f.text),
         label: 'Remove it', act: 'fbdel:' + f.id, danger: true });
       return;
     }
@@ -3195,9 +2907,27 @@ function wire() {
         S.feedback = (S.feedback || []).filter(x => !(x.id === id && fbLive(x)));
         await save(); render(); toast('Removed'); return;
       }
+      if (cf.dataset.confirm === 'leave') { draft = null; delete S.reopened; await save(); render(); return; }
+      if (cf.dataset.confirm === 'finish') {
+        const sess = $('#v-today')._sess; if (!sess || sess.done) return;
+        /* Taken before anything moves, so a mis-tap is recoverable. */
+        const snap = progressionSnapshot(sess);
+        sess.done = true; sess.completedAt = new Date().toISOString();
+        if (S.active?.id === sess.id) { sess.duration = Math.round((Date.now() - S.active.t0) / 1000); endSession(); }
+        const notes = applyProgression(sess);
+        sess.notes = notes;
+        if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+        sess.undoProg = snap; pruneSnapshots(sess.id);
+        draft = null; delete S.reopened; stopRest(); stopSetClock();
+        await save(); await syncNow(true); render();
+        showSummary(sess, notes); return;
+      }
       if (cf.dataset.confirm.startsWith('reopen:')) {
         const sess = S.sessions.find(x => x.id === cf.dataset.confirm.slice(7));
         if (!sess || !sess.done) { toast('Could not reopen that one'); return; }
+        /* Checked again here: something could have started between the
+           question and the answer. */
+        if (sessionInProgress(sess.id)) { toast('Finish the current session first'); return; }
         const legacy = sess.undoProg ? null : legacyRollback(sess);
         if (sess.undoProg) restoreProgression(sess.undoProg);
         const elapsed = sess.duration || 0;
@@ -3267,7 +2997,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v44';
+const APP_BUILD = 'v45';
 
 let lastError = null;
 

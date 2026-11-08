@@ -44,20 +44,25 @@ export const ACCESSORIES = {
      of the quadriceps and grows when the quads grow — but the last 30° of
      lockout recruits it hardest, and that is the range squats give you least
      of. Hence a hard, paused lockout on every rep. */
-  legext:         { name: 'Leg extension', pattern: 'squat', w: 60, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 5, machine: true, note: 'Squeeze hard at full lockout and hold a second there. Toes pointed slightly out. Three seconds on the way down — the lowering builds as much as the lifting.', variants: ['legext-sl', 'sissy'] },
-  'legext-sl':    { name: 'Single-leg extension', pattern: 'squat', w: 57.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true, note: 'One leg at a time finds the side that is lagging, which is usually the one you cannot see.' },
+  legext:         { name: 'Leg extension', iso: true, pattern: 'squat', w: 60, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 5, machine: true, note: 'Squeeze hard at full lockout and hold a second there. Toes pointed slightly out. Three seconds on the way down — the lowering builds as much as the lifting.', variants: ['legext-sl', 'sissy'] },
+  'legext-sl':    { name: 'Single-leg extension', iso: true, pattern: 'squat', w: 57.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2.5, machine: true, note: 'One leg at a time finds the side that is lagging, which is usually the one you cannot see.' },
   sissy:          { name: 'Sissy squat', pattern: 'squat', w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 2.5, home: true, note: 'Hold something for balance, knees travel forward, hips stay extended. Brutal on the quads through the deepest knee flexion — the other end of the range from a leg extension.' },
   'goblet-heel':  { name: 'Heel-elevated goblet squat', pattern: 'squat', w: 24, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, home: true, note: 'Heels on a plate, upright torso, all the way down. The elevation shifts the work onto the quads and off the hips.' },
   beltsq:         { name: 'Belt squat', pattern: 'squat', w: 80, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, machine: true, note: 'Load hangs from the hips, so the spine carries nothing. Quads and glutes get a full squat with no bar on the back — which is why it sits well on the day after a hard trail run.', variants: ['hack', 'legpress'] },
   frontsq:        { name: 'Front squat', pattern: 'squat', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, variants: ['pausesq', 'hack', 'beltsq'] },
   pausesq:        { name: 'Pause squat', pattern: 'squat', w: 100, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 5, bar: true, note: '2s in the hole.' },
 
+  /* The one lift in the programme aimed at the lower back rounding and tiring
+     in a chair. That is an endurance problem in the spinal erectors, and this
+     trains exactly those muscles — with load that progresses, which a
+     bodyweight hold on the floor never could. */
+  backext:        { name: '45° back extension', iso: true, pattern: 'hinge', w: 10, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 2.5, machine: true, note: 'Hips just over the pad. Round down over it, then come up to a straight line — not past it. Holding a plate to the chest is how it progresses.', variants: ['seatedgm', 'standgm'] },
   rdl:            { name: 'Romanian deadlift', pattern: 'hinge', w: 90, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Stop at the stretch, not the floor.', variants: ['seatedgm', 'standgm'] },
   seatedgm:       { name: 'Seated good morning', pattern: 'hinge', w: 35, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 5, bar: true, note: '~30° torso. Hamstring track — build this one slowly.' },
   standgm:        { name: 'Standing good morning', pattern: 'hinge', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true },
 
-  legcurl:        { name: 'Seated leg curl', pattern: 'hinge', w: 45, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['sl-legcurl'] },
-  'sl-legcurl':   { name: 'Single-leg lying curl', pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
+  legcurl:        { name: 'Seated leg curl', iso: true, pattern: 'hinge', w: 45, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['sl-legcurl'] },
+  'sl-legcurl':   { name: 'Single-leg lying curl', iso: true, pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
 
   calf:           { name: 'Standing calf raise', pattern: 'calf', w: 140, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Your log said stack + 80kg, so this is a guess at the total. Set it properly on the first session.' },
   seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 2, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
@@ -66,9 +71,9 @@ export const ACCESSORIES = {
   /* Traps — you had shrugs in your log and I dropped them. For traps that
      pop at the top, heavy and high-rep both work; the mistake is rolling
      the shoulders instead of driving them straight up. */
-  'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 5, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
+  'shrug-bb':     { name: 'Barbell shrug', pattern: 'traps', w: 100, sets: 4, reps: 12, repMin: 10, repMax: 15, inc: 5, bar: true, note: 'Straight up, not round. Pause a beat at the top — the range is small, so the squeeze is the exercise.', variants: ['shrug-db', 'shrug-machine'] },
   'shrug-db':     { name: 'Dumbbell shrug', pattern: 'traps', w: 40, dbl: true, sets: 4, reps: 15, repMin: 12, repMax: 18, inc: 2, note: 'Arms hang, shoulders to ears. No rolling.' },
-  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 4, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true, variants: ['shrug-db', 'shrug-hold'] },
+  'shrug-machine':{ name: 'Shrug on the press machine', pattern: 'traps', w: 180, sets: 3, reps: 13, repMin: 12, repMax: 15, inc: 10, machine: true, variants: ['shrug-db', 'shrug-hold'] },
   'shrug-hold':   { name: 'Shrug with a hold', pattern: 'traps', w: 80, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Three seconds at the top of every rep.' },
 
   /* Forearms — nothing was training them directly, and they are the one
@@ -107,18 +112,18 @@ export const ACCESSORIES = {
 
   pullup:         { name: 'Weighted pull-up', pattern: 'vpull', addedWeight: true, w: 15, sets: 3, reps: 4, repMin: 4, repMax: 6, inc: 2.5, note: 'Added weight. Slow on the way down.', variants: ['latpull', 'fixedlat'] },
   latpull:        { name: 'Lat pulldown', pattern: 'vpull', w: 95, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
-  fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 4, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
-  strarm:         { name: 'Straight-arm pulldown', pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
+  fixedlat:       { name: 'Lat pulldown, fixed machine', pattern: 'vpull', w: 150, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true },
+  strarm:         { name: 'Straight-arm pulldown', iso: true, pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
 
   inclinebb:      { name: 'Incline barbell press', pattern: 'hpush', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 5, bar: true, variants: ['inclinedb', 'smithincline'] },
   inclinedb:      { name: 'Incline dumbbell press', pattern: 'hpush', w: 23, dbl: true, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 2 },
   smithincline:   { name: 'Incline smith press', pattern: 'hpush', w: 70, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
-  cableflye:      { name: 'Cable flye', pattern: 'hpush', w: 41, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2.5, machine: true, note: 'Foam roller behind your back.' },
-  pecdeck:        { name: 'Pectoral machine', pattern: 'hpush', w: 52.5, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
+  cableflye:      { name: 'Cable flye', iso: true, pattern: 'hpush', w: 41, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2.5, machine: true, note: 'Foam roller behind your back.' },
+  pecdeck:        { name: 'Pectoral machine', iso: true, pattern: 'hpush', w: 52.5, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
   flatdb:         { name: 'Flat dumbbell press', pattern: 'hpush', w: 30, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, note: 'Flat, not incline — the sternal pec does the most work here and it is the fibre that makes a chest look thick from the side. Dumbbells let the hands come together at the top, which a bar cannot.', variants: ['chestpress', 'inclinedb'] },
   chestpress:     { name: 'Chest press machine', pattern: 'hpush', w: 70, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Fixed path, so you can push to genuine failure without a spotter. Good second press of the week when bench has already taken the heavy work.', variants: ['flatdb', 'smithincline'] },
   declinedb:      { name: 'Decline dumbbell press', pattern: 'hpush', w: 26, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, note: 'Bench on the shallowest decline it has. The lower sternal fibres are the one part of the chest that neither bench nor an incline reaches well, and they are what squares off the bottom edge.', variants: ['chestpress', 'flatdb'] },
-  dbflye:         { name: 'Dumbbell flye, flat bench', pattern: 'hpush', w: 14, dbl: true, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, note: 'Soft elbows, wide arc, stretch at the bottom. Loaded stretch is where a flye earns its place — do not turn it into a press.', variants: ['cableflye', 'pecdeck'] },
+  dbflye:         { name: 'Dumbbell flye, flat bench', iso: true, pattern: 'hpush', w: 14, dbl: true, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 2, note: 'Soft elbows, wide arc, stretch at the bottom. Loaded stretch is where a flye earns its place — do not turn it into a press.', variants: ['cableflye', 'pecdeck'] },
   floorpress:     { name: 'Dumbbell floor press', pattern: 'hpush', w: 24, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Upper arms stop on the floor.' },
 
   dbpress:        { name: 'Seated dumbbell press', pattern: 'vpush', w: 16, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2 },
@@ -128,7 +133,7 @@ export const ACCESSORIES = {
   leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 4, reps: 8, repMin: 8, repMax: 12, inc: 1.25, machine: true, note: 'Lean away from the stack, arm crossing the body at the bottom. That bottom position is why this one carries the most sets. Warm the cuff first — it bites cold.', variants: ['dblat', 'cablelat-light'] },
   dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Raise in the scapular plane — arms about 30° in front of your body, not straight out to the sides — with thumbs neutral. That keeps the space the rotator cuff runs through open. Turning the thumbs down closes it, which is the usual reason laterals start to ache.' },
   leandb:         { name: 'Leaning dumbbell lateral raise', pattern: 'lat', w: 8, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1, home: true, note: 'Hold a rack upright and lean away. The lean loads the bottom of the range, which the standing version misses entirely.' },
-  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 4, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
+  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
   reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'cablerear', 'proney'] },
@@ -141,10 +146,10 @@ export const ACCESSORIES = {
   ezpreacher:     { name: 'EZ-bar preacher curl', pattern: 'biceps', w: 30, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, variants: ['dbpreacher', 'inclinehammer'] },
   dbpreacher:     { name: 'Dumbbell preacher curl', pattern: 'biceps', w: 16, dbl: true, sets: 3, reps: 8, repMin: 6, repMax: 8, inc: 1 },
   inclinehammer:  { name: 'Incline hammer curl', pattern: 'biceps', w: 16, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 10, inc: 1 },
-  seatedhammer:   { name: 'Seated hammer curl', pattern: 'biceps', w: 18, dbl: true, sets: 4, reps: 12, repMin: 12, repMax: 14, inc: 1, home: true },
+  seatedhammer:   { name: 'Seated hammer curl', pattern: 'biceps', w: 18, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 1, home: true },
   cablecurl:      { name: 'Single-arm cable curl, facing away', pattern: 'biceps', w: 17.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1.25, machine: true },
   assistcurl:     { name: 'Concentration curl', pattern: 'biceps', w: 18, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 1, home: true },
-  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 4, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
+  bbcurl:         { name: 'Standing barbell curl', pattern: 'biceps', w: 35, sets: 3, reps: 10, repMin: 8, repMax: 14, inc: 5, bar: true, home: true, note: 'Back to a wall if you start swinging.' },
   dragcurl:       { name: 'Drag curl', pattern: 'biceps', w: 30, sets: 4, reps: 10, repMin: 10, repMax: 14, inc: 5, bar: true, home: true, note: 'Bar stays against you, elbows travel back.' },
 
   dip:            { name: 'Weighted dip', pattern: 'hpush', addedWeight: true, w: 28, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 2.5, note: 'Lean forward for chest, stay upright for triceps. Counted here as pressing.', variants: ['closebench', 'inclinedb'] },
@@ -153,7 +158,7 @@ export const ACCESSORIES = {
   ropepush:       { name: 'Rope triceps pushdown', pattern: 'triceps', w: 27.5, sets: 2, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, variants: ['rollingbar', 'overheadrope'] },
   rollingbar:     { name: 'Rolling bar pushdown', pattern: 'triceps', w: 35, sets: 3, reps: 12, repMin: 12, repMax: 14, inc: 2.5, machine: true },
   overheadrope:   { name: 'Overhead rope extension', pattern: 'triceps', w: 25, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
-  dbohext:        { name: 'Overhead dumbbell extension', pattern: 'triceps', w: 22, sets: 4, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Two hands, one dumbbell.' },
+  dbohext:        { name: 'Overhead dumbbell extension', pattern: 'triceps', w: 22, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Two hands, one dumbbell.' },
   floorskull:     { name: 'Floor skull crusher', pattern: 'triceps', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 15, inc: 5, bar: true, home: true }
 };
 
@@ -366,6 +371,20 @@ export const CORE_ROTATION = ['Anti-extension', 'Flexion', 'Anti-lateral', 'Anti
    variety without losing the thread of whether you are actually getting
    stronger. Plain strings are fixed slots. */
 export const DAYS = {
+  /* ── v45 rebalance ─────────────────────────────────────────────
+     Two things drove this. Chest moves up the priority list, and the
+     programme had become a posture problem in its own right: eighteen sets a
+     week of horizontal pressing against six of horizontal rowing, three to
+     one, which is the textbook recipe for rounded shoulders — and the v41
+     chest work had made it worse. So chest stays where the evidence tops out
+     (about eighteen sets) and rowing doubles to meet it; counting rear delts,
+     pulling now outweighs pushing about one-and-a-half to one.
+
+     It is paid for by taking volume off the side delts (eleven sets down to
+     seven — the training had been leaning on shoulders), off biceps and
+     triceps (both well over target, and both now get far more indirect work
+     from the extra rowing and pressing), and by two supersets that let two
+     exercises share one rest period. */
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
@@ -376,52 +395,59 @@ export const DAYS = {
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    /* Anchored: 'pushup-deficit' (chest), 'bbcurl' (biceps, mid-range) and
-        'bandpullapart' (rear delts). The lat slot still rotates. */
-    work: ['pushup-deficit', ['bandpullover', 'bandlat'], 'bbcurl', 'seatedhammer',
-           'bandlateral', 'bandpullapart', 'dbohext', 'bandpushdown'],
+    /* A band row joins the push-up, so the one pressing movement at home has a
+       pull to match it. The second triceps movement made way for it. */
+    work: ['pushup-deficit', 'bandrow-single', ['bandpullover', 'bandlat'], 'bbcurl', 'seatedhammer',
+           'bandpullapart', 'dbohext', 'bandlateral'],
     prepKey: 'home', prep: 3,
-    core: 4, coreQ: ['Flexion', 'Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
+    /* Three, not four. Core runs at about twice its weekly target across the
+       week, and this was the longest session of the five. */
+    core: 3, coreQ: ['Flexion', 'Anti-extension', 'Anti-rotation', 'Anti-lateral', 'Flexion'],
     note: 'Trail run tonight. Nothing here should touch your legs. This is where the abs actually get trained.'
   },
   upperA: {
-    key: 'upperA', label: 'Upper · horizontal', weekday: 3, venue: 'gym', load: 'heavy',
+    key: 'upperA', label: 'Upper · chest & back', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    /* Anchored: 'inclinedb' (chest, incline) and 'inclinecurl' (biceps in the
-        stretched position, which biases the long head). Pulling still rotates. */
-    work: ['bbrow', 'dip', 'inclinedb', ['pullup', 'latpull'], 'leancable', 'cablerear', 'inclinecurl'],
-    /* Three, not two: the activator takes one of them and a rotating item
-       still gets a slot. Roughly ninety seconds more prep. */
-    prepKey: 'bench', prep: 3,
-    /* Abs on a day with no load on the spine — the same reasoning that keeps
-       flexion off the squat and deadlift days. */
-    core: 1, coreQ: ['Flexion']
+    /* The chest superset: incline press paired with a wide-grip row. Pairing a
+       push with a pull is the posture-friendly way to add pressing — the row
+       pulls the shoulder blades back between every set of the press — and the
+       two share one rest. The leaning lateral raise is gone; side delts were
+       over-served. */
+    work: ['inclinedb', 'csrow', 'bbrow', 'dip', ['pullup', 'latpull'], 'cablerear', 'inclinecurl'],
+    supersets: [['inclinedb', 'csrow']],
+    prepKey: 'bench', prep: 4,
+    /* Anti-extension rather than crunches here. Holding the ribs down against
+       an arching back is the core quality that keeps the pelvis level when you
+       stand; the abs still get their flexion work at home, twice. */
+    core: 1, coreQ: ['Anti-extension']
   },
   lowerB: {
     key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
-    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'shrug-machine', 'revcurl', 'cablecurl'],
+    /* The back extension takes the cable curl's place: a fourth biceps slot was
+       the least useful thing on a leg day, and the lower back is the part of
+       your posture the programme was doing nothing for. */
+    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'backext', 'shrug-machine', 'revcurl'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
     note: 'Easy run today, so this day carries a slot less than the heavy one by design — do not add it back.'
   },
   upperB: {
-    key: 'upperB', label: 'Upper · vertical', weekday: 5, venue: 'gym', load: 'heavy',
+    key: 'upperB', label: 'Upper · press & arms', weekday: 5, venue: 'gym', load: 'heavy',
     main: 'ohp', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    /* Chest used to live entirely on upperA — bench, dips and an incline, nine
-       sets on one day and a single flye on the other. Pressing twice a week is
-       what builds a bench, so the second press sits here. It takes the slot
-       straight-arm pulldowns had: vertical pulling was running three sets over
-       target while this day had no real push at all. */
-    /* Anchored: 'chestpress' (flat, and a machine he can take to failure
-        without a spotter), 'pecdeck' (the flye — cable flye is not available at
-        Wembley Square, so anchoring it would have meant a substitution every
-        week) and 'ezpreacher' (biceps in the contracted position). Rowing and
-        the triceps slot still rotate. */
-    work: [['dbrow', 'seatedrow', 'csrow'], ['fixedlat', 'pullup'], 'chestpress',
-           'cablelat-light', 'facepull', 'ezpreacher', ['ropepush', 'rollingbar'],
-           'pecdeck'],
-    prepKey: 'ohp', prep: 2, core: 0
+    /* Chest first after the press, because it is now the priority and the
+       muscle trained first in a session is the one trained hardest. The flat
+       chest press became an incline: bench already covers the middle of the
+       chest, and the upper chest is what fills it out from the front — so
+       pressing now covers all three regions across the week (flat bench,
+       incline twice, dips low) rather than the middle three times over.
+
+       The arm superset closes the session: preacher curl paired with a triceps
+       pushdown. Opposing muscles, so each rests while the other works. */
+    work: ['smithincline', 'dbrow', ['fixedlat', 'pullup'], 'pecdeck', 'facepull', 'cablelat-light',
+           'ezpreacher', ['ropepush', 'rollingbar']],
+    supersets: [['ezpreacher', 'ropepush']],
+    prepKey: 'ohp', prep: 3, core: 0
   }
 };
 
@@ -453,8 +479,11 @@ export const VOLUME_TARGET = {
      moved with it: 16-18 hard sets a week is the range the volume literature
      supports for a muscle you are actually prioritising. */
   quads: 10, 'hams/glutes': 10, calves: 3, chest: 17, 'front delts': 5,
-  'back horizontal': 6, 'back vertical': 10, 'side delts': 11,
-  'rear delts': 11, biceps: 14, triceps: 9, traps: 9, forearms: 9, core: 12
+  /* Rowing at twelve so it can stand against eighteen of pressing — the
+     balance that matters most for how the shoulders sit. Side delts came down
+     to seven when the training moved off shoulders and onto chest. */
+  'back horizontal': 12, 'back vertical': 10, 'side delts': 7,
+  'rear delts': 11, biceps: 13, triceps: 9, traps: 8, forearms: 9, core: 12
 };
 
 export const MUSCLE_OF = {
@@ -485,10 +514,24 @@ export const ADHOC_FOCUS = {
 
 /* Running. Load units are minutes weighted by effort — crude, but it tracks
    the thing that actually interferes with lifting. */
+/* Accessory rest was cut in v39 to fit more exercises into a session, and
+   the logs show what it cost: first sets hit and the last one collapses —
+   a chest press going 10, 9, 6 and a barbell curl 11, 11, 9, 6 — and since
+   progression needs every set to land, nearly a third of accessory sessions
+   held instead of moving. Singer et al. (2024) found a small hypertrophy
+   advantage for resting longer than 60 seconds and nothing detectable beyond
+   90, so isolation work goes to 90 rather than three minutes. The supersets
+   pay for most of the added time. */
 export const REST = {
   warm: 45, mainHeavy: 180, mainMid: 120, backoff: 90,
-  compound: 90, isolation: 60, highRep: 45, core: 40
+  compound: 120, isolation: 90, highRep: 75, core: 40,
+  supersetGap: 20,
+  /* Calves, forearms and traps held every set at 60 seconds in the same logs
+     — not one of them dropped off — so they keep it. The longer rest goes
+     where the collapse actually happened, not everywhere by default. */
+  smallMuscle: 60
 };
+export const SHORT_REST_PATTERNS = ['calf', 'forearms', 'traps'];
 
 /* Nothing drops below this, whatever the maths says. */
 export const REST_FLOOR = 40;
@@ -546,6 +589,12 @@ export const PREP = {
     label: 'Bench prep',
     opener: { id: 'bp-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells, 4 to 6kg. Lead with the elbows to shoulder height, lower slowly. Should feel like almost nothing.' },
+    /* Posture drills are fixed, not rotating. Left in a pool of nine they came
+       round about one session in six, and the trials that changed posture did
+       the work three times a week. One a day on the upper and home days, each
+       aimed at a different part of the problem, and each takes about a minute. */
+    posture: { id: 'bp-chintuck', name: 'Wall chin tuck', secs: 60, detail: '10 × 5s holds', sets: '10 × 5s',
+      cue: 'Heels, bottom and shoulder blades against a wall. Draw the chin straight back — a double chin, not a nod down — so the back of the head slides up the wall, and hold five seconds. This is the forward head position you are fixing, practised in the posture you are trying to own.' },
     /* An activator runs every bench day rather than waiting its turn in the
        rotation. The pool has six items and only one slot, so pec work was
        turning up roughly one session in six — which is why the bar felt like
@@ -578,6 +627,8 @@ export const PREP = {
     label: 'Press prep',
     opener: { id: 'op-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells. Elbows lead, slow down. Warms the delts and the cuff for everything that follows.' },
+    posture: { id: 'op-proney', name: 'Prone Y raise', secs: 75, detail: '2 × 12, no weight', sets: '2 × 12',
+      cue: 'Face down on a bench or the floor, arms overhead in a Y with thumbs up. Lift the arms using the muscle below the shoulder blades, not the shoulders, and hold a beat at the top. The lower trapezius pulls the shoulder blades down and back — face pulls work the muscles above it and miss this one.' },
     pool: [
       { id: 'op-dislocate', name: 'Band pass-through', secs: 60, detail: '10 slow reps', sets: '10 slow',
         cue: 'Wide grip, straight arms, overhead and behind. Widen the grip if it pinches. This is the range the press needs.' },
@@ -597,6 +648,8 @@ export const PREP = {
     label: 'Quick prep',
     opener: { id: 'hp-open', name: 'Light lateral raise', secs: 75, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Smallest dumbbells you own. Elbows lead. Wakes the shoulders before the curls and raises.' },
+    posture: { id: 'hp-tspine-tuck', name: 'Thoracic extension, then chin tucks', secs: 90, detail: '45s over a roller, then 10 × 5s tucks', sets: '45s + 10 × 5s',
+      cue: 'Roller or rolled towel across the upper back, hands behind the head, and sink back over it for 45 seconds — a stiff upper back is what drags the shoulders and head forward. Then lie flat and do ten chin tucks, nodding with just the top of the neck and holding each for five.' },
     pool: [
       { id: 'hp-catcow', name: 'Cat-cow', secs: 60, detail: '60s, moving continuously',
         cue: 'One vertebra at a time, slowly.' },
@@ -612,143 +665,6 @@ export const PREP = {
 
 /* ── What the words mean ───────────────────────────────────
    Shown against the set type it describes, not buried in a help screen. */
-/* ═══ posture ═══════════════════════════════════════════════
-   A separate practice, not a lifting day — it never touches the wave, the
-   volume targets or the training maxes, and it keeps its own history.
-
-   Three sessions a week of about twenty minutes is the dose the trials
-   actually used: Kim ran 20-minute home sessions three times a week for four
-   weeks, Lee 25 minutes three times a week for eight, Szczygiel three times a
-   week for four. Holds of seven to ten seconds for ten to twenty repetitions
-   is the common rep scheme across all of them — low load, high repetition,
-   almost no fatigue. The review of that literature notes that rounded-shoulder
-   studies running under six weeks often failed to show any change, so six to
-   twelve weeks is the honest horizon.
-
-   The content deliberately avoids what the lifting programme already covers.
-   Eleven sets a week of rear delts are already in there; what is missing is
-   the deep neck flexors, the lower trapezius and serratus specifically,
-   thoracic extension, length through the front of the hip, and endurance
-   rather than strength in the lumbar extensors — his lifting core work trains
-   resisting extension, which is close to the opposite of holding a tall spine
-   for an hour in a chair. */
-
-export const POSTURE_DOSE = { perWeek: 3, minutes: 22, horizonWeeks: 8 };
-
-/* `hold` work progresses in seconds, `reps` work in repetitions. Each has a
-   ladder of its own: once the top of the range is held cleanly twice, the
-   next rung is harder rather than simply longer. */
-export const POSTURE_WORK = [
-  {
-    id: 'deep-flexor', search: 'craniocervical flexion chin tuck deep neck flexor', group: 'Neck', name: 'Deep neck flexor hold',
-    why: 'The muscles that hold your head back over your shoulders rather than in front of them. Nothing in your lifting touches them.',
-    unit: 'secs', sets: 3, start: 8, min: 5, max: 12,
-    levels: [
-      { name: 'Chin tuck, lying', cue: 'On your back, knees bent. Nod as if saying yes with just the top of your neck, lengthening the back of it. The jaw stays soft and the big neck muscles at the front must not pop out — if they do, nod less hard.' },
-      { name: 'Chin tuck, head lifted', cue: 'Same nod, then lift the head a centimetre off the floor keeping the tuck. The moment the chin pokes forward, the set is over.' },
-      { name: 'Chin tuck, head lifted and held', cue: 'Head held two centimetres clear throughout, tuck maintained. This is the one that carries over to sitting.' },
-      { name: 'Chin tuck against a band', cue: 'Band around the back of the head, anchored in front. Hold the tuck against it.' }
-    ]
-  },
-  {
-    id: 'lower-trap', search: 'prone Y raise lower trapezius', group: 'Shoulders', name: 'Lower trapezius raise',
-    why: 'The lower trap pulls the shoulder blade down and back. Face pulls and rear delt work hit the muscles above it, not this one.',
-    unit: 'reps', sets: 3, start: 12, min: 10, max: 18,
-    levels: [
-      { name: 'Prone Y, no weight', cue: 'Face down, arms overhead in a Y, thumbs up. Lift the arms using the muscle below the shoulder blade, not the shoulder itself. Hold a beat at the top.' },
-      { name: 'Prone Y, 2kg', cue: 'Same, with the lightest thing you own. Two kilos is plenty — this is not a strength lift.' },
-      { name: 'Prone Y off a bench', cue: 'Chest on a bench so the arms hang below. Longer range, same muscle.' },
-      { name: 'Prone Y off a bench, 2kg', cue: 'The full version: chest on the bench, arms hanging below in a Y, two kilos in each hand. Three seconds on the way down, which is where most of the work is. If the shoulders creep up towards the ears, the lower trap has stopped doing it and the set is finished.' }
-    ]
-  },
-  {
-    id: 'serratus', search: 'serratus wall slide upward rotation', group: 'Shoulders', name: 'Serratus wall slide',
-    why: 'The serratus rotates the shoulder blade up and around the ribcage. Without it the shoulder cannot sit wide, which is exactly the look you are after.',
-    unit: 'reps', sets: 3, start: 10, min: 8, max: 15,
-    levels: [
-      { name: 'Wall slide', cue: 'Forearms on the wall, elbows at shoulder height, ribs down. Slide up keeping contact, and at the top push the forearms into the wall and reach a little further.' },
-      { name: 'Wall slide with a band', cue: 'Band around both wrists, pushing out against it the whole way up.' },
-      { name: 'Wall slide, foam roller', cue: 'Roller between the forearms and the wall. Roll it up without letting it drop.' },
-      { name: 'Standing band reach', cue: 'Band anchored behind, arms overhead, reach up and slightly forward at the top.' }
-    ]
-  },
-  {
-    id: 'thoracic', search: 'thoracic extension foam roller', group: 'Spine', name: 'Thoracic extension',
-    why: 'A stiff upper back is what forces the shoulders forward and the head with them. Mobility here responds faster than anything else on this list.',
-    unit: 'secs', sets: 3, start: 30, min: 20, max: 45,
-    levels: [
-      { name: 'Extension over a roller', cue: 'Roller across the mid-back, hands behind the head, sink back over it. Breathe out at the bottom — that is where the range comes from.' },
-      { name: 'Extension over a roller, arms overhead', cue: 'Same, arms reaching overhead to take the range further.' },
-      { name: 'Segmental extension', cue: 'Move the roller up two centimetres at a time and sink over each spot. Slower, more thorough.' },
-      { name: 'Extension off a bench', cue: 'Upper back on the edge of a bench, hands behind the head, extend back and hold.' }
-    ]
-  },
-  {
-    id: 'lumbar-endurance', search: 'prone back extension hold lumbar endurance', group: 'Spine', name: 'Lumbar extensor hold',
-    why: 'Your lower back rounding and tiring in a chair is an endurance problem, not a strength one. Your lifting core work trains resisting extension, which is close to the opposite of holding a tall spine for an hour.',
-    unit: 'secs', sets: 3, start: 30, min: 20, max: 60,
-    levels: [
-      { name: 'Prone extension, arms at sides', cue: 'Face down, lift the chest a few centimetres and hold. Look at the floor, not forward — the neck stays long.' },
-      { name: 'Prone extension, hands at temples', cue: 'Same, hands lightly at the temples. Longer lever, harder hold.' },
-      { name: 'Prone extension, arms overhead', cue: 'Arms reaching straight forward past your head, which lengthens the lever and makes the hold considerably harder. Chest a few centimetres clear, eyes down so the neck stays long. Breathe normally — if you are holding your breath to hold the position, drop back a rung.' },
-      { name: 'Hips off a bench', cue: 'Hips on a bench, feet anchored, upper body unsupported and held level. This is the test position in the research, so this rung is also the one your hold-time measurement uses.' }
-    ]
-  },
-  {
-    id: 'hip-front', search: 'half kneeling hip flexor stretch', group: 'Hips', name: 'Hip flexor length',
-    why: 'Sitting all day shortens the front of the hip, which tips the pelvis and makes sitting tall harder than it should be.',
-    unit: 'secs', sets: 2, start: 40, min: 30, max: 60,
-    levels: [
-      { name: 'Half-kneeling stretch', cue: 'Back knee down, squeeze that glute hard first — the squeeze is what makes it work — then shift forward. Do not arch the lower back to get further.' },
-      { name: 'Half-kneeling, arm overhead', cue: 'Same, with the arm on the kneeling side reaching up and over.' },
-      { name: 'Couch stretch', cue: 'Back foot elevated against something. Considerably more range.' },
-      { name: 'Couch stretch, upright', cue: 'Back foot up against something, back knee close to the wall, then bring the torso fully vertical. Squeeze the glute on the kneeling side first and keep squeezing — that is what stops the lower back arching to fake the range. The full version, and it is a lot.' }
-    ]
-  },
-  {
-    id: 'pec-length', search: 'doorway pec stretch pectoralis minor', group: 'Chest', name: 'Pec length',
-    why: 'Short pectoralis minor pulls the shoulder blade forward around the ribs. One session measurably changes its length, so this is the quickest win here — but only if the strength work above holds the new position.',
-    unit: 'secs', sets: 2, start: 25, min: 20, max: 30,
-    levels: [
-      { name: 'Doorway stretch, low', cue: 'Forearm on the frame just below shoulder height, step through gently. Twenty to thirty seconds a side — longer static holds cost you force and buy nothing extra here.' },
-      { name: 'Doorway stretch, shoulder height', cue: 'Forearm flat on the frame with the elbow level with the shoulder, then step through and rotate the chest away. You should feel it across the front of the shoulder, not in the joint itself. Twenty to thirty seconds a side, no pushing into pain.' },
-      { name: 'Doorway stretch, high', cue: 'Forearm above shoulder height, which biases the lower pec fibres.' },
-      { name: 'Floor pec stretch', cue: 'Face down, one arm straight out to the side, roll onto it.' }
-    ]
-  },
-  {
-    id: 'sit-tall', search: 'seated tall posture thoracic hold', group: 'Carryover', name: 'Tall sitting hold',
-    why: 'The thing you actually want to be better at. Practising the position itself is what connects everything above to a working day.',
-    unit: 'secs', sets: 2, start: 45, min: 30, max: 90,
-    levels: [
-      { name: 'Tall sit against a wall', cue: 'Sit on the floor, back against a wall, legs out. Lengthen up through the crown of the head and hold. You will feel exactly which bit gives out first.' },
-      { name: 'Tall sit, no wall', cue: 'Same position with nothing behind you, so the upper back holds itself. Legs out, lengthen up through the crown of the head, shoulders wide. Without the wall to lean on you will feel exactly where it gives out first — usually somewhere between the shoulder blades.' },
-      { name: 'Tall sit, arms overhead', cue: 'Arms reaching up. The upper back has to do more.' },
-      { name: 'Tall sit on a stool, arms overhead', cue: 'On a stool with feet flat, as close to a desk as this gets.' }
-    ]
-  }
-];
-
-/* Measured at home, standardised enough to plot. The first two are what the
-   trials used as their outcomes; the second two are the endurance tests, and
-   they move much faster, which is why they are logged more often. */
-export const POSTURE_METRICS = [
-  { id: 'wall-occiput', search: 'occiput to wall distance test forward head', name: 'Head to wall', unit: 'cm', lower: true, cadence: 'monthly',
-    how: 'Stand with heels, bottom and shoulder blades touching a wall, looking straight ahead — do not tuck the chin for the measurement. Have someone measure, or photograph side-on, the gap from the back of your head to the wall. Touching is 0.',
-    note: 'The single most direct read on forward head position at home.' },
-  { id: 'cva', search: 'craniovertebral angle from a photo', name: 'Neck angle', unit: '°', lower: false, cadence: 'monthly',
-    how: 'Side-on photo, standing relaxed, phone at shoulder height two metres away, same spot and same clothes each time. Measure the angle between a horizontal line and a line from the bump at the base of your neck to your earlobe. Any protractor app does it.',
-    note: 'This is the craniovertebral angle the research reports. Bigger is better; under about 50° is the range usually called forward head.' },
-  { id: 'lumbar-hold', search: 'Biering-Sorensen back extensor endurance test', name: 'Back extensor hold', unit: 's', lower: false, cadence: 'weekly',
-    how: 'Hips on a bench, feet anchored, upper body level and unsupported, arms crossed. Time how long you hold level. Stop when you sag — that is the number.',
-    note: 'A six-week home programme produced about a 22% gain in holding time, so this is the one to expect visible movement on.' },
-  { id: 'flexor-hold', search: 'deep neck flexor endurance test', name: 'Chin tuck hold', unit: 's', lower: false, cadence: 'weekly',
-    how: 'On your back, hold the chin tuck with your head one centimetre clear of the floor. Time until the chin pokes forward or the head drops.',
-    note: 'Deep neck flexor endurance. Climbs quickly at first.' }
-];
-
-export const POSTURE_LEVEL_UP = 2;   /* clean sessions on a rung before the next */
-
 export const GLOSSARY = {
   warm: {
     title: 'Warm-up set',
@@ -785,6 +701,13 @@ export const CUES = {
   calf:       'Full stretch at the bottom, pause there. Bouncing turns this into nothing.',
   frontsq:    'Elbows high. The moment they drop, the bar follows.',
   rdl:        'Push the hips back, bar stays against the legs. Stop where the stretch is, not where the floor is.',
+  backext:    'Squeeze the glutes before you rise and stop at a straight line. Going past it into an arch loads the joints, not the muscle.',
+  inclinedb:  'Bench at about 30°, not 45 — steeper hands the work to the front delts and takes it off the upper chest you are after. Shoulder blades pinned back and down, lower to the top of the chest, and press up and slightly in.',
+  smithincline:'Same 30° bench, set so the bar meets the chest just under the collarbone. Shoulder blades back and down before the first rep, and keep them there — the moment they roll forward, the shoulders take over.',
+  dbrow:      'Hinge until the back is near flat, then pull the elbow towards the hip, not the armpit. Finish by squeezing the shoulder blade back — that last inch is the part that pulls your shoulders back for the rest of the day.',
+  pecdeck:    'Set the handles so you feel a real stretch across the chest at the back of the rep, without the shoulder joint complaining. Lead with the elbows. The stretched end is where the growth is, so do not cut it short.',
+  cablerear:  'Cable at shoulder height, pull across and back with a slightly bent arm, leading with the elbow. Keep the shoulder down — if it shrugs up, the upper trap has taken the rep.',
+  rollingbar: 'Upper arms pinned to your sides, and only the forearms move. Let the bar roll in the hands at the bottom for a full lockout.',
   seatedgm:   'Hinge from the hips with a flat back. Small range to start — this one is easy to overreach.',
   bbrow:      'Torso around 45°, pull to the belly button. No heaving with the lower back.',
   pullup:     'Start from a full hang. Chest to the bar, slow on the way down.',
@@ -821,14 +744,6 @@ export const CUES = {
 export const howToUrl = name =>
   'https://www.youtube.com/results?search_query=' + encodeURIComponent('how to ' + name + ' proper form');
 
-/* Posture work and measurements each carry their own `search` term, because a
-   name generated from the display label searches badly: "Half-kneeling
-   stretch" never finds a hip flexor stretch, and "Extension over a roller"
-   leaves out the word thoracic. The clinical term is what finds a video of
-   the right thing. */
-const ytSearch = q => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
-export const postureHowToUrl = w => ytSearch('how to ' + (w.search || w.name) + ' exercise');
-export const measureHowToUrl = m => ytSearch('how to measure ' + (m.search || m.name));
 
 /* ── Noise ─────────────────────────────────────────────────
    Fires on a completed set. `clean` shows regardless; `salty` only when
@@ -872,7 +787,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v44', date: '2026-10-26' };
+export const BUILD = { version: 'v45', date: '2026-11-08' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */
