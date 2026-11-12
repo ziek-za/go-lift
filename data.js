@@ -33,7 +33,9 @@ export const WAVE = [
 export const ACCESSORIES = {
   bulgarian:      { name: 'Bulgarian split squat', pattern: 'squat', w: 35, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 5, bar: true, note: 'Barbell on back, rear foot up.', variants: ['db-bulgarian', 'walking-lunge'] },
   'db-bulgarian': { name: 'Bulgarian split squat (dumbbell)', pattern: 'squat', w: 20, dbl: true, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2, home: true },
-  'walking-lunge':{ name: 'Walking lunge', pattern: 'squat', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 5, bar: true, home: true },
+  /* Reps are total steps, alternating, so they move in twos: an odd number
+     gives one leg an extra rep every set. */
+  'walking-lunge':{ name: 'Walking lunge', pattern: 'squat', w: 30, sets: 3, reps: 10, repMin: 8, repMax: 12, repStep: 2, inc: 5, bar: true, home: true, note: 'Counted as total steps, alternating — so always an even number, and both legs do the same work.' },
 
   legpress:       { name: '45° leg press', pattern: 'squat', w: 200, sets: 2, reps: 8, repMin: 8, repMax: 10, inc: 10, machine: true, variants: ['hack', 'sl-legpress'] },
   hack:           { name: 'Hack squat', pattern: 'squat', w: 85, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 5, machine: true },
@@ -381,23 +383,37 @@ export const DAYS = {
      pulling now outweighs pushing about one-and-a-half to one.
 
      It is paid for by taking volume off the side delts (eleven sets down to
-     seven — the training had been leaning on shoulders), off biceps and
-     triceps (both well over target, and both now get far more indirect work
-     from the extra rowing and pressing), and by two supersets that let two
-     exercises share one rest period. */
+     seven) and off biceps and triceps (both were well over target, and both
+     get far more indirect work from the extra rowing and pressing).
+
+     ── v46 ────────────────────────────────────────────────────────
+     Chest is still lagging — bench flat at an estimated 127–136 since late
+     September — so it now gets trained four days a week instead of two: a
+     dumbbell floor press at home on Tuesday and a flye on Thursday, on top of
+     Wednesday and Friday. Twenty-four straight sets a week, up from eighteen.
+     Nothing comes out of shoulders, arms, core or legs to pay for it.
+
+     The supersets are gone: walking between two machines mid-set was awkward,
+     and the row fell away inside the pair. Drop sets replace them — on the
+     same exercise, so no walking — after the last set of chest and arm
+     isolation work, never on a press. */
   lowerA: {
     key: 'lowerA', label: 'Lower · heavy', weekday: 1, venue: 'gym', load: 'heavy',
     main: 'squat', backoff: { pct: 0.65, sets: 2, reps: 8 },
     work: [['walking-lunge', 'bulgarian'], ['legext-sl', 'legext'], 'calf', 'shrug-bb', 'farmerhold', ['hammerrope', 'wristcurl'], 'overheadrope'],
+    dropsets: ['overheadrope'],
     prepKey: 'squat', prep: 4,
     core: 2, coreQ: ['Anti-extension', 'Anti-rotation', 'Anti-lateral']
   },
   home: {
     key: 'home', label: 'Home · weak points', weekday: 2, venue: 'home', load: 'light',
     main: null,
-    /* A band row joins the push-up, so the one pressing movement at home has a
-       pull to match it. The second triceps movement made way for it. */
-    work: ['pushup-deficit', 'bandrow-single', ['bandpullover', 'bandlat'], 'bbcurl', 'seatedhammer',
+    /* The band pull-over and kneeling pulldown make way for a dumbbell floor
+       press — a loaded chest press is possible here, and those two were the
+       weakest work in the session. The band row stays: with more pressing at
+       home, it is the pull that keeps the session balanced. The lateral raise
+       stays too; shoulders are not being traded for chest. */
+    work: ['floorpress', 'pushup-deficit', 'bandrow-single', 'bbcurl', 'seatedhammer',
            'bandpullapart', 'dbohext', 'bandlateral'],
     prepKey: 'home', prep: 3,
     /* Three, not four. Core runs at about twice its weekly target across the
@@ -408,14 +424,9 @@ export const DAYS = {
   upperA: {
     key: 'upperA', label: 'Upper · chest & back', weekday: 3, venue: 'gym', load: 'heavy',
     main: 'bench', backoff: { pct: 0.65, sets: 2, reps: 8 },
-    /* The chest superset: incline press paired with a wide-grip row. Pairing a
-       push with a pull is the posture-friendly way to add pressing — the row
-       pulls the shoulder blades back between every set of the press — and the
-       two share one rest. The leaning lateral raise is gone; side delts were
-       over-served. */
     work: ['inclinedb', 'csrow', 'bbrow', 'dip', ['pullup', 'latpull'], 'cablerear', 'inclinecurl'],
-    supersets: [['inclinedb', 'csrow']],
-    prepKey: 'bench', prep: 4,
+    dropsets: ['inclinecurl'],
+    prepKey: 'bench', prep: 3,
     /* Anti-extension rather than crunches here. Holding the ribs down against
        an arching back is the core quality that keeps the pelvis level when you
        stand; the abs still get their flexion work at home, twice. */
@@ -427,10 +438,15 @@ export const DAYS = {
     /* The back extension takes the cable curl's place: a fourth biceps slot was
        the least useful thing on a leg day, and the lower back is the part of
        your posture the programme was doing nothing for. */
-    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'backext', 'shrug-machine', 'revcurl'],
+    /* The dumbbell flye is chest work this day never had, and it lives here
+       rather than on Monday because Monday was already the longest session
+       of the week. Last, so it costs the legs nothing — and a flye asks
+       nothing of the legs that have a run in them tonight. */
+    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'backext', 'shrug-machine', 'revcurl', 'dbflye'],
+    dropsets: ['dbflye'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
-    note: 'Easy run today, so this day carries a slot less than the heavy one by design — do not add it back.'
+    note: 'Easy run today, so the leg work is lighter than Monday by design — do not add it back. The flye at the end is chest, not legs.'
   },
   upperB: {
     key: 'upperB', label: 'Upper · press & arms', weekday: 5, venue: 'gym', load: 'heavy',
@@ -442,11 +458,12 @@ export const DAYS = {
        pressing now covers all three regions across the week (flat bench,
        incline twice, dips low) rather than the middle three times over.
 
-       The arm superset closes the session: preacher curl paired with a triceps
-       pushdown. Opposing muscles, so each rests while the other works. */
+       Shoulder work here is unchanged. Drop sets go on the pec deck and both
+       arm movements: all three are a pin or a cable, so the drop takes
+       seconds. */
     work: ['smithincline', 'dbrow', ['fixedlat', 'pullup'], 'pecdeck', 'facepull', 'cablelat-light',
            'ezpreacher', ['ropepush', 'rollingbar']],
-    supersets: [['ezpreacher', 'ropepush']],
+    dropsets: ['pecdeck', 'ezpreacher', 'ropepush'],
     prepKey: 'ohp', prep: 3, core: 0
   }
 };
@@ -478,11 +495,11 @@ export const VOLUME_TARGET = {
   /* Chest went from an afterthought to a stated weak point, so its target
      moved with it: 16-18 hard sets a week is the range the volume literature
      supports for a muscle you are actually prioritising. */
-  quads: 10, 'hams/glutes': 10, calves: 3, chest: 17, 'front delts': 5,
+  quads: 10, 'hams/glutes': 10, calves: 3, chest: 24, 'front delts': 5,
   /* Rowing at twelve so it can stand against eighteen of pressing — the
      balance that matters most for how the shoulders sit. Side delts came down
      to seven when the training moved off shoulders and onto chest. */
-  'back horizontal': 12, 'back vertical': 10, 'side delts': 7,
+  'back horizontal': 12, 'back vertical': 6, 'side delts': 7,
   'rear delts': 11, biceps: 13, triceps: 9, traps: 8, forearms: 9, core: 12
 };
 
@@ -520,12 +537,13 @@ export const ADHOC_FOCUS = {
    progression needs every set to land, nearly a third of accessory sessions
    held instead of moving. Singer et al. (2024) found a small hypertrophy
    advantage for resting longer than 60 seconds and nothing detectable beyond
-   90, so isolation work goes to 90 rather than three minutes. The supersets
-   pay for most of the added time. */
+   90, so isolation work goes to 90 rather than three minutes. */
 export const REST = {
   warm: 45, mainHeavy: 180, mainMid: 120, backoff: 90,
   compound: 120, isolation: 90, highRep: 75, core: 40,
-  supersetGap: 20,
+  /* The pause before a drop set: long enough to move a pin or pick up the
+     lighter dumbbells, short enough that the muscle has not recovered. */
+  dropGap: 10,
   /* Calves, forearms and traps held every set at 60 seconds in the same logs
      — not one of them dropped off — so they keep it. The longer rest goes
      where the collapse actually happened, not everywhere by default. */
@@ -589,12 +607,9 @@ export const PREP = {
     label: 'Bench prep',
     opener: { id: 'bp-open', name: 'Light lateral raise', secs: 90, detail: '2 × 15 very light', sets: '2 × 15 very light',
       cue: 'Tiny dumbbells, 4 to 6kg. Lead with the elbows to shoulder height, lower slowly. Should feel like almost nothing.' },
-    /* Posture drills are fixed, not rotating. Left in a pool of nine they came
-       round about one session in six, and the trials that changed posture did
-       the work three times a week. One a day on the upper and home days, each
-       aimed at a different part of the problem, and each takes about a minute. */
-    posture: { id: 'bp-chintuck', name: 'Wall chin tuck', secs: 60, detail: '10 × 5s holds', sets: '10 × 5s',
-      cue: 'Heels, bottom and shoulder blades against a wall. Draw the chin straight back — a double chin, not a nod down — so the back of the head slides up the wall, and hold five seconds. This is the forward head position you are fixing, practised in the posture you are trying to own.' },
+    /* No fixed posture drill on the bench day: the wall chin tuck read as a
+       random warm-up, and the face pull, rear-delt and rowing work around it
+       carry the posture side. The press and home days keep theirs. */
     /* An activator runs every bench day rather than waiting its turn in the
        rotation. The pool has six items and only one slot, so pec work was
        turning up roughly one session in six — which is why the bar felt like
@@ -677,6 +692,10 @@ export const GLOSSARY = {
   open: {
     title: 'Open set',
     body: 'The number shown is the minimum. Do as many clean reps as you can beyond it, then stop — a rep that turns ugly does not count and is where people get hurt. This is the set the app reads to decide whether your training max goes up.'
+  },
+  drop: {
+    title: 'Drop set',
+    body: 'Straight after your last set, take about a quarter of the weight off and do as many clean reps as you can. Ten seconds between — just long enough to move the pin. It adds work without adding much time, and a meta-analysis found drop sets build muscle about as well as ordinary sets. It never decides whether the exercise moves up: that is still the working sets.'
   },
   backoff: {
     title: 'Back-off set',
@@ -787,7 +806,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v45', date: '2026-11-08' };
+export const BUILD = { version: 'v46', date: '2026-11-11' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

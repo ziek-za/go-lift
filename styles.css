@@ -98,17 +98,11 @@ main { padding: 0 var(--pad) 24px; max-width: 620px; margin: 0 auto; }
 .card.done { border-color: rgba(43,162,95,.45); }
 .card.stalled { border-color: rgba(200,32,45,.5); }
 
-/* A superset reads as one unit: the two cards share a left rule and sit
-   closer together than ordinary cards, so the pair is visible at a glance. */
-.card.ss { border-left: 3px solid var(--go); }
-.card.ss-1 { margin-bottom: 3px; border-bottom-left-radius: 4px; }
-.card.ss-2 { border-top-left-radius: 4px; }
-.card.ss .idx { color: var(--go); font-weight: 600; }
-.ssnote {
-  font-size: 11.5px; line-height: 1.45; color: var(--go);
-  margin: 0 0 10px; padding: 7px 9px; border-radius: 6px;
-  background: rgba(59,130,246,.08);
-}
+/* A drop set reads as the tail of the set above it: indented, with the
+   arrow in place of a set number, and the label in the drop's colour. */
+.set.k-drop { margin-left: 18px; border-left: 2px solid var(--go); padding-left: 8px; }
+.set.k-drop .n { color: var(--go); font-weight: 600; }
+.set.k-drop .kindlabel { color: var(--go); }
 
 /* Your own note on an exercise — first thing in the card, in chalk on a warm
    tint so it reads as yours rather than as the programme's instructions. */
@@ -321,6 +315,8 @@ button.rest::before { content: '⏱ '; }
 
 /* ── RPE chips ───────────────────────────────────────────── */
 .rpe { display: flex; align-items: center; gap: 4px; padding: 0 0 8px 34px; }
+/* Up-next rating, before the set is logged: same control, quieter prompt. */
+.rpe.pre .q { color: var(--dust-2); }
 .rpe button {
   min-height: 28px; width: 30px; padding: 0; font-size: 12px;
   border-radius: 6px; font-family: var(--mono);
@@ -377,6 +373,10 @@ button.what {
 .set.miss .result { border-color: rgba(200,32,45,.5); color: var(--stall); }
 
 .editor { display: flex; gap: 6px; padding: 0 0 10px 26px; }
+/* `display: flex` above outranks the browser's own rule for [hidden], so the
+   editor was open under every set whether or not "Other ±" was tapped — the
+   button toggled an attribute that changed nothing. This puts it back. */
+.editor[hidden] { display: none; }
 .editor button { min-height: 38px; width: 38px; padding: 0; }
 .editor input { width: 62px; text-align: center; min-height: 38px; }
 .editor [data-save] { width: auto; padding: 0 14px; }

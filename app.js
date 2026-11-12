@@ -119,11 +119,10 @@ function seed() {
 /* ═══ rest ══════════════════════════════════════════════════ */
 
 function restFor(item, set) {
-  /* Inside a superset the only pause is the walk to the partner. The two
-     work opposing muscles, so each rests while the other works: a curl
-     followed by a pushdown leaves the biceps two and a half minutes between
-     its own sets, which is more than the curl got on its own. */
-  if (item.ss && item.ss.pos < item.ss.of && !set.warm) return REST.supersetGap;
+  /* Straight into the drop set: the pause is only the time it takes to
+     move the pin or pick up the lighter dumbbells. */
+  const nextSet = item.sets && item.sets[item.sets.indexOf(set) + 1];
+  if (nextSet && nextSet.drop && !set.warm) return REST.dropGap;
   let r;
   if (item.kind === 'core') r = REST.core;
   else if (item.kind === 'main') {
@@ -506,15 +505,7 @@ function buildPlanned(dateStr, dayKey) {
      Both stay in the programme; a carry just lands on a day without a hold. */
   const slots = resolveSlots(slotsFor(D, cycleNo(dateStr)), atHome);
   const dayWork = slots.map(r => r.id);
-  /* A superset whose partner was dropped at this club is just an exercise. */
-  const tags = supersetTags(D);
-  const live = new Set(slots.map(r => r.slot));
-  const ssFor = slot => {
-    const t = tags[slot];
-    if (!t) return null;
-    const partners = tags.map((x, i) => x && x.group === t.group ? i : -1).filter(i => i >= 0);
-    return partners.every(i => live.has(i)) ? t : null;
-  };
+  const drops = dropSlots(D);
   const gripTaken = dayWork.some(id => ACCESSORIES[id]?.grip);
   if (D.core) for (const t of pickCore(D.core, atHome, D.coreQ, tr => gripTaken && tr.grip)) items.push(coreItem(t));
 
@@ -537,16 +528,13 @@ function buildPlanned(dateStr, dayKey) {
       ...accessoryRamp(a, s.w, loaded),
       ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
     ];
-    const ss = ssFor(slot);
-    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets,
-      ...(ss ? { ss } : {}) });
+    if (drops.has(slot)) {
+      const last = sets.filter(x => !x.warm).at(-1);
+      const d = last && dropSet(last.w, last.target, a);
+      if (d) sets.push(d);
+    }
+    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets });
     loaded.add(a.pattern);
-  }
-
-  /* Name each superset member's partner, now that every item exists. */
-  for (const it of items) if (it.ss) {
-    const mate = items.find(x => x !== it && x.ss && x.ss.group === it.ss.group);
-    if (mate) it.ss.with = mate.name;
   }
 
   return { id: `${dateStr}·${dayKey}`, date: dateStr, dayKey, week: wk, wave: wave.name,
@@ -794,17 +782,21 @@ function applyProgression(sess) {
     }
     if (it.kind === 'acc') {
       const a = ACCESSORIES[it.ref], st = S.acc[it.ref];
-      const logged = it.sets.filter(s => s.reps != null && !s.warm);
+      /* Drop sets are kept apart: as-many-as-you-can at a lighter weight is
+         extra work, and a short one must never hold the exercise back. */
+      const logged = it.sets.filter(s => s.reps != null && !s.warm && !s.drop);
+      const dropDone = it.sets.find(s => s.drop && s.reps != null);
       if (!logged.length) continue;
       st.lastDone = sess.date;
       st.hist.push({ d: sess.date, w: st.w, target: st.reps, label: sess.label, club: sess.club,
         reps: logged.map(x => x.reps),
-        sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null })) });
+        sets: logged.map(x => ({ w: x.w, reps: x.reps, target: x.target, rpe: x.rpe || null })),
+        ...(dropDone ? { drop: { w: dropDone.w, reps: dropDone.reps } } : {}) });
       st.hist = st.hist.slice(-12);
-      const working = it.sets.filter(s => !s.warm).length;  /* what was actually prescribed today */
+      const working = it.sets.filter(s => !s.warm && !s.drop).length;  /* what was actually prescribed today */
       if (logged.length >= working && logged.every(s => s.reps >= s.target)) {
         st.misses = 0;
-        if (st.reps < a.repMax) { const from = st.reps; st.reps++; notes.push({ type: 'reps', ref: it.ref, label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
+        if (st.reps < a.repMax) { const from = st.reps; st.reps = Math.min(a.repMax, st.reps + (a.repStep || 1)); notes.push({ type: 'reps', ref: it.ref, label: a.name, from, to: st.reps, unit: 'reps', w: st.w }); }
         else { const from = st.w; st.w = round(st.w + a.inc, a.inc); st.reps = a.repMin; notes.push({ type: 'load', ref: it.ref, label: a.name, from, to: st.w, unit: 'kg', reps: st.reps }); }
       } else {
         st.misses++;
@@ -1138,20 +1130,34 @@ function resolveSlots(ids, homeOnly) {
 }
 const resolveWork = (ids, homeOnly) => resolveSlots(ids, homeOnly).map(r => r.id);
 
-/* Which superset each work slot belongs to. A member names any exercise in
-   its slot, so a rotating slot pairs whichever exercise it resolves to that
-   cycle, and a substitution keeps the pairing too. */
-function supersetTags(D) {
-  const tags = new Array(D.work.length).fill(null);
-  (D.supersets || []).forEach((pair, g) => {
-    const group = String.fromCharCode(65 + g);   // A, B, …
-    pair.forEach((member, k) => {
-      const slot = D.work.findIndex(w => [].concat(w).includes(member));
-      if (slot >= 0) tags[slot] = { group, pos: k + 1, of: pair.length };
-    });
-  });
-  return tags;
+/* Which work slots end in a drop set. A member names any exercise in its
+   slot, so a rotating slot carries the drop set whichever exercise it
+   resolves to that cycle, and a substitution keeps it too. */
+function dropSlots(D) {
+  const on = new Set();
+  for (const member of D.dropsets || []) {
+    const slot = D.work.findIndex(w => [].concat(w).includes(member));
+    if (slot >= 0) on.add(slot);
+  }
+  return on;
 }
+
+/* About a quarter lighter, rounded DOWN to something loadable, and always
+   lighter than the set before it — a drop that rounds back to the working
+   weight is not a drop. Bodyweight work has nothing to drop. */
+function dropWeight(w, a) {
+  if (!w) return null;
+  const step = (a && (a.bar ? BAR_STEP : a.inc)) || 1.25;
+  const d = Math.floor((w * 0.75) / step) * step;
+  return d > 0 && d < w ? d : null;
+}
+
+/* As many as you can, so the target is only the line for colouring it: half
+   the working reps. It never decides progression. */
+const dropSet = (w, reps, a) => {
+  const dw = dropWeight(w, a);
+  return dw ? { w: dw, target: Math.max(4, Math.round(reps / 2)), drop: true, reps: null } : null;
+};
 
 /* ═══ records ═══════════════════════════════════════════════ */
 
@@ -1346,10 +1352,10 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
   if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
   await save();
   redrawItem(sess, itemIdx);
-  /* Mid-superset the timer is a countdown to the partner, so it says which. */
-  const toMate = it.ss && it.ss.pos < it.ss.of && !s.warm && it.ss.with;
-  startRest(restFor(it, s), toMate
-    ? `Superset ${it.ss.group} · now ${it.ss.with}`
+  /* Before a drop set the timer is a countdown to it, and says so. */
+  const nxt = it.sets[setIdx + 1];
+  startRest(restFor(it, s), nxt && nxt.drop && !s.warm
+    ? `Drop to ${nxt.w}kg — as many as you can`
     : `${it.name} · set ${setIdx + 1} done`);
 }
 
@@ -1361,7 +1367,12 @@ function applyWeightToSession(sess, idx, w) {
   const it = sess?.items?.[idx];
   if (!it) return;
 
-  for (const set of it.sets) if (set.reps == null && !set.warm) { set.w = w; delete set.full; }
+  for (const set of it.sets) if (set.reps == null && !set.warm && !set.drop) { set.w = w; delete set.full; }
+  /* The drop set is re-derived from the new weight, not set to it. */
+  for (const set of it.sets) if (set.drop && set.reps == null) {
+    const dw = dropWeight(w, ACCESSORIES[it.ref]);
+    if (dw) set.w = dw;
+  }
 
   if (it.kind === 'acc' && ACCESSORIES[it.ref]) {
     const rampsLogged = it.sets.some(x => x.warm && x.reps != null);
@@ -1411,7 +1422,7 @@ function redrawItem(sess, idx) {
 /* ═══ set rendering ═════════════════════════════════════════ */
 
 function setKind(s) {
-  return s.warm ? 'warm' : s.open ? 'open' : s.backoff ? 'backoff' : 'work';
+  return s.warm ? 'warm' : s.drop ? 'drop' : s.open ? 'open' : s.backoff ? 'backoff' : 'work';
 }
 
 function setRow(it, s, i) {
@@ -1423,7 +1434,8 @@ function setRow(it, s, i) {
 
   const label = {
     warm: 'Warm-up', open: 'Open set — the number is a minimum',
-    backoff: 'Back-off — lighter, more reps', work: null
+    backoff: 'Back-off — lighter, more reps',
+    drop: 'Drop set — straight after the last set, as many as you can', work: null
   }[kind];
 
   const actions = done
@@ -1442,9 +1454,19 @@ function setRow(it, s, i) {
       <button class="btn-go" data-save="${i}">Log it</button>
     </div>`;
 
-  const rpe = it.kind === 'main' && !s.warm && done
-    ? `<div class="rpe" data-set="${i}">
-         <span class="q">How hard was that?<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span>
+  /* RPE shows on the set that is up next as well as on finished ones — the
+     first working set, or one whose previous working set is logged. Shown
+     only after logging, a custom rep count meant two passes through the same
+     set: log the reps, then come back for the rating. Now it can be picked
+     first, and logging keeps it. */
+  const prevWork = (() => {
+    for (let j = i - 1; j >= 0; j--) if (!it.sets[j].warm) return it.sets[j];
+    return null;
+  })();
+  const upNext = !done && !s.warm && (!prevWork || prevWork.reps != null);
+  const rpe = it.kind === 'main' && !s.warm && (done || upNext)
+    ? `<div class="rpe ${done ? '' : 'pre'}" data-set="${i}">
+         <span class="q">${done ? 'How hard was that?' : 'How hard? Rate it now or after logging'}<button class="what" data-what="rpe" aria-label="What RPE means">?</button></span>
          <span class="nums">${Object.entries(RPE_SCALE).map(([v, r]) =>
            `<button data-rpe="${v}" aria-pressed="${s.rpe === +v}" style="--rc:${r.colour}">${v}</button>`).join('')}</span>
          ${s.rpe ? `<span class="rdesc" style="--rc:${RPE_SCALE[s.rpe].colour}">
@@ -1454,8 +1476,8 @@ function setRow(it, s, i) {
 
   return `<div class="set ${done ? (hit ? 'hit' : 'miss') : ''} k-${kind}" data-set="${i}">
       <div class="line">
-        <span class="n mono">${s.warm ? '·' : workingIndex(it, i) + 1}</span>
-        ${s.warm ? '' : (() => {
+        <span class="n mono">${s.warm ? '·' : s.drop ? '↓' : workingIndex(it, i) + 1}</span>
+        ${s.warm || s.drop ? '' : (() => {
           const st = setStatus(it, s, i);
           const open = openHist === `${it._idx}:${i}`;
           const title = { hit: 'Hit it last time', miss: 'Fell short last time', new: 'First go at this' }[st.k];
@@ -1465,7 +1487,7 @@ function setRow(it, s, i) {
         <span class="presc">
           <span class="w mono">${s.bodyweight ? 'bodyweight' : s.w ? s.w + 'kg' : 'bodyweight'}</span>
           <span class="x">×</span>
-          <span class="r">${s.open ? s.target + '+' : s.target + u}</span>
+          <span class="r">${s.drop ? 'AMRAP' : s.open ? s.target + '+' : s.target + u}</span>
           <button class="what" data-what="${kind === 'work' ? 'work' : kind}" aria-label="What this means">?</button>
         </span>
         ${label ? `<span class="kindlabel mono">${label}</span>` : ''}
@@ -1534,10 +1556,9 @@ function itemCard(it, idx) {
         return `${w.length} × ${w[0].target} · ${w[0].w}kg${it.dbl ? ' each hand' : ''}${r ? ' · ' + r + ' ramp' : ''}`; })();
 
   /* A1/A2 in place of the running number, and a line saying how to run it. */
-  const ssTag = it.ss ? `${it.ss.group}${it.ss.pos}` : null;
   const myNote = exNote(it);
-  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''} ${it.ss ? 'ss ss-' + it.ss.pos : ''}" data-item="${idx}">
-    <div class="head"><span class="idx mono">${ssTag || String(idx + 1).padStart(2, '0')}</span>
+  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
+    <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
       <span class="nm"><span class="t">${it.name}${myNote ? '<span class="hasnote" aria-label="Has a note">✎</span>' : ''}</span>
         <span class="s mono">${sub}${logged && !done ? ` · ${logged}/${it.sets.length}` : ''}</span></span>
       <span class="tick">✓</span></div>
@@ -1546,10 +1567,6 @@ function itemCard(it, idx) {
         ? `<div class="exnote"><p>${esc(myNote.text).replace(/\n/g, '<br>')}</p>
             <button class="btn-sm btn-quiet" data-noteedit="${idx}">Edit note</button></div>`
         : `<button class="addnote" data-noteedit="${idx}">+ Add a note to this exercise</button>`}
-      ${it.ss ? `<p class="ssnote mono">Superset ${it.ss.group} with ${it.ss.with || 'its partner'} — ${
-        it.ss.pos < it.ss.of
-          ? 'one set here, then straight to the partner. The rest comes after both.'
-          : 'one set here after each set of the partner, then the full rest.'}</p>` : ''}
       ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.filter(s => !s.warm).at(-1) || it.sets.at(-1)).w) : ''}
       <div class="howto">
         <p class="cue">${it.cue || cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
@@ -2219,6 +2236,11 @@ function repairState() {
     const a = ACCESSORIES[k];
     if (!a) continue;
     if (st.reps != null) st.reps = Math.max(a.repMin, Math.min(a.repMax, st.reps));
+    /* An exercise that moves in steps of two has to sit on one of its steps —
+       a saved 11 on walking lunges goes up to 12, not down to 10, because
+       that is what was actually being done. */
+    if (a.repStep > 1 && st.reps != null && (st.reps - a.repMin) % a.repStep)
+      st.reps = Math.min(a.repMax, a.repMin + Math.ceil((st.reps - a.repMin) / a.repStep) * a.repStep);
     /* Snap a drifted load back onto something loadable. A weight saved raw
        could land between plates — 44.7kg on a pair of dumbbells. */
     if (st.w) {
@@ -2997,7 +3019,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v45';
+const APP_BUILD = 'v46';
 
 let lastError = null;
 
