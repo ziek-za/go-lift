@@ -67,7 +67,7 @@ export const ACCESSORIES = {
   'sl-legcurl':   { name: 'Single-leg lying curl', iso: true, pattern: 'hinge', w: 27.5, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2.5, machine: true },
 
   calf:           { name: 'Standing calf raise', pattern: 'calf', w: 140, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 5, machine: true, note: 'Your log said stack + 80kg, so this is a guess at the total. Set it properly on the first session.' },
-  seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 2, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
+  seatedcalf:     { name: 'Seated calf raise', pattern: 'calf', w: 60, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 5, machine: true, note: 'Soleus. Cheap insurance for trail descents.' },
 
 
   /* Traps — you had shrugs in your log and I dropped them. For traps that
@@ -96,7 +96,7 @@ export const ACCESSORIES = {
   pikepush:       { name: 'Pike push-up', pattern: 'vpush', bodyweight: true, w: 0, sets: 3, reps: 10, repMin: 8, repMax: 15, inc: 0, home: true, note: 'Hips high, head travels to the floor between the hands. The closest thing to an overhead press without a rack.' },
 
   bandrow:        { name: 'Band row', pattern: 'hpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor the band at waist height, or sit with it round your feet. Pull to the belly, squeeze, slow release. Step back to make it harder.', variants: ['bandrow-single', 'dbrow'] },
-  'bandrow-single': { name: 'Single-arm band row', pattern: 'hpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'One side at a time finds the weaker one.' },
+  'bandrow-single': { name: 'Single-arm band row', pattern: 'hpull', band: true, w: 0, sets: 4, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'One side at a time finds the weaker one.' },
   bandpullover:   { name: 'Band pull-over', pattern: 'vpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor high, arms straight, pull down to the thighs. The closest you get to a lat pulldown without a bar — and it is a genuine lat builder.', variants: ['bandlat', 'strarm'] },
   bandlat:        { name: 'Band lat pulldown, kneeling', pattern: 'vpull', band: true, w: 0, sets: 3, reps: 15, repMin: 12, repMax: 20, inc: 0, home: true, note: 'Anchor above a door, kneel, pull the elbows down and back.' },
   bandpullapart:  { name: 'Band pull-apart', pattern: 'rear', band: true, w: 0, sets: 4, reps: 20, repMin: 15, repMax: 30, inc: 0, home: true, note: 'Straight arms, pull to the chest, squeeze the blades. High reps, no shrugging. Cheap volume for a weak point.' },
@@ -118,6 +118,12 @@ export const ACCESSORIES = {
   strarm:         { name: 'Straight-arm pulldown', iso: true, pattern: 'vpull', w: 40, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true },
 
   inclinebb:      { name: 'Incline barbell press', pattern: 'hpush', w: 90, sets: 3, reps: 8, repMin: 8, repMax: 9, inc: 5, bar: true, variants: ['inclinedb', 'smithincline'] },
+  /* Thursday's full-body presses. Both are standing, so the legs and trunk
+     brace the whole lift — which is what makes them full-body rather than
+     another bench variation — and neither loads the elbow flexors. */
+  cablerow1:      { name: 'Standing single-arm cable row', pattern: 'hpull', w: 25, sets: 3, reps: 10, repMin: 10, repMax: 12, inc: 2.5, machine: true, note: 'Staggered stance, cable at chest height, neutral handle. Row to the hip without letting the shoulders turn — the trunk resisting the twist is what makes it full-body. One arm at a time, so each side works at its own weight.', variants: ['dbrow', 'machinerow'] },
+  landminepress:  { name: 'Landmine press, two hands', pattern: 'hpush', w: 20, sets: 3, reps: 10, repMin: 8, repMax: 12, inc: 2.5, note: 'Log the plates on the end of the bar, not the bar. Staggered stance, bar held at the chest with both hands, press up and forward until the arms are long. The angle lands between a flat and an incline press, so it works the upper chest without the shoulder strain of pressing overhead.', variants: ['inclinedb', 'smithincline'] },
+  dbpushpress:    { name: 'Dumbbell push press', pattern: 'vpush', w: 20, dbl: true, sets: 3, reps: 8, repMin: 6, repMax: 10, inc: 2, note: 'Dumbbells at the shoulders. Dip the knees a few centimetres, drive up hard, and let that drive start the press — the legs begin it, the shoulders finish it. Lower slowly; the lowering is where the shoulders do the most work.', variants: ['stdbpress', 'dbpress'] },
   inclinedb:      { name: 'Incline dumbbell press', pattern: 'hpush', w: 23, dbl: true, sets: 3, reps: 6, repMin: 6, repMax: 8, inc: 2 },
   smithincline:   { name: 'Incline smith press', pattern: 'hpush', w: 70, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 5, machine: true },
   cableflye:      { name: 'Cable flye', iso: true, pattern: 'hpush', w: 41, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2.5, machine: true, note: 'Foam roller behind your back.' },
@@ -133,14 +139,14 @@ export const ACCESSORIES = {
   stdbpress:      { name: 'Standing dumbbell press', pattern: 'vpush', w: 18, dbl: true, sets: 3, reps: 8, repMin: 8, repMax: 10, inc: 2, home: true },
 
   leancable:      { name: 'Leaning cable lateral raise', pattern: 'lat', w: 12.5, sets: 4, reps: 8, repMin: 8, repMax: 12, inc: 1.25, machine: true, note: 'Lean away from the stack, arm crossing the body at the bottom. That bottom position is why this one carries the most sets. Warm the cuff first — it bites cold.', variants: ['dblat', 'cablelat-light'] },
-  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 3, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Raise in the scapular plane — arms about 30° in front of your body, not straight out to the sides — with thumbs neutral. That keeps the space the rotator cuff runs through open. Turning the thumbs down closes it, which is the usual reason laterals start to ache.' },
+  dblat:          { name: 'Dumbbell lateral raise', pattern: 'lat', w: 14, sets: 4, reps: 8, repMin: 8, repMax: 12, inc: 2, home: true, note: 'Raise in the scapular plane — arms about 30° in front of your body, not straight out to the sides — with thumbs neutral. That keeps the space the rotator cuff runs through open. Turning the thumbs down closes it, which is the usual reason laterals start to ache.' },
   leandb:         { name: 'Leaning dumbbell lateral raise', pattern: 'lat', w: 8, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1, home: true, note: 'Hold a rack upright and lean away. The lean loads the bottom of the range, which the standing version misses entirely.' },
-  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 3, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
+  'cablelat-light': { name: 'Cable lateral raise, light', pattern: 'lat', w: 7.5, sets: 4, reps: 12, repMin: 10, repMax: 15, inc: 1.25, machine: true, note: 'Last set: when the reps stop, keep going with half reps out of the bottom until you cannot.' },
 
   /* Rear delts — flagged weak. Three exposures a week, all high rep, none heavy. */
   reardb:         { name: 'Bent-over rear delt raise', pattern: 'rear', w: 8, dbl: true, sets: 3, reps: 12, repMin: 12, repMax: 15, inc: 1, home: true, note: 'Thumbs down. No shrug, no swing.', variants: ['facepull', 'cablerear', 'proney'] },
   facepull:       { name: 'Face pull', pattern: 'rear', w: 25, sets: 4, reps: 15, repMin: 12, repMax: 18, inc: 2.5, machine: true, note: 'To the eyebrows, rotate at the end.' },
-  cablerear:      { name: 'Single-arm cable rear delt', pattern: 'rear', w: 7.5, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1.25, machine: true },
+  cablerear:      { name: 'Single-arm cable rear delt', pattern: 'rear', w: 7.5, sets: 4, reps: 15, repMin: 12, repMax: 18, inc: 1.25, machine: true },
   proney:         { name: 'Prone Y raise on the floor', pattern: 'rear', w: 4, dbl: true, sets: 3, reps: 15, repMin: 12, repMax: 18, inc: 1, home: true, note: 'Light. Hold a beat at the top.' },
 
   /* Biceps — flagged weak. Three exposures, a different elbow position each time. */
@@ -413,8 +419,11 @@ export const DAYS = {
        weakest work in the session. The band row stays: with more pressing at
        home, it is the pull that keeps the session balanced. The lateral raise
        stays too; shoulders are not being traded for chest. */
+    /* v47: the dumbbell lateral raise replaces the band one — shoulder size is
+       a primary focus, and a dumbbell loads the side delt hardest low in the
+       range, where a band barely loads it at all. */
     work: ['floorpress', 'pushup-deficit', 'bandrow-single', 'bbcurl', 'seatedhammer',
-           'bandpullapart', 'dbohext', 'bandlateral'],
+           'bandpullapart', 'dbohext', 'dblat'],
     prepKey: 'home', prep: 3,
     /* Three, not four. Core runs at about twice its weekly target across the
        week, and this was the longest session of the five. */
@@ -433,20 +442,30 @@ export const DAYS = {
     core: 1, coreQ: ['Anti-extension']
   },
   lowerB: {
-    key: 'lowerB', label: 'Lower · moderate', weekday: 4, venue: 'gym', load: 'moderate',
+    key: 'lowerB', label: 'Full body · moderate', weekday: 4, venue: 'gym', load: 'moderate',
     main: 'dead', backoff: { pct: 0.65, sets: 2, reps: 5 },
     /* The back extension takes the cable curl's place: a fourth biceps slot was
        the least useful thing on a leg day, and the lower back is the part of
        your posture the programme was doing nothing for. */
-    /* The dumbbell flye is chest work this day never had, and it lives here
-       rather than on Monday because Monday was already the longest session
-       of the week. Last, so it costs the legs nothing — and a flye asks
-       nothing of the legs that have a run in them tonight. */
-    work: [['frontsq', 'hack', 'beltsq'], 'rdl', ['legcurl', 'sl-legcurl'], 'backext', 'shrug-machine', 'revcurl', 'dbflye'],
+    /* v47: a full-body day rather than a second leg day. Two standing presses
+       come in — the landmine press for chest, the push press for shoulders —
+       and both use the legs and trunk to brace or drive. The RDL goes (the
+       deadlift, leg curl and back extension keep hamstrings over target) and
+       so does the reverse curl, which is one of the two exercises your right
+       elbow cannot tolerate. A standing cable row takes the shrug's slot: two
+       new presses with no pull would have tipped the week's balance back
+       towards pushing, and traps are covered by Monday's shrugs, the farmer's
+       hold and the deadlift. The presses are split by the row and the leg
+       curl, so the shoulders get a breather between them.
+
+       The dumbbell flye stays last: chest work that asks nothing of the legs
+       that have a run in them tonight. */
+    work: [['frontsq', 'hack', 'beltsq'], 'landminepress', 'cablerow1', ['legcurl', 'sl-legcurl'], 'dbpushpress',
+           'backext', 'dbflye'],
     dropsets: ['dbflye'],
     prepKey: 'dead', prep: 4,
     core: 2, coreQ: ['Anti-lateral', 'Anti-extension', 'Anti-rotation', 'Flexion'],
-    note: 'Easy run today, so the leg work is lighter than Monday by design — do not add it back. The flye at the end is chest, not legs.'
+    note: 'Easy run today, so the leg work is lighter than Monday by design — do not add it back. The presses and the flye are upper body; the legs only brace or drive them.'
   },
   upperB: {
     key: 'upperB', label: 'Upper · press & arms', weekday: 5, venue: 'gym', load: 'heavy',
@@ -463,7 +482,7 @@ export const DAYS = {
        seconds. */
     work: ['smithincline', 'dbrow', ['fixedlat', 'pullup'], 'pecdeck', 'facepull', 'cablelat-light',
            'ezpreacher', ['ropepush', 'rollingbar']],
-    dropsets: ['pecdeck', 'ezpreacher', 'ropepush'],
+    dropsets: ['pecdeck', 'ezpreacher', 'ropepush', 'cablelat-light'],
     prepKey: 'ohp', prep: 3, core: 0
   }
 };
@@ -491,16 +510,24 @@ export const CORE_START = {
    arms, forearms, traps and abs carry the volume. Legs sit at a genuine
    maintenance level, which is also about what 40km of running a week leaves
    room to recover from — this is a deliberate trade, not an oversight. */
+/* v47: the targets now count the way the seven-day panel counts. They were
+   set as straight sets against the programme on paper, but the panel counts
+   every logged set — a main lift's two back-off sets included, so bench is
+   five chest sets, not three — and a drop set as half. Measured against
+   different rules, several could never read true: calves needed three sets
+   from a substitute that only had two, and core was asked for half of what
+   the programme gives it.
+
+   Each target sits just under what a fully logged week delivers, so green
+   means the programme was done and a missed set or two still reads green. */
 export const VOLUME_TARGET = {
-  /* Chest went from an afterthought to a stated weak point, so its target
-     moved with it: 16-18 hard sets a week is the range the volume literature
-     supports for a muscle you are actually prioritising. */
-  quads: 10, 'hams/glutes': 10, calves: 3, chest: 24, 'front delts': 5,
-  /* Rowing at twelve so it can stand against eighteen of pressing — the
-     balance that matters most for how the shoulders sit. Side delts came down
-     to seven when the training moved off shoulders and onto chest. */
-  'back horizontal': 12, 'back vertical': 6, 'side delts': 7,
-  'rear delts': 11, biceps: 13, triceps: 9, traps: 8, forearms: 9, core: 12
+  quads: 13, 'hams/glutes': 10, calves: 3,
+  /* about 30 counted sets a week: high, deliberately, for the lagging muscle */
+  chest: 28, 'front delts': 7,
+  'back horizontal': 15, 'back vertical': 6, 'side delts': 8, 'rear delts': 11,
+  /* biceps sit lower while the right elbow is rehabbing: no drop sets on curls */
+  biceps: 11, triceps: 9,
+  traps: 4, forearms: 6, core: 22
 };
 
 export const MUSCLE_OF = {
@@ -544,6 +571,9 @@ export const REST = {
   /* The pause before a drop set: long enough to move a pin or pick up the
      lighter dumbbells, short enough that the muscle has not recovered. */
   dropGap: 10,
+  /* between rehab holds and sets: light load, and the tendon is the point,
+     not the muscle */
+  rehab: 45,
   /* Calves, forearms and traps held every set at 60 seconds in the same logs
      — not one of them dropped off — so they keep it. The longer rest goes
      where the collapse actually happened, not everywhere by default. */
@@ -680,6 +710,46 @@ export const PREP = {
 
 /* ── What the words mean ───────────────────────────────────
    Shown against the set type it describes, not buried in a help screen. */
+/* ═══ right-arm rehab ═══════════════════════════════════════
+   Pain on the outside of the right elbow where the tendon attaches, worst on
+   reverse curls, preacher curls and wide-grip pull-ups, there during the lift
+   and gone after. That pattern fits an irritated tendon, and tendons respond
+   to graded load, not rest — so the arm keeps working, inside limits.
+
+   The limits are the pain-monitoring model (Silbernagel et al.): pain during
+   loading up to about 5/10 is acceptable, as long as it is back to baseline
+   by the next morning and is not climbing week to week. This plan aims
+   lower, at 3 or under, and treats anything above 5 — or a bad next morning —
+   as a step back.
+
+   Stages load the tendon progressively harder: a hold with no movement, then
+   slow curls in the easiest grip, then the palm-up grip, then the stretched
+   position that hurts most now. Two clean sessions moves you up a stage.
+   Nothing here is a diagnosis; it is a loading plan. */
+export const REHAB = {
+  side: 'right',
+  days: ['home', 'upperA', 'upperB'],   /* three times a week */
+  /* The exercises that hurt, and what stands in while the arm settles. Each
+     stand-in can be done one arm at a time or with a neutral grip, so the left
+     arm keeps the programmed weight. */
+  swaps: { revcurl: 'wristcurl', ezpreacher: 'seatedhammer', dbpreacher: 'seatedhammer', pullup: 'latpull' },
+  /* No drop sets on these while rehabbing: training to failure is the
+     hardest thing you can ask of an irritated tendon. */
+  noDrop: ['biceps', 'forearms'],
+  stages: [
+    { name: 'Isometric hammer hold', unit: 'secs', sets: 4, target: 30, startW: 6, inc: 2,
+      cue: 'Right arm only. Dumbbell in a hammer grip — thumb up — elbow bent to 90°, upper arm by your side. Hold still for thirty seconds at an effort around 6/10, with 45 seconds between holds. No movement means the tendon takes load without being stretched or squeezed.' },
+    { name: 'Slow hammer curl', unit: 'reps', sets: 3, target: 12, startW: 6, inc: 2,
+      cue: 'Right arm only, thumb up. Three seconds up, three seconds down, full range but stop short of the very bottom if that is where it bites. The slow tempo keeps the load on the tendon rather than on momentum.' },
+    { name: 'Slow palm-up curl', unit: 'reps', sets: 3, target: 10, startW: 6, inc: 2,
+      cue: 'Right arm only, palm up — the grip that loads the biceps tendon most. Same three-up, three-down tempo. If it bites above 3/10, go back to the hammer grip for another week.' },
+    { name: 'Slow preacher curl, light', unit: 'reps', sets: 3, target: 10, startW: 4, inc: 2,
+      cue: 'Right arm only, on the preacher pad with a light dumbbell — the stretched position that hurts most now. Three seconds down. Two clean sessions here and the arm is ready for the normal programme again.' }
+  ],
+  /* pain thresholds, 0–10 during the exercise */
+  clean: 3, setback: 5, levelUp: 2
+};
+
 export const GLOSSARY = {
   warm: {
     title: 'Warm-up set',
@@ -721,6 +791,9 @@ export const CUES = {
   frontsq:    'Elbows high. The moment they drop, the bar follows.',
   rdl:        'Push the hips back, bar stays against the legs. Stop where the stretch is, not where the floor is.',
   backext:    'Squeeze the glutes before you rise and stop at a straight line. Going past it into an arch loads the joints, not the muscle.',
+  landminepress: 'Brace as if about to be pushed: glutes tight, ribs down. Press up and slightly forward, and do not let the lower back arch to finish the rep.',
+  cablerow1:  'Lead with the elbow, finish with the shoulder blade back. If the torso rotates to get the handle in, the weight is too heavy.',
+  dbpushpress: 'Short, sharp dip — knees only, chest stays up. If the dip turns into a squat, the legs are doing the work the shoulders are meant to.',
   inclinedb:  'Bench at about 30°, not 45 — steeper hands the work to the front delts and takes it off the upper chest you are after. Shoulder blades pinned back and down, lower to the top of the chest, and press up and slightly in.',
   smithincline:'Same 30° bench, set so the bar meets the chest just under the collarbone. Shoulder blades back and down before the first rep, and keep them there — the moment they roll forward, the shoulders take over.',
   dbrow:      'Hinge until the back is near flat, then pull the elbow towards the hip, not the armpit. Finish by squeezing the shoulder blade back — that last inch is the part that pulls your shoulders back for the rest of the day.',
@@ -806,7 +879,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v46', date: '2026-11-11' };
+export const BUILD = { version: 'v47', date: '2026-11-16' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

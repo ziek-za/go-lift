@@ -3,7 +3,7 @@ import {
   CORE_TRACKS, CORE_LEVEL_UP, CORE_ROTATION, CORE_START,
   DAYS, ADHOC_FOCUS, REST, REST_FLOOR, SHORT_REST_PATTERNS, RECOVERY_WINDOW_H, CLUBS,
   GLOSSARY, CUES, howToUrl, PHRASES, MISS_PHRASES, RPE_SCALE, slotsFor,
-  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES
+  VOLUME_TARGET, MUSCLE_OF, SEED_RECORDS, BUILD, FINISH_LINES, REHAB
 } from './data.js';
 
 /* ═══ storage ═══════════════════════════════════════════════ */
@@ -124,6 +124,7 @@ function restFor(item, set) {
   const nextSet = item.sets && item.sets[item.sets.indexOf(set) + 1];
   if (nextSet && nextSet.drop && !set.warm) return REST.dropGap;
   let r;
+  if (item.kind === 'rehab') return REST.rehab;
   if (item.kind === 'core') r = REST.core;
   else if (item.kind === 'main') {
     const pct = set.w / (S.mains[item.ref]?.tm || set.w);
@@ -352,6 +353,72 @@ function coreItem(track) {
 const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+/* ═══ right-arm rehab ═══════════════════════════════════════
+   Graded loading for the right elbow, run on the pain-monitoring model: a
+   0–10 rating after each rehab session, and a check the next session that
+   the arm was back to normal the morning after. Clean sessions move it up;
+   a bad one moves it back. All of it lives in S.rehab and never touches the
+   lifting progression. */
+const rehabOn = () => !!(S.rehab && S.rehab.active);
+const rehabStage = () => REHAB.stages[Math.min(S.rehab.stage || 0, REHAB.stages.length - 1)];
+
+function rehabItem() {
+  const stage = rehabStage(), r = S.rehab;
+  const last = (r.log || []).at(-1);
+  return {
+    kind: 'rehab', ref: 'rehab', stage: r.stage,
+    name: `Right arm rehab · ${stage.name}`, unit: stage.unit, cue: stage.cue,
+    sets: Array.from({ length: stage.sets }, () => ({ w: r.w, target: stage.target, reps: null })),
+    pain: null,
+    /* The morning-after question belongs to the previous rehab session, and
+       is asked once — here, the next time the arm is trained. */
+    askMorning: last && last.morning == null ? last.d : null
+  };
+}
+
+/* The pain-monitoring rules. Returns a ledger note. */
+function applyRehab(it, sess) {
+  const r = S.rehab, st = rehabStage();
+  const logged = it.sets.filter(x => x.reps != null);
+  if (!logged.length) return null;
+  const from = { stage: r.stage, w: r.w };
+  const pain = it.pain;
+  const allHit = logged.length >= it.sets.length && logged.every(x => x.reps >= x.target);
+  r.log = [...(r.log || []), { d: sess.date, stage: r.stage, w: r.w, pain, morning: null }].slice(-60);
+  let verdict;
+  if (pain == null) verdict = 'hold';                       /* unrated: change nothing */
+  else if (pain > REHAB.setback) verdict = 'back';
+  else if (pain > REHAB.clean || !allHit) verdict = 'hold';
+  else verdict = 'clean';
+
+  if (verdict === 'back') {
+    r.clean = 0;
+    if (r.stage > 0) { r.stage--; r.w = Math.max(REHAB.stages[r.stage].startW, round(r.w * 0.7, 2)); }
+    else r.w = Math.max(2, round(r.w - st.inc, 2));
+  } else if (verdict === 'clean') {
+    r.clean = (r.clean || 0) + 1;
+    if (r.clean >= REHAB.levelUp && r.stage < REHAB.stages.length - 1) {
+      r.stage++; r.clean = 0;
+      r.w = Math.max(REHAB.stages[r.stage].startW, round(r.w * 0.7, 2));
+    } else if (r.clean >= REHAB.levelUp) {
+      r.done = sess.date;                                   /* top stage, clean twice */
+    } else r.w = round(r.w + st.inc, 2);
+  } else r.clean = 0;
+  return { type: 'rehab', ref: 'rehab', label: 'Right arm rehab', verdict, pain,
+    from: from.stage, to: r.stage, fromW: from.w, toW: r.w };
+}
+
+/* A bad morning after counts as a setback, applied the moment it is reported. */
+function rehabMorning(d, ok) {
+  const r = S.rehab, e = (r.log || []).find(x => x.d === d);
+  if (!e || e.morning != null) return null;
+  e.morning = !!ok;
+  if (ok) return null;
+  r.clean = 0;
+  if (r.stage > 0) { r.stage--; r.w = Math.max(REHAB.stages[r.stage].startW, round(r.w * 0.7, 2)); }
+  return rehabStage().name;
+}
+
 /* ═══ exercise notes ════════════════════════════════════════
    A note belongs to the exercise, not the session, so it is there every time
    that exercise is — on any day, in any cycle, or when it is substituted in.
@@ -360,6 +427,7 @@ const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
 function noteKey(it) {
   if (!it || !it.ref) return null;
   if (it.kind === 'core') return `core:${it.ref}:${it.level}`;
+  if (it.kind === 'rehab') return `rehab:${it.stage}`;
   if (it.kind === 'main' || it.kind === 'acc') return `${it.kind}:${it.ref}`;
   return null;
 }
@@ -397,6 +465,7 @@ const setsOf = id => (ACCESSORIES[id] && ACCESSORIES[id].sets) || 3;
 
 
 function nudgeWeight(kind, ref, dir) {
+  if (kind === 'rehab') { S.rehab.w = Math.max(1, round(S.rehab.w + dir * 1, 1)); return S.rehab.w; }
   if (kind === 'core') {
     if (!trackOf(ref)) return null;
     const cur = coreW(ref), step = cur >= 40 ? 2.5 : cur >= 10 ? 1 : 0.5;
@@ -417,6 +486,7 @@ function nudgeWeight(kind, ref, dir) {
    with the division still showing. Nothing loads 44.7kg. */
 function setWeight(kind, ref, value) {
   const raw = Math.max(0, parseFloat(value) || 0);
+  if (kind === 'rehab') { S.rehab.w = round(raw, 1); return S.rehab.w; }
   if (kind === 'core') {
     const step = raw >= 40 ? 2.5 : raw >= 10 ? 1 : 0.5;
     const v = round(raw, step);
@@ -504,6 +574,20 @@ function buildPlanned(dateStr, dayKey) {
      forearms that are already done, not by the muscle it is meant to train.
      Both stay in the programme; a carry just lands on a day without a hold. */
   const slots = resolveSlots(slotsFor(D, cycleNo(dateStr)), atHome);
+  /* While the arm settles, the exercises that hurt are stood in for — and a
+     stand-in already in the session is not doubled up; that slot just drops. */
+  if (rehabOn()) {
+    for (const r of slots) {
+      const sub = REHAB.swaps[r.id];
+      if (sub && ACCESSORIES[sub]) { r.rehabFor = r.id; r.id = sub; }
+    }
+    const seen = new Set();
+    for (let k = slots.length - 1; k >= 0; k--) {
+      if (seen.has(slots[k].id) && slots[k].rehabFor) slots.splice(k, 1);
+      else seen.add(slots[k].id);
+    }
+    if (REHAB.days.includes(D.key)) items.push(rehabItem());
+  }
   const dayWork = slots.map(r => r.id);
   const drops = dropSlots(D);
   const gripTaken = dayWork.some(id => ACCESSORIES[id]?.grip);
@@ -521,19 +605,20 @@ function buildPlanned(dateStr, dayKey) {
 
   const loaded = new Set();
   if (D.main) loaded.add(MAINS[D.main].pattern);
-  for (const { id, slot } of slots) {
+  for (const { id, slot, rehabFor } of slots) {
     const a = ACCESSORIES[id], s = S.acc[id];
     const n = setsOf(id);
     const sets = [
       ...accessoryRamp(a, s.w, loaded),
       ...Array.from({ length: n }, () => ({ w: s.w, target: s.reps, reps: null }))
     ];
-    if (drops.has(slot)) {
+    if (drops.has(slot) && !(rehabOn() && REHAB.noDrop.includes(a.pattern))) {
       const last = sets.filter(x => !x.warm).at(-1);
       const d = last && dropSet(last.w, last.target, a);
       if (d) sets.push(d);
     }
-    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets });
+    items.push({ kind: 'acc', ref: id, name: a.name, note: a.note, dbl: a.dbl, bar: a.bar, sets,
+      ...(rehabFor ? { rehabFor } : {}) });
     loaded.add(a.pattern);
   }
 
@@ -617,6 +702,7 @@ const clone = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
 
 function progressionSnapshot(sess) {
   const snap = { mains: {}, acc: {}, records: {}, coreHist: {}, coreClean: {}, coreLevel: {},
+                 ...((sess.items || []).some(i => i.kind === 'rehab') ? { rehab: clone(S.rehab) } : {}),
                  coreRefs: [], coreSeen: clone(S.coreSeen || []), coreQ: clone(S.coreQ || []) };
   for (const it of sess.items || []) {
     if (it.kind === 'main') {
@@ -657,6 +743,7 @@ function restoreProgression(snap) {
   for (const [k, v] of Object.entries(snap.coreHist || {})) put(S.coreHist, k, v);
 
   S.coreSeen = snap.coreSeen || []; S.coreQ = snap.coreQ || [];
+  if (snap.rehab) S.rehab = snap.rehab;
   return true;
 }
 
@@ -702,6 +789,12 @@ function legacyRollback(sess) {
   };
 
   for (const n of sess.notes || []) {
+    if (n.type === 'rehab' && S.rehab) {
+      S.rehab.stage = n.from; S.rehab.w = n.fromW;
+      S.rehab.log = (S.rehab.log || []).filter(e => e.d !== sess.date);
+      did.push('Rehab back to ' + REHAB.stages[n.from].name + ' at ' + n.fromW + 'kg');
+      continue;
+    }
     if (n.from === undefined || n.from === null) continue;
     const ref = refOf(n);
     if (n.type === 'tm' || n.type === 'reset') {
@@ -779,6 +872,11 @@ function applyProgression(sess) {
           else notes.push({ type: 'hold', ref: it.ref, label: M.name, to: st.tm, unit: 'kg' });
         }
       }
+    }
+    if (it.kind === 'rehab' && S.rehab) {
+      const n = applyRehab(it, sess);
+      if (n) notes.push(n);
+      continue;
     }
     if (it.kind === 'acc') {
       const a = ACCESSORIES[it.ref], st = S.acc[it.ref];
@@ -1193,12 +1291,19 @@ const bestEstimate = lift => {
 
 /* ═══ on track ══════════════════════════════════════════════ */
 
+/* A drop set is a few reps tacked onto the end of a set, not a set of its
+   own, so it counts as half. Counted whole, three drop sets a week made chest
+   and triceps look a set and a half better than they were. Rehab sets do not
+   count at all: they are loading a tendon, not training a muscle. */
+const setWeight$ = x => x.drop ? 0.5 : 1;
+
 function setsLast7ByMuscle() {
   const cut = Date.now() - 7 * 864e5, m = {};
   for (const s of S.sessions) {
     if (!s.done || parseDay(s.date) < cut) continue;
     for (const it of s.items) {
-      const logged = it.sets.filter(x => x.reps != null && !x.warm).length;
+      if (it.kind === 'rehab') continue;
+      const logged = it.sets.filter(x => x.reps != null && !x.warm).reduce((n, x) => n + setWeight$(x), 0);
       if (!logged) continue;
       if (it.kind === 'core') { m.core = (m.core || 0) + logged; continue; }
       const pat = it.kind === 'main' ? MAINS[it.ref]?.pattern : ACCESSORIES[it.ref]?.pattern;
@@ -1549,7 +1654,8 @@ function itemCard(it, idx) {
   const logged = it.sets.filter(s => s.reps != null).length;
   const pl = it.kind === 'acc' ? plateauFor(it.ref) : null;
   const cue = CUES[it.ref];
-  const sub = it.kind === 'main' ? `${it.wave} · TM ${S.mains[it.ref].tm}kg`
+  const sub = it.kind === 'rehab' ? `Stage ${it.stage + 1} of ${REHAB.stages.length} · ${it.sets.length} × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''} · ${it.sets[0].w}kg · right arm`
+    : it.kind === 'main' ? `${it.wave} · TM ${S.mains[it.ref].tm}kg`
     : it.kind === 'core' ? `${it.quality} · level ${it.level}/${it.levels} · ${it.sets.length} × ${it.sets[0].target}${it.unit === 'secs' ? 's' : ''}${it.sets[0].w ? ' · ' + it.sets[0].w + 'kg' : ''}`
     : (() => { const w = it.sets.filter(x => !x.warm);
         const r = it.sets.length - w.length;
@@ -1557,7 +1663,7 @@ function itemCard(it, idx) {
 
   /* A1/A2 in place of the running number, and a line saying how to run it. */
   const myNote = exNote(it);
-  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''}" data-item="${idx}">
+  return `<div class="card ${done ? 'done' : ''} ${pl ? 'stalled' : ''} ${it.kind === 'rehab' ? 'rehab' : ''}" data-item="${idx}">
     <div class="head"><span class="idx mono">${String(idx + 1).padStart(2, '0')}</span>
       <span class="nm"><span class="t">${it.name}${myNote ? '<span class="hasnote" aria-label="Has a note">✎</span>' : ''}</span>
         <span class="s mono">${sub}${logged && !done ? ` · ${logged}/${it.sets.length}` : ''}</span></span>
@@ -1567,6 +1673,14 @@ function itemCard(it, idx) {
         ? `<div class="exnote"><p>${esc(myNote.text).replace(/\n/g, '<br>')}</p>
             <button class="btn-sm btn-quiet" data-noteedit="${idx}">Edit note</button></div>`
         : `<button class="addnote" data-noteedit="${idx}">+ Add a note to this exercise</button>`}
+      ${it.rehabFor ? `<p class="rehabfor mono">Standing in for ${ACCESSORIES[it.rehabFor]?.name || it.rehabFor} while the right arm settles. ${ACCESSORIES[it.ref]?.dbl
+        ? 'Left arm at the programmed weight; right arm at whatever keeps it at 3/10 or under.'
+        : 'Both arms share this one, so if the right elbow goes past 3/10, lighten the whole thing rather than grinding through.'}${it.ref === 'latpull' ? ' Shoulder-width or neutral grip, not wide.' : ''}</p>` : ''}
+      ${it.kind === 'rehab' && it.askMorning ? `<div class="rehabq">
+        <p>Was the arm back to normal the morning after ${parseDay(it.askMorning).toLocaleDateString('en-ZA', { weekday: 'long' })}'s session?</p>
+        <div class="btn-row" style="margin:0">
+          <button class="btn-sm" data-morning="${idx}|1">Yes, back to normal</button>
+          <button class="btn-sm" data-morning="${idx}|0">No, still sore</button></div></div>` : ''}
       ${it.kind === 'main' || it.bar ? barDiagram((it.sets.find(s => s.open) || it.sets.filter(s => !s.warm).at(-1) || it.sets.at(-1)).w) : ''}
       <div class="howto">
         <p class="cue">${it.cue || cue || it.note || 'Control the weight through the whole range. If form breaks, the set is over.'}</p>
@@ -1584,6 +1698,12 @@ function itemCard(it, idx) {
           <button data-wn="1" data-wk="${it.kind}" data-wr="${it.ref}" data-wi="${idx}" aria-label="More">+</button>
         </span></div>` : ''}
       ${it.sets.map((s, i) => setRow(it, s, i)).join('')}
+      ${it.kind === 'rehab' ? `<div class="rpe pain" data-set="pain">
+        <span class="q">How much did it hurt during, 0–10?</span>
+        <span class="rbtns">${Array.from({ length: 11 }, (_, n) =>
+          `<button data-pain="${idx}|${n}" aria-pressed="${it.pain === n}" class="${n <= REHAB.clean ? 'ok' : n <= REHAB.setback ? 'mid' : 'hi'}">${n}</button>`).join('')}</span>
+        <p class="hint" style="margin:6px 0 0">3 or under moves you on. 4–5 holds where you are. Over 5 — or still sore the next morning — steps back a stage.</p>
+      </div>` : ''}
       <div class="btn-row">
         ${it.kind === 'acc' ? `<button class="btn-sm btn-quiet" data-unavailable="${idx}">Not available here</button>` : ''}
         ${it.added ? `<button class="btn-sm btn-quiet" data-remove="${idx}">Remove</button>` : ''}
@@ -1956,7 +2076,7 @@ function progressVolume(done) {
         const n = vol[k] || 0, pct = Math.min(100, Math.round((n / target) * 100));
         return `<div class="vrow">
           <span class="vn">${k}</span>
-          <span class="mono vv ${n >= target ? 'up' : n >= target * 0.7 ? 'flat' : 'down'}">${n}<em>/${target}</em></span>
+          <span class="mono vv ${n >= target ? 'up' : n >= target * 0.7 ? 'flat' : 'down'}">${+n.toFixed(1)}<em>/${target}</em></span>
           <span class="vtrack"><i style="width:${pct}%;background:${n >= target ? 'var(--good)' : n >= target * 0.7 ? 'var(--warn)' : 'var(--stall)'}"></i></span>
         </div>`;
       }).join('')}
@@ -2166,6 +2286,21 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
       <button id="export">Export copy</button></div>
     <div class="btn-row"><button id="import">Restore from file</button></div>
 
+    <p class="eyebrow">Right arm rehab</p>
+    <div class="card" style="padding:14px">
+      ${rehabOn() ? (() => {
+        const r = S.rehab, pains = (r.log || []).filter(e => e.pain != null).slice(-8);
+        const wks = Math.max(1, Math.round((parseDay(today()) - parseDay(r.since)) / 6048e5));
+        return `<p style="margin:0 0 6px">On for ${wks} week${wks > 1 ? 's' : ''} — stage ${r.stage + 1} of ${REHAB.stages.length}, <b>${rehabStage().name}</b> at ${r.w}kg.</p>
+          ${pains.length ? `<p class="hint mono" style="margin:0 0 8px">Pain, last ${pains.length}: ${pains.map(e =>
+            `<span class="pn ${e.pain <= REHAB.clean ? 'ok' : e.pain <= REHAB.setback ? 'mid' : 'hi'}">${e.pain}</span>`).join(' ')}</p>` : ''}
+          ${r.done ? `<p class="hint" style="margin:0 0 8px">Two clean sessions at the top stage. The arm looks ready for the normal programme.</p>` : ''}
+          <p class="hint" style="margin:0 0 10px">Reverse curls, preacher curls and wide-grip pull-ups are stood in for, and curls get no drop sets, until this is ended.</p>
+          <button class="btn-sm ${r.done ? 'btn-go' : ''}" id="rehaboff">The arm is fine — end rehab</button>`;
+      })() : `<p class="hint" style="margin:0 0 10px">Off. Starting it swaps out the exercises that aggravate the right elbow and adds a graded rehab exercise three times a week.</p>
+          <button class="btn-sm" id="rehabon">Start right-arm rehab</button>`}
+    </div>
+
     <p class="eyebrow">Club</p>
     <div class="card" style="padding:14px">
       <div class="chips">${CLUBS.map(c => `<button data-club="${c}" aria-pressed="${S.club === c}">${c}</button>`).join('')}</div>
@@ -2262,6 +2397,12 @@ function repairState() {
       .filter(x => Array.isArray(x) ? x.length : ACCESSORIES[x]);
   S.settings.swaps = Object.fromEntries(
     Object.entries(S.settings.swaps || {}).filter(([a, b]) => ACCESSORIES[a] && ACCESSORIES[b]));
+
+  /* The right-arm rehab starts on with v47, because it was asked for; after
+     that it is whatever the person set it to. */
+  if (!S.rehab) S.rehab = { active: true, since: today(), stage: 0, clean: 0,
+    w: REHAB.stages[0].startW, log: [] };
+  S.rehab.stage = Math.max(0, Math.min(REHAB.stages.length - 1, S.rehab.stage || 0));
 
   /* S.posture, from the v43–v44 posture tab, is left exactly as it is. The
      practice was folded into the lifting programme, but three sessions and
@@ -2642,6 +2783,44 @@ function wire() {
       await save(); render(); return;
     }
 
+    /* ── rehab ─────────────────────────────────────────────── */
+    const pn = t.closest('[data-pain]');
+    if (pn) {
+      const [idx, n] = pn.dataset.pain.split('|').map(Number);
+      const sess = $('#v-today')._sess, it = sess?.items[idx];
+      if (!it || it.kind !== 'rehab') return;
+      it.pain = n;
+      if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+      await save(); redrawItem(sess, idx);
+      toast(n <= REHAB.clean ? 'Logged — that counts as clean' : n <= REHAB.setback ? 'Logged — holding at this stage' : 'Logged — that steps back a stage when you finish');
+      return;
+    }
+    const mo = t.closest('[data-morning]');
+    if (mo) {
+      const [idx, ok] = mo.dataset.morning.split('|').map(Number);
+      const sess = $('#v-today')._sess, it = sess?.items[idx];
+      if (!it || it.kind !== 'rehab' || !it.askMorning) return;
+      const back = rehabMorning(it.askMorning, ok === 1);
+      /* rebuild the rehab item so a step back shows straight away */
+      const fresh = rehabItem();
+      sess.items[idx] = { ...fresh, askMorning: null };
+      await save(); render();
+      toast(back ? `Stepped back to ${back} — the tendon needed longer` : 'Good — carrying on');
+      return;
+    }
+    if (t.id === 'rehaboff') {
+      askConfirm({ title: 'End the right-arm rehab?',
+        body: 'Reverse curls, preacher curls and wide-grip pull-ups come back into the programme, curls get their drop sets again, and the rehab exercise stops. If the elbow complains, you can start it again here.',
+        label: 'End rehab', act: 'rehaboff' });
+      return;
+    }
+    if (t.id === 'rehabon') {
+      S.rehab = { ...(S.rehab || {}), active: true, since: today(), stage: 0, clean: 0,
+        w: REHAB.stages[0].startW, log: (S.rehab && S.rehab.log) || [], done: null };
+      draft = null; await save(); render(); toast('Rehab on — the arm work changes from the next session');
+      return;
+    }
+
     const rpe = t.closest('button[data-rpe]');
     if (rpe) {
       const card = rpe.closest('[data-item]'), sess = $('#v-today')._sess;
@@ -2840,15 +3019,18 @@ function wire() {
       const all = work.flatMap(i => i.sets.filter(x => !x.warm));
       const logged = all.filter(x => x.reps != null).length;
       const untouched = work.filter(i => !i.sets.some(x => x.reps != null && !x.warm)).map(i => i.name);
+      const rh = sess.items.find(i => i.kind === 'rehab');
+      const unrated = rh && rh.sets.some(x => x.reps != null) && rh.pain == null
+        ? ' The rehab exercise has no pain rating — without one it stays where it is.' : '';
       askConfirm({
         title: logged < all.length ? 'Finish with sets left?' : 'Finish this session?',
-        body: logged < all.length
+        body: (logged < all.length
           ? `${logged} of ${all.length} sets logged.`
             + (untouched.length ? ` Nothing logged yet for ${untouched.length > 3
                 ? untouched.slice(0, 3).join(', ') + ' and ' + (untouched.length - 3) + ' more'
                 : untouched.join(', ')}.` : '')
             + ' Unlogged sets simply do not count — nothing moves up or down for an exercise you did not log.'
-          : `All ${all.length} sets logged. Progression is worked out now.`,
+          : `All ${all.length} sets logged. Progression is worked out now.`) + unrated,
         label: 'Finish', act: 'finish'
       });
       return;
@@ -2929,6 +3111,7 @@ function wire() {
         S.feedback = (S.feedback || []).filter(x => !(x.id === id && fbLive(x)));
         await save(); render(); toast('Removed'); return;
       }
+      if (cf.dataset.confirm === 'rehaboff') { S.rehab.active = false; await save(); render(); toast('Rehab ended — normal arm work from the next session'); return; }
       if (cf.dataset.confirm === 'leave') { draft = null; delete S.reopened; await save(); render(); return; }
       if (cf.dataset.confirm === 'finish') {
         const sess = $('#v-today')._sess; if (!sess || sess.done) return;
@@ -3019,7 +3202,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v46';
+const APP_BUILD = 'v47';
 
 let lastError = null;
 

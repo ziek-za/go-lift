@@ -101,6 +101,26 @@ main { padding: 0 var(--pad) 24px; max-width: 620px; margin: 0 auto; }
 /* A drop set reads as the tail of the set above it: indented, with the
    arrow in place of a set number, and the label in the drop's colour. */
 .set.k-drop { margin-left: 18px; border-left: 2px solid var(--go); padding-left: 8px; }
+
+/* Rehab reads as its own thing: a green rule on the card, and a pain scale
+   coloured by what each number does — green moves you on, amber holds, red
+   steps back. */
+.card.rehab { border-left: 3px solid var(--good); }
+.rehabfor { font-size: 11.5px; line-height: 1.45; color: var(--good); margin: 0 0 10px;
+  padding: 7px 9px; border-radius: 6px; background: rgba(43,162,95,.08); }
+.rehabq { margin: 0 0 12px; padding: 10px 11px; border-radius: 8px;
+  background: rgba(242,195,107,.08); border: 1px solid rgba(242,195,107,.28); }
+.rehabq p { margin: 0 0 8px; font-size: 13.5px; }
+.rpe.pain { flex-wrap: wrap; padding: 6px 0 10px; }
+.rpe.pain .q { width: 100%; margin-bottom: 6px; }
+.rpe.pain .rbtns { display: grid; grid-template-columns: repeat(11, 1fr); gap: 3px; width: 100%; }
+.rpe.pain button { min-height: 34px; padding: 0; font-family: var(--mono); font-size: 13px; }
+.rpe.pain button.ok { border-color: rgba(43,162,95,.5); }
+.rpe.pain button.mid { border-color: rgba(242,195,107,.5); }
+.rpe.pain button.hi { border-color: rgba(200,32,45,.55); }
+.rpe.pain button[aria-pressed="true"] { background: var(--chalk); color: var(--iron, #131519); }
+.pn { padding: 0 3px; border-radius: 3px; }
+.pn.ok { color: var(--good); } .pn.mid { color: #F2C36B; } .pn.hi { color: var(--stall); }
 .set.k-drop .n { color: var(--go); font-weight: 600; }
 .set.k-drop .kindlabel { color: var(--go); }
 
