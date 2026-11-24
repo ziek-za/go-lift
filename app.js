@@ -1446,8 +1446,44 @@ function phraseFor(hit) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/* Where an exercise started out of order belongs: straight after the last one
+   you have started, and never above the warm-up block. Only ever up the list —
+   going back to one you skipped leaves it where it is. */
+function orderTarget(sess, idx) {
+  const started = x => (x.sets || []).some(y => y.reps != null) || (x.doneIds || []).length > 0;
+  let last = -1, floor = 0;
+  sess.items.forEach((x, j) => { if (j !== idx && started(x)) last = j; });
+  while (floor < sess.items.length && ['prep', 'mobility'].includes(sess.items[floor].kind)) floor++;
+  const to = Math.max(last + 1, floor);
+  return to < idx ? to : idx;
+}
+
+/* Moves the card and scrolls by exactly the distance it moved, so the set you
+   just logged stays under your thumb instead of the page jumping. */
+function moveItem(sess, from, to) {
+  const before = $(`[data-item="${from}"]`);
+  const top0 = before && typeof before.getBoundingClientRect === 'function' ? before.getBoundingClientRect().top : null;
+  const clockOn = setClock ? sess.items[setClock.itemIdx] : null;
+  const [it] = sess.items.splice(from, 1);
+  sess.items.splice(to, 0, it);
+  openHist = null;
+  renderToday();
+  const card = $(`[data-item="${to}"]`);
+  if (card) {
+    card.classList.add('open'); card.classList.add('moved');
+    if (top0 != null && typeof card.getBoundingClientRect === 'function' && typeof window.scrollBy === 'function')
+      window.scrollBy(0, card.getBoundingClientRect().top - top0);
+  }
+  /* A set clock running on another exercise follows that exercise. */
+  if (clockOn) {
+    const ni = sess.items.indexOf(clockOn);
+    if (ni !== -1 && ni !== setClock.itemIdx) { const { setIdx, t0, label } = setClock; startSetClock(ni, setIdx, label); setClock.t0 = t0; }
+  }
+}
+
 async function completeSet(sess, itemIdx, setIdx, reps) {
   const it = sess.items[itemIdx], s = it.sets[setIdx];
+  const first = !it.sets.some(x => x.reps != null);
   const dur = (setClock && setClock.itemIdx === itemIdx && setClock.setIdx === setIdx)
     ? stopSetClock() : null;
   s.reps = reps;
@@ -1455,8 +1491,10 @@ async function completeSet(sess, itemIdx, setIdx, reps) {
   const hit = reps >= s.target;
   if (!s.warm) pop(phraseFor(hit), !hit);
   if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
+  const to = first && !sess.done ? orderTarget(sess, itemIdx) : itemIdx;
+  if (to !== itemIdx) moveItem(sess, itemIdx, to);
   await save();
-  redrawItem(sess, itemIdx);
+  if (to === itemIdx) redrawItem(sess, itemIdx);
   /* Before a drop set the timer is a countdown to it, and says so. */
   const nxt = it.sets[setIdx + 1];
   startRest(restFor(it, s), nxt && nxt.drop && !s.warm
@@ -2279,11 +2317,14 @@ ${lastError.stack.replace(/[<>]/g, '')}</pre>
     ${feedbackSection()}
 
     <p class="eyebrow">Backup</p>
-    <div class="sync"><span class="dot ${last ? 'ok' : ''}"></span>
-      <span class="txt"><b>${last ? 'Last saved ' + last.toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not backed up yet'}</b>
-      ${fileHandle ? fileHandle.name : ok ? 'Pick a file in your Drive folder once, then it saves there every time.' : 'This browser cannot write files. Use Export.'}</span></div>
-    <div class="btn-row"><button class="btn-go" id="sync" ${ok ? '' : 'disabled'}>Save to file</button>
+    <div class="sync"><span class="dot ${last && !S.backupFail ? 'ok' : ''}"></span>
+      <span class="txt"><b>${syncing ? 'Saving…' : last ? 'Last saved ' + last.toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not backed up yet'}</b>
+      ${fileHandle ? fileHandle.name : ok ? 'Pick a file in your Drive folder once, then it saves there every time.' : 'This browser cannot write files. Use Export.'}
+      ${S.backupFail ? `<span class="warnline">Backup failed ${new Date(S.backupFail.at).toLocaleString('en-ZA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}: ${esc(S.backupFail.msg)}${
+        fileHandle ? ' If it keeps happening, choose the file again.' : ''}</span>` : ''}</span></div>
+    <div class="btn-row"><button class="btn-go" id="sync" ${ok && !syncing ? '' : 'disabled'}>Save to file</button>
       <button id="export">Export copy</button></div>
+    ${fileHandle && ok ? `<div class="btn-row"><button class="btn-sm" id="repick" ${syncing ? 'disabled' : ''}>Choose the file again</button></div>` : ''}
     <div class="btn-row"><button id="import">Restore from file</button></div>
 
     <p class="eyebrow">Right arm rehab</p>
@@ -2494,32 +2535,93 @@ async function applyUpdate() {
 
 /* ═══ sync ══════════════════════════════════════════════════ */
 
-async function ensureHandle(create) {
-  if (fileHandle) {
-    if (await fileHandle.queryPermission({ mode: 'readwrite' }) === 'granted') return fileHandle;
-    if (await fileHandle.requestPermission({ mode: 'readwrite' }) === 'granted') return fileHandle;
+/* A backup that hangs used to hang everything waiting on it: Finish awaited it,
+   so the summary never came up, and Save to file sat there with no toast at
+   all. Every step now has a time limit, backups never queue behind each other,
+   nothing waits on them except the button you pressed, and a failure is kept
+   in the save with the step it stalled at, so it is on the Data tab after a
+   restart. */
+let syncing = null;
+const SYNC_STEP_MS = 20000, ASK_MS = 10000;
+
+function within(p, ms, step) {
+  let t;
+  return Promise.race([p, new Promise((_, rej) => {
+    t = setTimeout(() => rej(Object.assign(new Error(`no answer after ${Math.round(ms / 1000)}s`), { name: 'Timeout', step })), ms);
+  })]).finally(() => clearTimeout(t));
+}
+
+/* Asking for permission needs a tap. A background save that asked anyway is
+   how a prompt could sit waiting with nothing to answer it, so only a save you
+   pressed for ever asks — and a fresh pick skips the stored file entirely. */
+async function ensureHandle(interactive, fresh) {
+  if (fileHandle && !fresh) {
+    if (await within(fileHandle.queryPermission({ mode: 'readwrite' }), ASK_MS, 'permission') === 'granted') return fileHandle;
+    if (!interactive) return null;
+    if (await within(fileHandle.requestPermission({ mode: 'readwrite' }), ASK_MS, 'permission') === 'granted') return fileHandle;
   }
-  if (!create) return null;
-  fileHandle = await window.showSaveFilePicker({ suggestedName: 'lift-backup.json',
+  if (!interactive) return null;
+  const h = await window.showSaveFilePicker({ suggestedName: 'lift-backup.json',
     types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
+  fileHandle = h;
   await put('handle', fileHandle);
   return fileHandle;
 }
 
-async function syncNow(silent) {
-  try {
-    const h = await ensureHandle(true); if (!h) return;
-    const w = await h.createWritable();
-    await w.write(JSON.stringify(S, null, 2)); await w.close();
-    S.lastSync = new Date().toISOString(); await save();
-    if (!silent) { toast('Saved'); if (VIEW === 'data') render(); }
-  } catch (e) { if (e.name !== 'AbortError' && !silent) toast('Could not save — ' + e.message); }
+const STEP_WORDS = {
+  permission: 'your phone did not give the app access to the file',
+  open: 'the file would not open for writing',
+  write: 'the file stopped taking data part-way',
+  close: 'the file would not finish saving — Drive may be offline, or the file busy'
+};
+
+/* Compact JSON: no indentation, so the file is about half the size. Restore
+   reads either. */
+const backupText = () => JSON.stringify(S);
+
+async function syncNow(silent, fresh) {
+  if (syncing) { if (!silent) toast('Already saving — one moment'); return syncing; }
+  syncing = (async () => {
+    let step = 'permission', w = null;
+    try {
+      if (!silent && !('showSaveFilePicker' in window)) { toast('This browser cannot write files — use Export copy'); return false; }
+      const h = await ensureHandle(!silent, fresh);
+      if (!h) {
+        if (fileHandle) S.backupFail = { at: new Date().toISOString(), step: 'permission',
+          msg: 'The backup file needs your permission again. Tap Save to file.' };
+        await save();
+        return false;
+      }
+      const text = backupText();
+      step = 'open';  w = await within(h.createWritable(), SYNC_STEP_MS, step);
+      step = 'write'; await within(w.write(text), SYNC_STEP_MS, step);
+      step = 'close'; await within(w.close(), SYNC_STEP_MS, step); w = null;
+      S.lastSync = new Date().toISOString(); delete S.backupFail;
+      await save();
+      if (!silent) toast(`Saved · ${Math.round(text.length / 1024)} KB`);
+      return true;
+    } catch (e) {
+      if (w) w.abort().catch(() => {});
+      /* Backing out of the file picker is a choice, not a failure. */
+      if (e.name === 'AbortError' && step === 'permission') return false;
+      const why = STEP_WORDS[e.step || step] || 'something went wrong';
+      S.backupFail = { at: new Date().toISOString(), step: e.step || step,
+        msg: `${why[0].toUpperCase() + why.slice(1)} (${e.name === 'Timeout' ? e.message : e.name + ': ' + e.message}).` };
+      await save();
+      if (!silent) toast('Could not save — ' + why);
+      return false;
+    }
+  })().finally(() => { syncing = null; if (VIEW === 'data') render(); });
+  return syncing;
 }
 
 function exportCopy() {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }));
-  a.download = `lift-${today()}.json`; a.click(); URL.revokeObjectURL(a.href);
+  a.href = URL.createObjectURL(new Blob([backupText()], { type: 'application/json' }));
+  a.download = `lift-${today()}.json`; a.click();
+  /* Revoked straight away, a large file can be cut off before the download
+     has read it. */
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
 
 function importFile() {
@@ -3077,6 +3179,7 @@ function wire() {
     if (t.id === 'checkupdate') return checkForUpdate(false);
     if (t.id === 'applyupdate') return applyUpdate();
     if (t.id === 'sync') return syncNow(false);
+    if (t.id === 'repick') return syncNow(false, true);
     if (t.id === 'export') return exportCopy();
     if (t.id === 'import') return importFile();
     if (t.id === 'restart') {
@@ -3124,8 +3227,12 @@ function wire() {
         if (!S.sessions.find(x => x.id === sess.id)) S.sessions.push(sess);
         sess.undoProg = snap; pruneSnapshots(sess.id);
         draft = null; delete S.reopened; stopRest(); stopSetClock();
-        await save(); await syncNow(true); render();
-        showSummary(sess, notes); return;
+        await save(); render();
+        showSummary(sess, notes);
+        /* After the summary, never before it: the backup is a bonus, and a
+           slow file must not hold the session hostage. */
+        syncNow(true);
+        return;
       }
       if (cf.dataset.confirm.startsWith('reopen:')) {
         const sess = S.sessions.find(x => x.id === cf.dataset.confirm.slice(7));
@@ -3202,7 +3309,7 @@ function wire() {
    single version number can report fresh while stale code is running — which
    is exactly how a v24 bug hid behind a v25 label. If these disagree, the
    cache handed back a mismatched pair. */
-const APP_BUILD = 'v47';
+const APP_BUILD = 'v49';
 
 let lastError = null;
 

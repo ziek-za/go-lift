@@ -708,8 +708,6 @@ export const PREP = {
   }
 };
 
-/* ── What the words mean ───────────────────────────────────
-   Shown against the set type it describes, not buried in a help screen. */
 /* ═══ right-arm rehab ═══════════════════════════════════════
    Pain on the outside of the right elbow where the tendon attaches, worst on
    reverse curls, preacher curls and wide-grip pull-ups, there during the lift
@@ -750,6 +748,8 @@ export const REHAB = {
   clean: 3, setback: 5, levelUp: 2
 };
 
+/* ── What the words mean ───────────────────────────────────
+   Shown against the set type it describes, not buried in a help screen. */
 export const GLOSSARY = {
   warm: {
     title: 'Warm-up set',
@@ -879,7 +879,7 @@ export const RPE_SCALE = {
 
 /* Bumped on every deploy. The app compares this against the copy actually
    being served, which is how you tell a stale cached build from a fresh one. */
-export const BUILD = { version: 'v47', date: '2026-11-16' };
+export const BUILD = { version: 'v49', date: '2026-11-24' };
 
 /* Shown when a session is finished. Kept plain — the detail lives in History,
    this is just the door closing behind you. */

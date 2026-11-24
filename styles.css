@@ -108,6 +108,11 @@ main { padding: 0 var(--pad) 24px; max-width: 620px; margin: 0 auto; }
 .card.rehab { border-left: 3px solid var(--good); }
 .rehabfor { font-size: 11.5px; line-height: 1.45; color: var(--good); margin: 0 0 10px;
   padding: 7px 9px; border-radius: 6px; background: rgba(43,162,95,.08); }
+/* An exercise started out of order moves up the list; a brief glow says which. */
+@keyframes movedglow { from { box-shadow: 0 0 0 2px var(--go); } to { box-shadow: 0 0 0 2px transparent; } }
+.card.moved { animation: movedglow 1.4s ease-out; }
+/* Backup status lines on the Data tab. */
+.sync .warnline { display: block; color: var(--warn); margin-top: 4px; }
 .rehabq { margin: 0 0 12px; padding: 10px 11px; border-radius: 8px;
   background: rgba(242,195,107,.08); border: 1px solid rgba(242,195,107,.28); }
 .rehabq p { margin: 0 0 8px; font-size: 13.5px; }
